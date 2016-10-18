@@ -70,7 +70,7 @@ Apple自带的 Python 在 `/System/Library/Frameworks/Python.framework` 和 `/us
 
 ### 1.4 安装 Ansible
 
-    sudo pip install ansible
+    pip install ansible
 
 
 ## 2 运行 playbook 开始一键装机

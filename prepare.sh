@@ -29,5 +29,7 @@ brew linkapps python3
 # Add PATH
 echo "export PATH=\"/usr/local/bin:/usr/local/sbin:\$PATH\"" >> ~/.zshrc
 
-sudo pip install ansible
+pip install ansible
+# Ansible doesn't support Python 3 yet
+#pip3 install ansible
 
