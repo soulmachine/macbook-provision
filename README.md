@@ -77,4 +77,4 @@ Apple自带的 Python 在 `/System/Library/Frameworks/Python.framework` 和 `/us
 
 准备工作做完了，终于可以开始正式应用 playbook到本机，自动化一键装机了！
 
-    ansible-playbook -i localhost, -vv playbook.yml
+    ansible-playbook -i localhost, -vv all.yml

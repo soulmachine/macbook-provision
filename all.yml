@@ -1,0 +1,10 @@
+---
+- name: Install all
+  hosts: all
+  connection: local
+  gather_facts: no
+  become: no
+  roles:
+    - webstorm
+    - pycharm
+

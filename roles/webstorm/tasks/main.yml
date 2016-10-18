@@ -1,0 +1,3 @@
+---
+- homebrew_cask: name=webstorm state=present
+

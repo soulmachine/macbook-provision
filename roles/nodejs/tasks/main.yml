@@ -1,0 +1,13 @@
+---
+
+- homebrew: name=node state=latest install_options=with-full-icu
+  register: brew_result
+
+- name: npm install all packages
+  npm: >
+    name={{ item.name }}
+    state={{ item.state | default('latest') }}
+    global=yes
+  with_items:
+    - "{{npm_packages}}"
+
