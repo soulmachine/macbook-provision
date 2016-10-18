@@ -7,4 +7,5 @@
   roles:
     - webstorm
     - pycharm
+    - scrapy
 
