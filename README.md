@@ -7,6 +7,8 @@
 
 ## 1. 前期准备
 
+执行本工程下的 `./prepare.sh` 进行前期准备，这个脚本做了以下4件事：
+
 ### 1.1 安装 Xcode Command Line Tools
 
     sudo xcodebuild -license
