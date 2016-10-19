@@ -1,3 +1,17 @@
 ---
 - pip: name=scrapy executable=pip3
 
+# Install deltafetch
+- homebrew: name=berkeley-db state=latest
+
+- shell: cd /usr/local/Cellar/berkeley-db/*; pwd
+  register: berkeley_db_path
+  changed_when: False
+
+- pip: name=bsddb3 executable=pip3
+  environment:
+    YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION: yes
+    BERKELEYDB_DIR: "{{ berkeley_db_path.stdout }}"
+
+- pip: name=scrapy-deltafetch executable=pip3
+
