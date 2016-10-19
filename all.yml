@@ -5,6 +5,8 @@
   gather_facts: no
   become: no
   roles:
+    - nodejs
+    - typescript
     - webstorm
     - pycharm
     - scrapy
