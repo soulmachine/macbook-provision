@@ -20,6 +20,7 @@ Homebrew 是 Mac OS X 上最流行的包管理工具，类似于 Ubuntu上的 Ap
 
     /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
     brew doctor
+    echo 'export PATH="/usr/local/sbin:$PATH"' >> ~/.zshrc
     brew update
 
 
@@ -58,19 +59,14 @@ Apple自带的 Python 在 `/System/Library/Frameworks/Python.framework` 和 `/us
 
 开始安装 Python:
 
-    brew install python
-    pip install --upgrade pip setuptools
-    brew linkapps python
-
-将 python 加入 shell profile 文件的PATH环境变量里，例如，对于zsh, 则是 `~/.zprofile`文件，加入如下两行：
-
-    PATH=/usr/local/bin:$PATH
-    export PATH
+    brew install python3
+    pip3 install --upgrade pip setuptools wheel
+    brew linkapps python3
 
 
 ### 1.4 安装 Ansible
 
-    pip install ansible
+    pip3 install ansible
 
 
 ## 2 运行 playbook 开始一键装机
