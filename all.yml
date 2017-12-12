@@ -5,8 +5,9 @@
   gather_facts: no
   become: no
   roles:
+    - docker
     - nodejs
-    - typescript
+    - intellij-idea
     - webstorm
     - pycharm
     - scrapy

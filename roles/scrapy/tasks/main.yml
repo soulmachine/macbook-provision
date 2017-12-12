@@ -4,7 +4,7 @@
 # Install deltafetch
 - homebrew: name=berkeley-db state=latest
 
-- shell: cd /usr/local/Cellar/berkeley-db/*; pwd
+- shell: cd $(brew --cellar)/berkeley-db/*; pwd
   register: berkeley_db_path
   changed_when: False
 
