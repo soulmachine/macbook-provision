@@ -5,6 +5,7 @@
   gather_facts: no
   become: no
   roles:
+    - gpg
     - docker
     - nodejs
     - intellij-idea
