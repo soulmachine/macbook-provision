@@ -3,3 +3,4 @@ npm_packages:
   - { name: webpack }
   - { name: webpack-dev-server }
   - { name: create-react-app }
+  - { name: npm-check-updates }
