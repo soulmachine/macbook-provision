@@ -1,5 +1,3 @@
 ---
-- name: Tap homebrew cask versions
-  homebrew_tap: tap=caskroom/versions state=present
-- homebrew_cask: name=java8 state=present
+- homebrew: name=java state=latest
 
