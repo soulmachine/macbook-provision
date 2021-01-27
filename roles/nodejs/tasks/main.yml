@@ -1,6 +1,6 @@
 ---
 
-- homebrew: name=node state=latest install_options=with-full-icu
+- homebrew: name=node state=latest
 
 - name: npm install all packages
   npm: >
