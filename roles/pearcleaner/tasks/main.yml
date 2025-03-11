@@ -1,0 +1,4 @@
+---
+- homebrew:
+    name: pearcleaner
+    state: present
