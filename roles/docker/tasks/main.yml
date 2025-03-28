@@ -1,3 +1,2 @@
 ---
-- homebrew_cask: name=docker state=present
-
+- community.general.homebrew: name=docker state=latest

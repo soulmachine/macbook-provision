@@ -1,3 +1,2 @@
 ---
-- homebrew: name=java state=latest
-
+- community.general.homebrew: name=java state=latest

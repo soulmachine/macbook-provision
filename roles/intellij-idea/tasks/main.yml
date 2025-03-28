@@ -1,3 +1,2 @@
 ---
-- homebrew_cask: name=intellij-idea state=present
-
+- community.general.homebrew_cask: name=intellij-idea state=present

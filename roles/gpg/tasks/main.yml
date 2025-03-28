@@ -1,5 +1,4 @@
 ---
-- homebrew:
+- community.general.homebrew:
     name: gnupg
     state: latest
-

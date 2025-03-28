@@ -52,8 +52,44 @@ And add `pyenv` to the line `plugins=(...)`, see [oh-my-zsh pyenv plugin](https:
 
 Edit `~/.zshrc` and add `direnv` to the line `plugins=(...)`, see [oh-myzsh direnv plugin](https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins/direnv).
 
+### 1.6 Install NodeJS
 
-### 1.6 安装 Ansible
+Install nvm,
+
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
+```
+
+Add the following environment variables to `~/.zshrc`:
+
+```bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+```
+
+Install NodeJS:
+
+```bash
+nvm install 22
+nvm use 22
+```
+
+### 1.7 install JDK
+
+Install sdkman,
+
+```bash
+curl -s "https://get.sdkman.io" | bash
+```
+
+Install JDK,
+
+```
+sdk install java 24-amzn
+```
+
+### 1.8 安装 Ansible
 
     pip install ansible
 

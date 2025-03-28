@@ -7,11 +7,5 @@
   roles:
     - gpg
     - docker
-    - nodejs
-    - intellij-idea
-    - webstorm
-    - pycharm
-    - scrapy
     - vscode
     - sublime-text
-

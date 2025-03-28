@@ -1,5 +1,4 @@
 ---
-- homebrew_cask:
+- community.general.homebrew_cask:
     name: sublime-text
     state: present
-
