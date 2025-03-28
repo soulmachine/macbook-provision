@@ -3,7 +3,6 @@
   community.general.homebrew_cask:
     name:
       - sublime-text
-      - docker
       - visual-studio-code
       - trae
       - cursor
