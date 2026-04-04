@@ -47,3 +47,7 @@
 - name: Install ralph-loop plugin
   ansible.builtin.command: claude plugin install ralph-loop@claude-plugins-official
   when: "'ralph-loop@claude-plugins-official' not in installed_plugins_content"
+
+- name: Install superpowers plugin
+  ansible.builtin.command: claude plugin install superpowers@claude-plugins-official
+  when: "'superpowers@claude-plugins-official' not in installed_plugins_content"
