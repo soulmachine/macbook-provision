@@ -63,4 +63,4 @@
   ansible.builtin.command: openclaw plugins enable telegram
   when: >
     oc_plugins_enabled.stdout | default('') != '' and
-    'telegram' not in (oc_plugins_enabled.stdout | from_json).plugins | map(attribute='name') | list
+    'telegram' not in (oc_plugins_enabled.stdout | from_json).plugins | map(attribute='id') | list
