@@ -1,19 +1,20 @@
 ---
 - name: Install OpenClaw CLI
-  ansible.builtin.command: npm install -g openclaw@latest
-  register: openclaw_install
-  changed_when: "'added' in openclaw_install.stdout"
+  community.general.npm:
+    name: openclaw
+    global: true
+    state: latest
 
 - name: Install ClawHub CLI
-  ansible.builtin.command: npm install -g clawhub@latest
-  register: clawhub_install
-  changed_when: "'added' in clawhub_install.stdout"
+  community.general.npm:
+    name: clawhub
+    global: true
+    state: latest
 
 - name: Read current OpenClaw config
   ansible.builtin.shell: |
     echo "tools.profile=$(openclaw config get tools.profile 2>/dev/null)"
     echo "tools.sessions.visibility=$(openclaw config get tools.sessions.visibility 2>/dev/null)"
-    echo "tools.exec.host=$(openclaw config get tools.exec.host 2>/dev/null)"
     echo "tools.exec.ask=$(openclaw config get tools.exec.ask 2>/dev/null)"
     echo "tools.exec.security=$(openclaw config get tools.exec.security 2>/dev/null)"
     echo "tools.exec.timeoutSec=$(openclaw config get tools.exec.timeoutSec 2>/dev/null)"
@@ -22,31 +23,14 @@
   register: oc_config
   changed_when: false
 
-- name: Configure tools profile to full
-  ansible.builtin.command: openclaw config set tools.profile full
-  when: "'tools.profile=full' not in oc_config.stdout"
-
-- name: Configure tools sessions visibility
-  ansible.builtin.command: openclaw config set tools.sessions.visibility all
-  when: "'tools.sessions.visibility=all' not in oc_config.stdout"
-
-- name: Disable exec approval prompts
-  ansible.builtin.command: openclaw config set tools.exec.ask off
-  when: "'tools.exec.ask=off' not in oc_config.stdout"
-
-- name: Set exec security to full
-  ansible.builtin.command: openclaw config set tools.exec.security full
-  when: "'tools.exec.security=full' not in oc_config.stdout"
-
-- name: Set exec timeout to 1200 seconds
-  ansible.builtin.command: openclaw config set tools.exec.timeoutSec 1200
-  when: "'tools.exec.timeoutSec=1200' not in oc_config.stdout"
-
-- name: Disable exec approvals
-  ansible.builtin.command: openclaw config set approvals.exec.enabled false
-  when: "'approvals.exec.enabled=false' not in oc_config.stdout"
-
-- name: Disable plugin approvals
-  ansible.builtin.command: openclaw config set approvals.plugin.enabled false
-  when: "'approvals.plugin.enabled=false' not in oc_config.stdout"
-
+- name: Configure OpenClaw settings
+  ansible.builtin.command: openclaw config set {{ item.key }} {{ item.value }}
+  loop:
+    - { key: tools.profile, value: "full" }
+    - { key: tools.sessions.visibility, value: "all" }
+    - { key: tools.exec.ask, value: "off" }
+    - { key: tools.exec.security, value: "full" }
+    - { key: tools.exec.timeoutSec, value: "1200" }
+    - { key: approvals.exec.enabled, value: "false" }
+    - { key: approvals.plugin.enabled, value: "false" }
+  when: "item.key + '=' + item.value not in oc_config.stdout"

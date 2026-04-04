@@ -1,5 +1,6 @@
 ---
 - name: Install Codex CLI
-  ansible.builtin.command: npm install -g @openai/codex
-  register: codex_install
-  changed_when: "'added' in codex_install.stdout"
+  community.general.npm:
+    name: "@openai/codex"
+    global: true
+    state: latest

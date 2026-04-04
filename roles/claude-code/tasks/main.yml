@@ -17,14 +17,18 @@
   changed_when: "'already' not in mp_anthropic.stdout"
 
 - name: Check installed plugins
-  ansible.builtin.command: cat {{ lookup('env', 'HOME') }}/.claude/plugins/installed_plugins.json
-  register: installed_plugins
-  changed_when: false
+  ansible.builtin.slurp:
+    src: "{{ lookup('env', 'HOME') }}/.claude/plugins/installed_plugins.json"
+  register: installed_plugins_raw
   failed_when: false
+
+- name: Decode installed plugins
+  ansible.builtin.set_fact:
+    installed_plugins_content: "{{ (installed_plugins_raw.content | default('') | b64decode) if installed_plugins_raw is succeeded else '' }}"
 
 - name: Install ralph-wiggum plugin
   ansible.builtin.command: claude plugin install ralph-wiggum@claude-code-plugins
-  when: "'ralph-wiggum@claude-code-plugins' not in installed_plugins.stdout"
+  when: "'ralph-wiggum@claude-code-plugins' not in installed_plugins_content"
 
 - name: Add snarktank/ralph marketplace
   ansible.builtin.command: claude plugin marketplace add snarktank/ralph
@@ -33,4 +37,4 @@
 
 - name: Install ralph-skills plugin
   ansible.builtin.command: claude plugin install ralph-skills@ralph-marketplace
-  when: "'ralph-skills@ralph-marketplace' not in installed_plugins.stdout"
+  when: "'ralph-skills@ralph-marketplace' not in installed_plugins_content"
