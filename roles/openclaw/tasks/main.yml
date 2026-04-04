@@ -48,17 +48,14 @@
   when: oc_skills.stdout | default('') is match('^\\s*\\{')
   changed_when: false
 
-- name: Install OpenClaw obsidian skill
-  ansible.builtin.command: openclaw skills install obsidian
+- name: Install OpenClaw skills
+  ansible.builtin.command: openclaw skills install {{ item }}
+  loop:
+    - obsidian
+    - tavily
   when: >
     oc_skills_parsed is defined and
-    'obsidian' not in oc_skills_parsed
-
-- name: Install OpenClaw tavily skill
-  ansible.builtin.command: openclaw skills install tavily
-  when: >
-    oc_skills_parsed is defined and
-    'tavily' not in oc_skills_parsed
+    item not in oc_skills_parsed
 
 - name: Check enabled OpenClaw plugins
   ansible.builtin.shell: openclaw plugins list --enabled --json 2>&1
@@ -71,8 +68,10 @@
   when: oc_plugins_enabled.stdout | default('') is match('^\\s*\\{')
   changed_when: false
 
-- name: Enable OpenClaw telegram plugin
-  ansible.builtin.command: openclaw plugins enable telegram
+- name: Enable OpenClaw plugins
+  ansible.builtin.command: openclaw plugins enable {{ item }}
+  loop:
+    - telegram
   when: >
     oc_plugins_enabled_parsed is defined and
-    'telegram' not in oc_plugins_enabled_parsed
+    item not in oc_plugins_enabled_parsed
