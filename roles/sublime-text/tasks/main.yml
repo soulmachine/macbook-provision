@@ -1,4 +1,5 @@
 ---
-- community.general.homebrew_cask:
+- name: Install Sublime Text
+  community.general.homebrew_cask:
     name: sublime-text
     state: present

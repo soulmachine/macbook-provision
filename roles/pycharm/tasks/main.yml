@@ -1,2 +1,5 @@
 ---
-- homebrew_cask: name=pycharm state=present
+- name: Install PyCharm
+  community.general.homebrew_cask:
+    name: pycharm
+    state: present

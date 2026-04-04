@@ -1,3 +1,5 @@
 ---
-- homebrew_cask: name=webstorm state=present
-
+- name: Install WebStorm
+  community.general.homebrew_cask:
+    name: webstorm
+    state: present

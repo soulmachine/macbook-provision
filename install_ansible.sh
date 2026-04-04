@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 if command -v ansible >/dev/null 2>&1; then
   echo "Ansible is already installed: $(ansible --version | head -1)"
@@ -6,13 +7,13 @@ if command -v ansible >/dev/null 2>&1; then
 fi
 
 # 1. Xcode Command Line Tools
-if ! xcode-select -p; then
+if ! xcode-select -p >/dev/null 2>&1; then
   sudo xcodebuild -license
   xcode-select --install
 fi
 
 # 2. Install Homebrew if it doesn't exist
-command -v brew >/dev/null 2>&1 || /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+command -v brew >/dev/null 2>&1 || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew doctor
 brew update
 
@@ -31,7 +32,7 @@ if [[ -d /Library/Frameworks/Python.framework ]] \
   done
 fi
 
-# Install mise
+# 4. Install mise
 if ! command -v mise >/dev/null 2>&1; then
   curl https://mise.run | sh
   grep -q 'mise activate zsh' ~/.zshrc 2>/dev/null || echo 'eval "$(mise activate zsh)"' >> ~/.zshrc
@@ -39,9 +40,10 @@ if ! command -v mise >/dev/null 2>&1; then
   eval "$(mise activate bash)"
 fi
 
-# Install python via mise if not already managed by mise
-if ! whereis python 2>/dev/null | grep -q mise; then
+# 5. Install Python via mise if not already managed by mise
+if ! which python3 2>/dev/null | grep -q mise; then
   mise use --global python@3
 fi
 
-pip install ansible
+# 6. Install Ansible
+pip3 install ansible

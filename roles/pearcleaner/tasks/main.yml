@@ -1,4 +1,5 @@
 ---
-- homebrew:
+- name: Install PearCleaner
+  community.general.homebrew_cask:
     name: pearcleaner
     state: present

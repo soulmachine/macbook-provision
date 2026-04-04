@@ -1,4 +1,5 @@
 ---
-- community.general.homebrew:
+- name: Install GnuPG
+  community.general.homebrew:
     name: gnupg
     state: latest

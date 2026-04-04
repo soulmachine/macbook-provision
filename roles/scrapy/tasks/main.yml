@@ -1,17 +1,28 @@
 ---
-- pip: name=scrapy executable=pip3
+- name: Install Scrapy
+  ansible.builtin.pip:
+    name: scrapy
+    executable: pip3
 
-# Install deltafetch
-- homebrew: name=berkeley-db state=latest
+- name: Install berkeley-db for deltafetch
+  community.general.homebrew:
+    name: berkeley-db
+    state: latest
 
-- shell: cd $(brew --cellar)/berkeley-db/*; pwd
+- name: Get berkeley-db install path
+  ansible.builtin.shell: cd $(brew --cellar)/berkeley-db/*; pwd
   register: berkeley_db_path
-  changed_when: False
+  changed_when: false
 
-- pip: name=bsddb3 executable=pip3
+- name: Install bsddb3
+  ansible.builtin.pip:
+    name: bsddb3
+    executable: pip3
   environment:
     YES_I_HAVE_THE_RIGHT_TO_USE_THIS_BERKELEY_DB_VERSION: yes
     BERKELEYDB_DIR: "{{ berkeley_db_path.stdout }}"
 
-- pip: name=scrapy-deltafetch executable=pip3
-
+- name: Install scrapy-deltafetch
+  ansible.builtin.pip:
+    name: scrapy-deltafetch
+    executable: pip3
