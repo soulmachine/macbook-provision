@@ -18,3 +18,13 @@
     repo: https://github.com/zsh-users/zsh-autosuggestions
     dest: "{{ lookup('env', 'HOME') }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
     update: no
+
+- name: Check if zsh-autosuggestions plugin is enabled in .zshrc
+  ansible.builtin.shell: grep '^plugins=' "{{ lookup('env', 'HOME') }}/.zshrc" | grep -qE '(\(|[[:space:]])zsh-autosuggestions([[:space:]]|\))'
+  register: zsh_autosuggestions_check
+  changed_when: false
+  failed_when: false
+
+- name: Enable zsh-autosuggestions oh-my-zsh plugin
+  ansible.builtin.shell: sed -i '' 's/^plugins=(\(.*\))/plugins=(\1 zsh-autosuggestions)/' "{{ lookup('env', 'HOME') }}/.zshrc"
+  when: zsh_autosuggestions_check.rc != 0
