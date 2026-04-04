@@ -1,0 +1,36 @@
+---
+- name: Install Claude Code
+  ansible.builtin.shell: curl -fsSL https://claude.ai/install.sh | bash
+  args:
+    creates: "{{ lookup('env', 'HOME') }}/.claude/local/bin/claude"
+
+- name: Add ccd alias to .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    line: 'alias ccd="claude --dangerously-skip-permissions"'
+    regexp: '^alias ccd='
+    state: present
+
+- name: Add anthropics/claude-code marketplace
+  ansible.builtin.command: claude plugin marketplace add anthropics/claude-code
+  register: mp_anthropic
+  changed_when: "'already' not in mp_anthropic.stdout"
+
+- name: Check installed plugins
+  ansible.builtin.command: cat {{ lookup('env', 'HOME') }}/.claude/plugins/installed_plugins.json
+  register: installed_plugins
+  changed_when: false
+  failed_when: false
+
+- name: Install ralph-wiggum plugin
+  ansible.builtin.command: claude plugin install ralph-wiggum@claude-code-plugins
+  when: "'ralph-wiggum@claude-code-plugins' not in installed_plugins.stdout"
+
+- name: Add snarktank/ralph marketplace
+  ansible.builtin.command: claude plugin marketplace add snarktank/ralph
+  register: mp_ralph
+  changed_when: "'already' not in mp_ralph.stdout"
+
+- name: Install ralph-skills plugin
+  ansible.builtin.command: claude plugin install ralph-skills@ralph-marketplace
+  when: "'ralph-skills@ralph-marketplace' not in installed_plugins.stdout"

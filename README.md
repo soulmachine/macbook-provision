@@ -39,7 +39,7 @@ ansible-playbook -i localhost, -vv all.yml
 Or apply a single role,
 
 ```bash
-ansible -i localhost, -c local -m include_role -a name=go localhost -vv
+ansible -i localhost, -c local -m include_role -a name=claude-code localhost -vv
 ```
 
 ## 致谢
