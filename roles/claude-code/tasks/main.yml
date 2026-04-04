@@ -47,3 +47,12 @@
 - name: Install obsidian plugin
   ansible.builtin.command: claude plugin install obsidian@obsidian-skills
   when: "'obsidian@obsidian-skills' not in installed_plugins_content"
+
+- name: Add subsy/ralph-tui marketplace
+  ansible.builtin.command: claude plugin marketplace add subsy/ralph-tui
+  register: mp_ralph_tui
+  changed_when: "'already' not in mp_ralph_tui.stdout"
+
+- name: Install ralph-tui plugin
+  ansible.builtin.command: claude plugin install ralph-tui@ralph-tui
+  when: "'ralph-tui@ralph-tui' not in installed_plugins_content"
