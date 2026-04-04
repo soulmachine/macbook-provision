@@ -1,0 +1,5 @@
+---
+- name: Install Gemini CLI
+  ansible.builtin.command: npm install -g @google/gemini-cli
+  register: gemini_install
+  changed_when: "'added' in gemini_install.stdout"
