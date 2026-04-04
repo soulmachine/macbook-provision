@@ -2,7 +2,7 @@
 - name: Install Claude Code
   ansible.builtin.shell: curl -fsSL https://claude.ai/install.sh | bash
   args:
-    creates: "{{ lookup('env', 'HOME') }}/.claude/local/bin/claude"
+    creates: "{{ lookup('env', 'HOME') }}/.local/bin/claude"
 
 - name: Add ccd alias to .zshrc
   ansible.builtin.lineinfile:
