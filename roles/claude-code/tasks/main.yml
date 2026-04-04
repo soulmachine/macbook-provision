@@ -11,11 +11,6 @@
     regexp: '^alias ccd='
     state: present
 
-- name: Add anthropics/claude-code marketplace
-  ansible.builtin.command: claude plugin marketplace add anthropics/claude-code
-  register: mp_anthropic
-  changed_when: "'already' not in mp_anthropic.stdout"
-
 - name: Check installed plugins
   ansible.builtin.slurp:
     src: "{{ lookup('env', 'HOME') }}/.claude/plugins/installed_plugins.json"
@@ -25,6 +20,11 @@
 - name: Decode installed plugins
   ansible.builtin.set_fact:
     installed_plugins_content: "{{ (installed_plugins_raw.content | default('') | b64decode) if installed_plugins_raw is succeeded else '' }}"
+
+- name: Add anthropics/claude-code marketplace
+  ansible.builtin.command: claude plugin marketplace add anthropics/claude-code
+  register: mp_anthropic
+  changed_when: "'already' not in mp_anthropic.stdout"
 
 - name: Install ralph-wiggum plugin
   ansible.builtin.command: claude plugin install ralph-wiggum@claude-code-plugins
@@ -38,3 +38,12 @@
 - name: Install ralph-skills plugin
   ansible.builtin.command: claude plugin install ralph-skills@ralph-marketplace
   when: "'ralph-skills@ralph-marketplace' not in installed_plugins_content"
+
+- name: Add kepano/obsidian-skills marketplace
+  ansible.builtin.command: claude plugin marketplace add kepano/obsidian-skills
+  register: mp_obsidian
+  changed_when: "'already' not in mp_obsidian.stdout"
+
+- name: Install obsidian plugin
+  ansible.builtin.command: claude plugin install obsidian@obsidian-skills
+  when: "'obsidian@obsidian-skills' not in installed_plugins_content"
