@@ -47,3 +47,9 @@
   when: >
     oc_skills.stdout | default('') != '' and
     'obsidian' not in (oc_skills.stdout | from_json).skills | map(attribute='name') | list
+
+- name: Install OpenClaw tavily skill
+  ansible.builtin.command: openclaw skills install tavily
+  when: >
+    oc_skills.stdout | default('') != '' and
+    'tavily' not in (oc_skills.stdout | from_json).skills | map(attribute='name') | list
