@@ -36,3 +36,14 @@
     - { key: approvals.exec.enabled, value: "false" }
     - { key: approvals.plugin.enabled, value: "false" }
   when: "item.key + '=' + item.value not in oc_config.stdout"
+
+- name: Check installed OpenClaw skills
+  ansible.builtin.shell: openclaw skills list --json 2>&1
+  register: oc_skills
+  changed_when: false
+
+- name: Install OpenClaw obsidian skill
+  ansible.builtin.command: openclaw skills install obsidian
+  when: >
+    oc_skills.stdout | default('') != '' and
+    'obsidian' not in (oc_skills.stdout | from_json).skills | map(attribute='name') | list
