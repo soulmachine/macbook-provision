@@ -17,6 +17,7 @@
     echo "tools.sessions.visibility=$(openclaw config get tools.sessions.visibility 2>/dev/null)"
     echo "tools.exec.ask=$(openclaw config get tools.exec.ask 2>/dev/null)"
     echo "tools.exec.security=$(openclaw config get tools.exec.security 2>/dev/null)"
+    echo "tools.exec.host=$(openclaw config get tools.exec.host 2>/dev/null)"
     echo "tools.exec.timeoutSec=$(openclaw config get tools.exec.timeoutSec 2>/dev/null)"
     echo "approvals.exec.enabled=$(openclaw config get approvals.exec.enabled 2>/dev/null)"
     echo "approvals.plugin.enabled=$(openclaw config get approvals.plugin.enabled 2>/dev/null)"
@@ -30,6 +31,7 @@
     - { key: tools.sessions.visibility, value: "all" }
     - { key: tools.exec.ask, value: "off" }
     - { key: tools.exec.security, value: "full" }
+    - { key: tools.exec.host, value: "gateway" }
     - { key: tools.exec.timeoutSec, value: "1200" }
     - { key: approvals.exec.enabled, value: "false" }
     - { key: approvals.plugin.enabled, value: "false" }
