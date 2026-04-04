@@ -7,7 +7,9 @@
   roles:
     - oh-my-zsh
     - direnv
-    - languages
+    - go
+    - nodejs
+    - jdk
     - gpg
     - docker
     - vscode
