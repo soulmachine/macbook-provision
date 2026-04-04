@@ -1,7 +1,5 @@
 ---
 - name: Install JDK via mise
   ansible.builtin.command: mise use --global java@lts
-  environment:
-    PATH: "{{ lookup('env', 'PATH') }}:{{ lookup('env', 'HOME') }}/.local/bin"
   register: mise_java
   changed_when: "'installed' in mise_java.stderr"

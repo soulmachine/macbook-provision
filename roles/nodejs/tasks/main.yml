@@ -1,7 +1,5 @@
 ---
 - name: Install Node.js via mise
   ansible.builtin.command: mise use --global node@lts
-  environment:
-    PATH: "{{ lookup('env', 'PATH') }}:{{ lookup('env', 'HOME') }}/.local/bin"
   register: mise_node
   changed_when: "'installed' in mise_node.stderr"
