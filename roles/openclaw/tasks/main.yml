@@ -53,3 +53,14 @@
   when: >
     oc_skills.stdout | default('') != '' and
     'tavily' not in (oc_skills.stdout | from_json).skills | map(attribute='name') | list
+
+- name: Check enabled OpenClaw plugins
+  ansible.builtin.shell: openclaw plugins list --enabled --json 2>&1
+  register: oc_plugins_enabled
+  changed_when: false
+
+- name: Enable OpenClaw telegram plugin
+  ansible.builtin.command: openclaw plugins enable telegram
+  when: >
+    oc_plugins_enabled.stdout | default('') != '' and
+    'telegram' not in (oc_plugins_enabled.stdout | from_json).plugins | map(attribute='name') | list
