@@ -42,25 +42,37 @@
   register: oc_skills
   changed_when: false
 
+- name: Parse OpenClaw skills list
+  ansible.builtin.set_fact:
+    oc_skills_parsed: "{{ (oc_skills.stdout | from_json).skills | map(attribute='name') | list }}"
+  when: oc_skills.stdout | default('') is match('^\\s*\\{')
+  changed_when: false
+
 - name: Install OpenClaw obsidian skill
   ansible.builtin.command: openclaw skills install obsidian
   when: >
-    oc_skills.stdout | default('') != '' and
-    'obsidian' not in (oc_skills.stdout | from_json).skills | map(attribute='name') | list
+    oc_skills_parsed is defined and
+    'obsidian' not in oc_skills_parsed
 
 - name: Install OpenClaw tavily skill
   ansible.builtin.command: openclaw skills install tavily
   when: >
-    oc_skills.stdout | default('') != '' and
-    'tavily' not in (oc_skills.stdout | from_json).skills | map(attribute='name') | list
+    oc_skills_parsed is defined and
+    'tavily' not in oc_skills_parsed
 
 - name: Check enabled OpenClaw plugins
   ansible.builtin.shell: openclaw plugins list --enabled --json 2>&1
   register: oc_plugins_enabled
   changed_when: false
 
+- name: Parse OpenClaw enabled plugins list
+  ansible.builtin.set_fact:
+    oc_plugins_enabled_parsed: "{{ (oc_plugins_enabled.stdout | from_json).plugins | map(attribute='id') | list }}"
+  when: oc_plugins_enabled.stdout | default('') is match('^\\s*\\{')
+  changed_when: false
+
 - name: Enable OpenClaw telegram plugin
   ansible.builtin.command: openclaw plugins enable telegram
   when: >
-    oc_plugins_enabled.stdout | default('') != '' and
-    'telegram' not in (oc_plugins_enabled.stdout | from_json).plugins | map(attribute='id') | list
+    oc_plugins_enabled_parsed is defined and
+    'telegram' not in oc_plugins_enabled_parsed
