@@ -1,0 +1,20 @@
+---
+
+- name: Install oh-my-zsh
+  shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  args:
+    creates: "{{ lookup('env', 'HOME') }}/.oh-my-zsh"
+
+- name: Check current login shell
+  shell: dscl . -read ~ UserShell | awk '{print $2}'
+  register: current_shell
+  changed_when: false
+
+- name: Set zsh as default shell
+  shell: dscl . -change ~ UserShell {{ current_shell.stdout }} /bin/zsh
+  when: current_shell.stdout != '/bin/zsh'
+
+- name: Install zsh-autosuggestions
+  git:
+    repo: https://github.com/zsh-users/zsh-autosuggestions
+    dest: "{{ lookup('env', 'HOME') }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
