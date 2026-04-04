@@ -29,6 +29,12 @@
 ansible-playbook -i localhost, -vv all.yml
 ```
 
+Or apply a single role,
+
+```bash
+ansible -i localhost -m include_role -a name=languages localhost -vv
+```
+
 ## 致谢
 
 本项目参考了 [hayajo/macbook-provision](https://github.com/hayajo/macbook-provision)。
