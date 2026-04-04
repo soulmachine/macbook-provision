@@ -21,15 +21,6 @@
   ansible.builtin.set_fact:
     installed_plugins_content: "{{ (installed_plugins_raw.content | default('') | b64decode) if installed_plugins_raw is succeeded else '' }}"
 
-- name: Add anthropics/claude-code marketplace
-  ansible.builtin.command: claude plugin marketplace add anthropics/claude-code
-  register: mp_anthropic
-  changed_when: "'already' not in mp_anthropic.stdout"
-
-- name: Install ralph-wiggum plugin
-  ansible.builtin.command: claude plugin install ralph-wiggum@claude-code-plugins
-  when: "'ralph-wiggum@claude-code-plugins' not in installed_plugins_content"
-
 - name: Add snarktank/ralph marketplace
   ansible.builtin.command: claude plugin marketplace add snarktank/ralph
   register: mp_ralph
@@ -48,11 +39,11 @@
   ansible.builtin.command: claude plugin install obsidian@obsidian-skills
   when: "'obsidian@obsidian-skills' not in installed_plugins_content"
 
-- name: Add subsy/ralph-tui marketplace
-  ansible.builtin.command: claude plugin marketplace add subsy/ralph-tui
-  register: mp_ralph_tui
-  changed_when: "'already' not in mp_ralph_tui.stdout"
+- name: Add anthropics/claude-plugins-official marketplace
+  ansible.builtin.command: claude plugin marketplace add anthropics/claude-plugins-official
+  register: mp_claude_plugins_official
+  changed_when: "'already' not in mp_claude_plugins_official.stdout"
 
-- name: Install ralph-tui plugin
-  ansible.builtin.command: claude plugin install ralph-tui@ralph-tui
-  when: "'ralph-tui@ralph-tui' not in installed_plugins_content"
+- name: Install ralph-loop plugin
+  ansible.builtin.command: claude plugin install ralph-loop@claude-plugins-official
+  when: "'ralph-loop@claude-plugins-official' not in installed_plugins_content"
