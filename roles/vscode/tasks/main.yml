@@ -1,9 +1,2 @@
 ---
-- name: Install AI IDEs based on VSCode
-  community.general.homebrew_cask:
-    name:
-      - sublime-text
-      - visual-studio-code
-      - trae
-      - cursor
-    state: present
+- community.general.homebrew_cask: name=visual-studio-code state=present
