@@ -44,6 +44,7 @@
   register: mp_claude_plugins_official
   changed_when: "'already' not in mp_claude_plugins_official.stdout"
 
+# Browse more plugins at https://claude.com/plugins
 - name: Install claude-plugins-official plugins
   ansible.builtin.command: claude plugin install {{ item }}@claude-plugins-official
   loop:
