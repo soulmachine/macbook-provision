@@ -14,12 +14,12 @@
 - name: Check installed plugins
   ansible.builtin.slurp:
     src: "{{ ansible_user_dir }}/.claude/plugins/installed_plugins.json"
-  register: installed_plugins_raw
+  register: claude_code_plugins_raw
   failed_when: false
 
 - name: Decode installed plugins
   ansible.builtin.set_fact:
-    installed_plugins_content: "{{ (installed_plugins_raw.content | default('') | b64decode) if installed_plugins_raw is succeeded else '' }}"
+    claude_code_plugins_content: "{{ (claude_code_plugins_raw.content | default('') | b64decode) if claude_code_plugins_raw is succeeded else '' }}"
 
 # Read claude code settings
 - name: Ensure ~/.claude directory exists
@@ -31,12 +31,12 @@
 - name: Read existing Claude Code settings
   ansible.builtin.slurp:
     src: "{{ ansible_user_dir }}/.claude/settings.json"
-  register: claude_settings_raw
+  register: claude_code_settings_raw
   failed_when: false
 
 - name: Parse existing Claude Code settings
   ansible.builtin.set_fact:
-    claude_settings: "{{ (claude_settings_raw.content | b64decode | from_json) if claude_settings_raw is succeeded else {} }}"
+    claude_code_settings: "{{ (claude_code_settings_raw.content | b64decode | from_json) if claude_code_settings_raw is succeeded else {} }}"
 
 - name: Add plugin marketplaces
   ansible.builtin.command: claude plugin marketplace add {{ item }}
@@ -44,8 +44,8 @@
     - snarktank/ralph
     - kepano/obsidian-skills
     - anthropics/claude-plugins-official
-  register: mp_results
-  changed_when: "'already' not in mp_results.stdout"
+  register: claude_code_mp
+  changed_when: "'already' not in claude_code_mp.stdout"
 
 - name: Install plugins
   ansible.builtin.command: claude plugin install {{ item }}
@@ -54,12 +54,12 @@
     - obsidian@obsidian-skills
     - ralph-loop@claude-plugins-official
     - superpowers@claude-plugins-official
-  when: "item not in installed_plugins_content"
+  when: "item not in claude_code_plugins_content"
   changed_when: true
 
 - name: Disable Co-Authored-By in commits
   ansible.builtin.copy:
     dest: "{{ ansible_user_dir }}/.claude/settings.json"
-    content: "{{ claude_settings | combine({'attribution': {'commit': ''}}) | to_nice_json }}\n"
+    content: "{{ claude_code_settings | combine({'attribution': {'commit': ''}}) | to_nice_json }}\n"
     mode: "0644"
-  when: (claude_settings.attribution.commit | default(none)) != ''
+  when: (claude_code_settings.attribution.commit | default(none)) != ''

@@ -7,13 +7,13 @@
 - name: Check current login shell
   ansible.builtin.shell:
     cmd: set -o pipefail && dscl . -read ~ UserShell | awk '{print $2}'
-  register: current_shell
+  register: oh_my_zsh_current_shell
   changed_when: false
 
 - name: Set zsh as default shell
-  ansible.builtin.command: dscl . -change ~ UserShell {{ current_shell.stdout }} /bin/zsh
+  ansible.builtin.command: dscl . -change ~ UserShell {{ oh_my_zsh_current_shell.stdout }} /bin/zsh
   changed_when: true
-  when: current_shell.stdout != '/bin/zsh'
+  when: oh_my_zsh_current_shell.stdout != '/bin/zsh'
 
 - name: Install zsh-autosuggestions # noqa: latest[git]
   ansible.builtin.git:
