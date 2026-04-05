@@ -1,5 +1,5 @@
 ---
-- name: Install Docker Desktop
+- name: Install Docker CLI
   community.general.homebrew:
     name: docker
     state: latest

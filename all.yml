@@ -2,8 +2,8 @@
 - name: Install all
   hosts: all
   connection: local
-  gather_facts: no
-  become: no
+  gather_facts: true
+  become: false
   roles:
     - oh-my-zsh
     - direnv

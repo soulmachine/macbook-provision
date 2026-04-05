@@ -1,19 +1,19 @@
 ---
-- name: Install Claude Code
+- name: Install Claude Code # noqa: command-instead-of-module risky-shell-pipe
   ansible.builtin.shell: curl -fsSL https://claude.ai/install.sh | bash
   args:
-    creates: "{{ lookup('env', 'HOME') }}/.local/bin/claude"
+    creates: "{{ ansible_user_dir }}/.local/bin/claude"
 
 - name: Add ccd alias to .zshrc
   ansible.builtin.lineinfile:
-    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    path: "{{ ansible_user_dir }}/.zshrc"
     line: 'alias ccd="claude --dangerously-skip-permissions"'
     regexp: '^alias ccd='
     state: present
 
 - name: Check installed plugins
   ansible.builtin.slurp:
-    src: "{{ lookup('env', 'HOME') }}/.claude/plugins/installed_plugins.json"
+    src: "{{ ansible_user_dir }}/.claude/plugins/installed_plugins.json"
   register: installed_plugins_raw
   failed_when: false
 
@@ -24,13 +24,13 @@
 # Read claude code settings
 - name: Ensure ~/.claude directory exists
   ansible.builtin.file:
-    path: "{{ lookup('env', 'HOME') }}/.claude"
+    path: "{{ ansible_user_dir }}/.claude"
     state: directory
     mode: "0755"
 
 - name: Read existing Claude Code settings
   ansible.builtin.slurp:
-    src: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
+    src: "{{ ansible_user_dir }}/.claude/settings.json"
   register: claude_settings_raw
   failed_when: false
 
@@ -38,22 +38,14 @@
   ansible.builtin.set_fact:
     claude_settings: "{{ (claude_settings_raw.content | b64decode | from_json) if claude_settings_raw is succeeded else {} }}"
 
-# Install third-party markets
-- name: Add snarktank/ralph marketplace
-  ansible.builtin.command: claude plugin marketplace add snarktank/ralph
-  register: mp_ralph
-  changed_when: "'already' not in mp_ralph.stdout"
-
-- name: Add kepano/obsidian-skills marketplace
-  ansible.builtin.command: claude plugin marketplace add kepano/obsidian-skills
-  register: mp_obsidian
-  changed_when: "'already' not in mp_obsidian.stdout"
-
-# Browse more plugins at https://claude.com/plugins
-- name: Add anthropics/claude-plugins-official marketplace
-  ansible.builtin.command: claude plugin marketplace add anthropics/claude-plugins-official
-  register: mp_official
-  changed_when: "'already' not in mp_official.stdout"
+- name: Add plugin marketplaces
+  ansible.builtin.command: claude plugin marketplace add {{ item }}
+  loop:
+    - snarktank/ralph
+    - kepano/obsidian-skills
+    - anthropics/claude-plugins-official
+  register: mp_results
+  changed_when: "'already' not in mp_results.stdout"
 
 - name: Install plugins
   ansible.builtin.command: claude plugin install {{ item }}
@@ -63,10 +55,11 @@
     - ralph-loop@claude-plugins-official
     - superpowers@claude-plugins-official
   when: "item not in installed_plugins_content"
+  changed_when: true
 
 - name: Disable Co-Authored-By in commits
   ansible.builtin.copy:
-    dest: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
+    dest: "{{ ansible_user_dir }}/.claude/settings.json"
     content: "{{ claude_settings | combine({'attribution': {'commit': ''}}) | to_nice_json }}\n"
     mode: "0644"
   when: (claude_settings.attribution.commit | default(none)) != ''

@@ -21,7 +21,7 @@
     echo "tools.exec.timeoutSec=$(openclaw config get tools.exec.timeoutSec 2>/dev/null)"
     echo "approvals.exec.enabled=$(openclaw config get approvals.exec.enabled 2>/dev/null)"
     echo "approvals.plugin.enabled=$(openclaw config get approvals.plugin.enabled 2>/dev/null)"
-  register: oc_config
+  register: openclaw_config
   changed_when: false
 
 - name: Configure OpenClaw settings
@@ -35,43 +35,58 @@
     - { key: tools.exec.timeoutSec, value: "1200" }
     - { key: approvals.exec.enabled, value: "false" }
     - { key: approvals.plugin.enabled, value: "false" }
-  when: "item.key + '=' + item.value not in oc_config.stdout"
+  when: "item.key + '=' + item.value not in openclaw_config.stdout"
+  changed_when: true
 
 - name: Check installed OpenClaw skills
-  ansible.builtin.shell: openclaw skills list --json 2>&1
-  register: oc_skills
+  ansible.builtin.shell:
+    cmd: set -o pipefail && openclaw skills list --json 2>&1 | sed -n '/^{/,$p'
+  register: openclaw_skills
   changed_when: false
+  failed_when: false
 
 - name: Parse OpenClaw skills list
   ansible.builtin.set_fact:
-    oc_skills_parsed: "{{ (oc_skills.stdout | from_json).skills | map(attribute='name') | list }}"
-  when: oc_skills.stdout | default('') is match('^\\s*\\{')
-  changed_when: false
+    openclaw_skills_parsed: "{{ (openclaw_skills.stdout | from_json).skills | map(attribute='name') | list }}"
+  when:
+    - openclaw_skills.rc == 0
+    - openclaw_skills.stdout | default('') is match('^\\s*\\{')
+
+- name: Default OpenClaw skills list to empty
+  ansible.builtin.set_fact:
+    openclaw_skills_parsed: []
+  when: openclaw_skills_parsed is not defined
 
 - name: Install OpenClaw skills
   ansible.builtin.command: openclaw skills install {{ item }}
   loop:
     - obsidian
     - tavily
-  when: >
-    oc_skills_parsed is defined and
-    item not in oc_skills_parsed
+  when: item not in openclaw_skills_parsed
+  changed_when: true
 
 - name: Check enabled OpenClaw plugins
-  ansible.builtin.shell: openclaw plugins list --enabled --json 2>&1
-  register: oc_plugins_enabled
+  ansible.builtin.shell:
+    cmd: set -o pipefail && openclaw plugins list --enabled --json 2>&1 | sed -n '/^{/,$p'
+  register: openclaw_plugins_enabled
   changed_when: false
+  failed_when: false
 
 - name: Parse OpenClaw enabled plugins list
   ansible.builtin.set_fact:
-    oc_plugins_enabled_parsed: "{{ (oc_plugins_enabled.stdout | from_json).plugins | map(attribute='id') | list }}"
-  when: oc_plugins_enabled.stdout | default('') is match('^\\s*\\{')
-  changed_when: false
+    openclaw_plugins_enabled_parsed: "{{ (openclaw_plugins_enabled.stdout | from_json).plugins | map(attribute='id') | list }}"
+  when:
+    - openclaw_plugins_enabled.rc == 0
+    - openclaw_plugins_enabled.stdout | default('') is match('^\\s*\\{')
+
+- name: Default OpenClaw enabled plugins list to empty
+  ansible.builtin.set_fact:
+    openclaw_plugins_enabled_parsed: []
+  when: openclaw_plugins_enabled_parsed is not defined
 
 - name: Enable OpenClaw plugins
   ansible.builtin.command: openclaw plugins enable {{ item }}
   loop:
     - telegram
-  when: >
-    oc_plugins_enabled_parsed is defined and
-    item not in oc_plugins_enabled_parsed
+  when: item not in openclaw_plugins_enabled_parsed
+  changed_when: true

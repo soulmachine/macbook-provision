@@ -2,32 +2,31 @@
 - name: Install oh-my-zsh
   ansible.builtin.shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
   args:
-    creates: "{{ lookup('env', 'HOME') }}/.oh-my-zsh"
+    creates: "{{ ansible_user_dir }}/.oh-my-zsh"
 
 - name: Check current login shell
-  ansible.builtin.shell: dscl . -read ~ UserShell | awk '{print $2}'
+  ansible.builtin.shell:
+    cmd: set -o pipefail && dscl . -read ~ UserShell | awk '{print $2}'
   register: current_shell
   changed_when: false
 
 - name: Set zsh as default shell
-  ansible.builtin.shell: dscl . -change ~ UserShell {{ current_shell.stdout }} /bin/zsh
+  ansible.builtin.command: dscl . -change ~ UserShell {{ current_shell.stdout }} /bin/zsh
+  changed_when: true
   when: current_shell.stdout != '/bin/zsh'
 
-- name: Install zsh-autosuggestions
+- name: Install zsh-autosuggestions # noqa: latest[git]
   ansible.builtin.git:
     repo: https://github.com/zsh-users/zsh-autosuggestions
-    dest: "{{ lookup('env', 'HOME') }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
-    update: no
-
-- name: Check enabled oh-my-zsh plugins in .zshrc
-  ansible.builtin.shell: grep '^plugins=' "{{ lookup('env', 'HOME') }}/.zshrc" | grep -qE '(\(|[[:space:]]){{ item }}([[:space:]]|\))'
-  loop:
-    - zsh-autosuggestions
-  register: omz_plugin_checks
-  changed_when: false
-  failed_when: false
+    dest: "{{ ansible_user_dir }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+    version: HEAD
+    update: false
 
 - name: Enable oh-my-zsh plugins in .zshrc
-  ansible.builtin.shell: sed -i '' 's/^plugins=(\(.*\))/plugins=(\1 {{ item.item }})/' "{{ lookup('env', 'HOME') }}/.zshrc"
-  loop: "{{ omz_plugin_checks.results }}"
-  when: item.rc != 0
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_user_dir }}/.zshrc"
+    regexp: '^(plugins=\((?!.*\b{{ item }}\b).*)\)$'
+    line: '\1 {{ item }})'
+    backrefs: true
+  loop:
+    - zsh-autosuggestions

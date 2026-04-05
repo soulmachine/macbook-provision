@@ -14,7 +14,7 @@ fi
 
 # 2. Install Homebrew if it doesn't exist
 command -v brew >/dev/null 2>&1 || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-brew doctor
+brew doctor || true
 brew update
 
 # 3. Uninstall Python versions installed via official .dmg files from python.org.
@@ -34,14 +34,14 @@ fi
 
 # 4. Install mise
 if ! command -v mise >/dev/null 2>&1; then
-  curl https://mise.run | sh
+  curl -fsSL https://mise.run | sh
   grep -q 'mise activate zsh' ~/.zshrc 2>/dev/null || echo 'eval "$(mise activate zsh)"' >> ~/.zshrc
   # Activate mise in the current shell
   eval "$(mise activate bash)"
 fi
 
 # 5. Install Python via mise if not already managed by mise
-if ! which python3 2>/dev/null | grep -q mise; then
+if ! command -v python3 2>/dev/null | grep -q mise; then
   mise use --global python@3
 fi
 
