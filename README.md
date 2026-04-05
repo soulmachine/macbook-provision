@@ -25,7 +25,7 @@ ansible-playbook -i localhost, -vv all.yml
 Or apply a single role,
 
 ```bash
-ansible -i localhost, -c local -m include_role -a name=claude-code localhost -vv
+ansible localhost -m include_role -a name=docker
 ```
 
 ## 包含的 Roles
