@@ -4,3 +4,4 @@ dependencies:
   - claude-code
   - codex
   - gemini
+  - beads

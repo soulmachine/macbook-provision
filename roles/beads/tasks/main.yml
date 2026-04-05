@@ -1,0 +1,11 @@
+---
+- name: Install beads (bd)
+  ansible.builtin.shell: curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
+  args:
+    creates: "{{ lookup('env', 'HOME') }}/.local/bin/bd"
+
+- name: Install beads-ui
+  community.general.npm:
+    name: beads-ui
+    global: true
+    state: latest
