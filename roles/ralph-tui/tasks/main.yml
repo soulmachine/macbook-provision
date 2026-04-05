@@ -2,11 +2,11 @@
 - name: Install ralph-tui
   ansible.builtin.command: bun install -g ralph-tui
   args:
-    creates: "{{ ansible_user_dir }}/.bun/bin/ralph-tui"
+    creates: "{{ ansible_facts['user_dir'] }}/.bun/bin/ralph-tui"
 
 - name: Check installed ralph-tui skills
   ansible.builtin.stat:
-    path: "{{ ansible_user_dir }}/.agents/skills/{{ item }}"
+    path: "{{ ansible_facts['user_dir'] }}/.agents/skills/{{ item }}"
   loop: &ralph_tui_skills
     - ralph-tui-prd
     - ralph-tui-create-json
@@ -21,7 +21,7 @@
 
 - name: Ensure agent skills directories exist
   ansible.builtin.file:
-    path: "{{ ansible_user_dir }}/.{{ item }}/skills"
+    path: "{{ ansible_facts['user_dir'] }}/.{{ item }}/skills"
     state: directory
     mode: "0755"
   loop: &agent_dirs
@@ -31,7 +31,7 @@
 - name: Symlink ralph-tui skills into agent directories
   ansible.builtin.file:
     src: ../../.agents/skills/{{ item.1 }}
-    dest: "{{ ansible_user_dir }}/.{{ item.0 }}/skills/{{ item.1 }}"
+    dest: "{{ ansible_facts['user_dir'] }}/.{{ item.0 }}/skills/{{ item.1 }}"
     state: link
   loop: "{{ _agent_dirs | product(_skills) | list }}"
   vars:

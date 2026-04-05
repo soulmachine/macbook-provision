@@ -2,7 +2,7 @@
 - name: Install oh-my-zsh
   ansible.builtin.shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
   args:
-    creates: "{{ ansible_user_dir }}/.oh-my-zsh"
+    creates: "{{ ansible_facts['user_dir'] }}/.oh-my-zsh"
 
 - name: Check current login shell
   ansible.builtin.shell:
@@ -18,13 +18,13 @@
 - name: Install zsh-autosuggestions # noqa: latest[git]
   ansible.builtin.git:
     repo: https://github.com/zsh-users/zsh-autosuggestions
-    dest: "{{ ansible_user_dir }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+    dest: "{{ ansible_facts['user_dir'] }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
     version: HEAD
     update: false
 
 - name: Enable oh-my-zsh plugins in .zshrc
   ansible.builtin.lineinfile:
-    path: "{{ ansible_user_dir }}/.zshrc"
+    path: "{{ ansible_facts['user_dir'] }}/.zshrc"
     regexp: '^(plugins=\((?!.*\b{{ item }}\b).*)\)$'
     line: '\1 {{ item }})'
     backrefs: true
