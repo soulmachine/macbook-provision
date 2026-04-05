@@ -52,14 +52,18 @@
 - name: Fail if OpenClaw skills list was not parseable
   ansible.builtin.fail:
     msg: "openclaw skills list --json returned unparseable output: {{ openclaw_skills.stdout | default('(empty)') }}"
-  when: openclaw_skills_parsed is not defined
+  when:
+    - not ansible_check_mode
+    - openclaw_skills_parsed is not defined
 
 - name: Install OpenClaw skills
   ansible.builtin.command: openclaw skills install {{ item }}
   loop:
     - obsidian
     - tavily
-  when: item not in openclaw_skills_parsed
+  when:
+    - openclaw_skills_parsed is defined
+    - item not in openclaw_skills_parsed
   changed_when: true
 
 - name: Check enabled OpenClaw plugins
@@ -76,11 +80,15 @@
 - name: Fail if OpenClaw plugins list was not parseable
   ansible.builtin.fail:
     msg: "openclaw plugins list --enabled --json returned unparseable output: {{ openclaw_plugins_enabled.stdout | default('(empty)') }}"
-  when: openclaw_plugins_enabled_parsed is not defined
+  when:
+    - not ansible_check_mode
+    - openclaw_plugins_enabled_parsed is not defined
 
 - name: Enable OpenClaw plugins
   ansible.builtin.command: openclaw plugins enable {{ item }}
   loop:
     - telegram
-  when: item not in openclaw_plugins_enabled_parsed
+  when:
+    - openclaw_plugins_enabled_parsed is defined
+    - item not in openclaw_plugins_enabled_parsed
   changed_when: true
