@@ -16,12 +16,19 @@ if ! xcode-select -p >/dev/null 2>&1; then
   done
 fi
 
-# 2. Install Homebrew if it doesn't exist
+# 2. Install Homebrew (and ensure it's on PATH)
 if ! command -v brew >/dev/null 2>&1; then
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  # Add Homebrew to PATH for Apple Silicon Macs
+  # Homebrew may be installed but not on PATH (common on Apple Silicon)
   if [[ -x /opt/homebrew/bin/brew ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -x /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  else
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    # Add newly installed Homebrew to PATH
+    if [[ -x /opt/homebrew/bin/brew ]]; then
+      eval "$(/opt/homebrew/bin/brew shellenv)"
+    fi
   fi
 fi
 brew doctor || true
