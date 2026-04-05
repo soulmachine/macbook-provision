@@ -21,33 +21,52 @@
   ansible.builtin.set_fact:
     installed_plugins_content: "{{ (installed_plugins_raw.content | default('') | b64decode) if installed_plugins_raw is succeeded else '' }}"
 
+# Read claude code settings
+- name: Ensure ~/.claude directory exists
+  ansible.builtin.file:
+    path: "{{ lookup('env', 'HOME') }}/.claude"
+    state: directory
+    mode: "0755"
+
+- name: Read existing Claude Code settings
+  ansible.builtin.slurp:
+    src: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
+  register: claude_settings_raw
+  failed_when: false
+
+- name: Parse existing Claude Code settings
+  ansible.builtin.set_fact:
+    claude_settings: "{{ (claude_settings_raw.content | b64decode | from_json) if claude_settings_raw is succeeded else {} }}"
+
+# Install third-party markets
 - name: Add snarktank/ralph marketplace
   ansible.builtin.command: claude plugin marketplace add snarktank/ralph
   register: mp_ralph
   changed_when: "'already' not in mp_ralph.stdout"
-
-- name: Install ralph-skills plugin
-  ansible.builtin.command: claude plugin install ralph-skills@ralph-marketplace
-  when: "'ralph-skills@ralph-marketplace' not in installed_plugins_content"
 
 - name: Add kepano/obsidian-skills marketplace
   ansible.builtin.command: claude plugin marketplace add kepano/obsidian-skills
   register: mp_obsidian
   changed_when: "'already' not in mp_obsidian.stdout"
 
-- name: Install obsidian plugin
-  ansible.builtin.command: claude plugin install obsidian@obsidian-skills
-  when: "'obsidian@obsidian-skills' not in installed_plugins_content"
-
+# Browse more plugins at https://claude.com/plugins
 - name: Add anthropics/claude-plugins-official marketplace
   ansible.builtin.command: claude plugin marketplace add anthropics/claude-plugins-official
-  register: mp_claude_plugins_official
-  changed_when: "'already' not in mp_claude_plugins_official.stdout"
+  register: mp_official
+  changed_when: "'already' not in mp_official.stdout"
 
-# Browse more plugins at https://claude.com/plugins
-- name: Install claude-plugins-official plugins
-  ansible.builtin.command: claude plugin install {{ item }}@claude-plugins-official
+- name: Install plugins
+  ansible.builtin.command: claude plugin install {{ item }}
   loop:
-    - ralph-loop
-    - superpowers
-  when: "item + '@claude-plugins-official' not in installed_plugins_content"
+    - ralph-skills@ralph-marketplace
+    - obsidian@obsidian-skills
+    - ralph-loop@claude-plugins-official
+    - superpowers@claude-plugins-official
+  when: "item not in installed_plugins_content"
+
+- name: Disable Co-Authored-By in commits
+  ansible.builtin.copy:
+    dest: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
+    content: "{{ claude_settings | combine({'attribution': {'commit': ''}}) | to_nice_json }}\n"
+    mode: "0644"
+  when: (claude_settings.attribution.commit | default(none)) != ''
