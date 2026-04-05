@@ -10,7 +10,7 @@
     state: latest
 
 - name: Get berkeley-db install path
-  ansible.builtin.shell: cd $(brew --cellar)/berkeley-db/*; pwd
+  ansible.builtin.command: brew --prefix berkeley-db
   register: berkeley_db_path
   changed_when: false
 

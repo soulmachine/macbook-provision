@@ -6,10 +6,10 @@
 
 - name: Check if direnv plugin is enabled in .zshrc
   ansible.builtin.shell: grep '^plugins=' "{{ lookup('env', 'HOME') }}/.zshrc" | grep -qE '(\(|[[:space:]])direnv([[:space:]]|\))'
-  register: direnv_check
+  register: direnv_plugin_check
   changed_when: false
   failed_when: false
 
-- name: Enable direnv oh-my-zsh plugin
+- name: Enable direnv oh-my-zsh plugin in .zshrc
   ansible.builtin.shell: sed -i '' 's/^plugins=(\(.*\))/plugins=(\1 direnv)/' "{{ lookup('env', 'HOME') }}/.zshrc"
-  when: direnv_check.rc != 0
+  when: direnv_plugin_check.rc != 0
