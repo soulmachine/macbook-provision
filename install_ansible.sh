@@ -10,10 +10,20 @@ fi
 if ! xcode-select -p >/dev/null 2>&1; then
   sudo xcodebuild -license
   xcode-select --install
+  echo "Waiting for Xcode Command Line Tools installation to complete..."
+  until xcode-select -p >/dev/null 2>&1; do
+    sleep 5
+  done
 fi
 
 # 2. Install Homebrew if it doesn't exist
-command -v brew >/dev/null 2>&1 || /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+if ! command -v brew >/dev/null 2>&1; then
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  # Add Homebrew to PATH for Apple Silicon Macs
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  fi
+fi
 brew doctor || true
 brew update
 
@@ -25,7 +35,9 @@ if [[ -d /Library/Frameworks/Python.framework ]] \
 
   sudo rm -rf /Library/Frameworks/Python.framework
   sudo rm -rf /Applications/Python\ *
-  find /usr/local/bin -lname '*Python.framework*' -delete 2>/dev/null
+  if [[ -d /usr/local/bin ]]; then
+    find /usr/local/bin -lname '*Python.framework*' -delete 2>/dev/null || true
+  fi
 
   pkgutil --pkgs 2>/dev/null | grep '^org\.python\.Python\.' | while read -r receipt; do
     sudo pkgutil --forget "$receipt" >/dev/null
@@ -35,10 +47,11 @@ fi
 # 4. Install mise
 if ! command -v mise >/dev/null 2>&1; then
   curl -fsSL https://mise.run | sh
+  # shellcheck disable=SC2016
   grep -q 'mise activate zsh' ~/.zshrc 2>/dev/null || echo 'eval "$(mise activate zsh)"' >> ~/.zshrc
-  # Activate mise in the current shell
-  eval "$(mise activate bash)"
 fi
+# Activate mise in the current shell (needed for steps below)
+eval "$(mise activate bash)"
 
 # 5. Install Python via mise if not already managed by mise
 if ! command -v python3 2>/dev/null | grep -q mise; then
@@ -46,4 +59,4 @@ if ! command -v python3 2>/dev/null | grep -q mise; then
 fi
 
 # 6. Install Ansible
-pip3 install ansible
+pip3 install --quiet ansible
