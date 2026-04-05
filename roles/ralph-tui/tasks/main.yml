@@ -1,0 +1,43 @@
+---
+- name: Install ralph-tui
+  ansible.builtin.command: bun install -g ralph-tui
+  args:
+    creates: "{{ lookup('env', 'HOME') }}/.bun/bin/ralph-tui"
+
+- name: Check installed ralph-tui skills
+  ansible.builtin.stat:
+    path: "{{ lookup('env', 'HOME') }}/.agents/skills/{{ item }}"
+  loop: &ralph_tui_skills
+    - ralph-tui-prd
+    - ralph-tui-create-json
+    - ralph-tui-create-beads
+    - ralph-tui-create-beads-rust
+  register: ralph_tui_skills_stat
+
+- name: Install ralph-tui skills
+  ansible.builtin.command: bunx skills add subsy/ralph-tui --all -g
+  when: ralph_tui_skills_stat.results | selectattr('stat.exists', 'false') | list | length > 0
+
+- name: Ensure Codex skills directory exists
+  ansible.builtin.file:
+    path: "{{ lookup('env', 'HOME') }}/.codex/skills"
+    state: directory
+
+- name: Symlink ralph-tui skills into Codex
+  ansible.builtin.file:
+    src: ../../.agents/skills/{{ item }}
+    dest: "{{ lookup('env', 'HOME') }}/.codex/skills/{{ item }}"
+    state: link
+  loop: *ralph_tui_skills
+
+- name: Ensure Gemini skills directory exists
+  ansible.builtin.file:
+    path: "{{ lookup('env', 'HOME') }}/.gemini/skills"
+    state: directory
+
+- name: Symlink ralph-tui skills into Gemini
+  ansible.builtin.file:
+    src: ../../.agents/skills/{{ item }}
+    dest: "{{ lookup('env', 'HOME') }}/.gemini/skills/{{ item }}"
+    state: link
+  loop: *ralph_tui_skills

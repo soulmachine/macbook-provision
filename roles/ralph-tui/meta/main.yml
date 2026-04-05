@@ -1,0 +1,6 @@
+---
+dependencies:
+  - bun
+  - claude-code
+  - codex
+  - gemini
