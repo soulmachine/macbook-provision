@@ -92,3 +92,9 @@
     - openclaw_plugins_enabled_parsed is defined
     - item not in openclaw_plugins_enabled_parsed
   changed_when: true
+
+# Menu-bar companion app for OpenClaw, see https://docs.openclaw.ai/platforms/macos
+- name: Install OpenClaw desktop app
+  community.general.homebrew_cask:
+    name: openclaw
+    state: latest
