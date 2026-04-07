@@ -31,7 +31,7 @@ ansible-playbook -i localhost, -vv all.yml --tags docker
 或者直接用 `ansible` 命令：
 
 ```bash
-ANSIBLE_ROLES_PATH=./roles ansible localhost -m include_role -a name=docker -e gather_facts=true
+ansible localhost -m include_role -a name=openclaw
 ```
 
 ### 3. 试运行（不修改系统）
