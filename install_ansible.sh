@@ -1,18 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-cd "$(dirname "$0")"
-
-install_galaxy_deps() {
-  if [[ -f requirements.yml ]]; then
-    echo "Installing Ansible Galaxy dependencies..."
-    ansible-galaxy install -r requirements.yml
-  fi
-}
-
 if command -v ansible >/dev/null 2>&1; then
   echo "Ansible is already installed: $(ansible --version | head -1)"
-  install_galaxy_deps
   exit 0
 fi
 
@@ -79,6 +69,3 @@ fi
 
 # 6. Install Ansible
 pip3 install --quiet ansible
-
-# 7. Install Ansible Galaxy dependencies
-install_galaxy_deps
