@@ -57,6 +57,11 @@
   when: "item not in claude_code_plugins_content"
   changed_when: true
 
+- name: Install Claude Code Bridge # noqa: command-instead-of-module risky-shell-pipe
+  ansible.builtin.shell: curl -fsSL https://raw.githubusercontent.com/bfly123/claude_code_bridge/main/install.sh | bash
+  args:
+    creates: "{{ lookup('env', 'HOME') }}/.local/bin/ccb"
+
 - name: Disable Co-Authored-By in commits
   ansible.builtin.copy:
     dest: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
