@@ -13,10 +13,10 @@ Ansible-based macOS development environment provisioner. Uses Homebrew (via Ansi
 ./install_ansible.sh
 
 # Run full provisioning
-ansible-playbook -i localhost, -vv all.yml
+ansible-playbook -vv all.yml
 
 # Dry run
-ansible-playbook -i localhost, -vv all.yml --check
+ansible-playbook -vv all.yml --check
 ```
 
 ## Architecture

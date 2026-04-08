@@ -19,16 +19,10 @@
 ### 2. 运行 Playbook
 
 ```bash
-ansible-playbook -i localhost, -vv all.yml
+ansible-playbook -vv all.yml
 ```
 
 运行单个 role：
-
-```bash
-ansible-playbook -i localhost, -vv all.yml --tags docker
-```
-
-或者直接用 `ansible` 命令：
 
 ```bash
 ansible localhost -m include_role -a name=openclaw
@@ -37,7 +31,7 @@ ansible localhost -m include_role -a name=openclaw
 ### 3. 试运行（不修改系统）
 
 ```bash
-ansible-playbook -i localhost, -vv all.yml --check
+ansible-playbook -vv all.yml --check
 ```
 
 ## 包含的 Roles

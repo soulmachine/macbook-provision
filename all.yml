@@ -1,6 +1,6 @@
 ---
 - name: Install all
-  hosts: all
+  hosts: localhost
   connection: local
   gather_facts: true
   become: false

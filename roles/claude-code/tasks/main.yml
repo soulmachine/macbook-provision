@@ -2,18 +2,18 @@
 - name: Install Claude Code # noqa: command-instead-of-module risky-shell-pipe
   ansible.builtin.shell: curl -fsSL https://claude.ai/install.sh | bash
   args:
-    creates: "{{ ansible_facts['user_dir'] }}/.local/bin/claude"
+    creates: "{{ lookup('env', 'HOME') }}/.local/bin/claude"
 
 - name: Add ccd alias to .zshrc
   ansible.builtin.lineinfile:
-    path: "{{ ansible_facts['user_dir'] }}/.zshrc"
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
     line: 'alias ccd="claude --dangerously-skip-permissions"'
     regexp: '^alias ccd='
     state: present
 
 - name: Check installed plugins
   ansible.builtin.slurp:
-    src: "{{ ansible_facts['user_dir'] }}/.claude/plugins/installed_plugins.json"
+    src: "{{ lookup('env', 'HOME') }}/.claude/plugins/installed_plugins.json"
   register: claude_code_plugins_raw
   failed_when: false
 
@@ -24,13 +24,13 @@
 # Read claude code settings
 - name: Ensure ~/.claude directory exists
   ansible.builtin.file:
-    path: "{{ ansible_facts['user_dir'] }}/.claude"
+    path: "{{ lookup('env', 'HOME') }}/.claude"
     state: directory
     mode: "0755"
 
 - name: Read existing Claude Code settings
   ansible.builtin.slurp:
-    src: "{{ ansible_facts['user_dir'] }}/.claude/settings.json"
+    src: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
   register: claude_code_settings_raw
   failed_when: false
 
@@ -59,7 +59,7 @@
 
 - name: Disable Co-Authored-By in commits
   ansible.builtin.copy:
-    dest: "{{ ansible_facts['user_dir'] }}/.claude/settings.json"
+    dest: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
     content: "{{ claude_code_settings | combine({'attribution': {'commit': ''}}) | to_nice_json }}\n"
     mode: "0644"
   when: (claude_code_settings.attribution.commit | default(none)) != ''

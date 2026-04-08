@@ -2,4 +2,4 @@
 - name: Install bun # noqa: command-instead-of-module risky-shell-pipe
   ansible.builtin.shell: curl -fsSL https://bun.com/install | bash
   args:
-    creates: "{{ ansible_facts['user_dir'] }}/.bun/bin/bun"
+    creates: "{{ lookup('env', 'HOME') }}/.bun/bin/bun"
