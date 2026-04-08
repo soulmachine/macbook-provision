@@ -1,0 +1,5 @@
+---
+- name: Install hermes-agent
+  ansible.builtin.shell: curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+  args:
+    creates: "{{ lookup('env', 'HOME') }}/.local/bin/hermes-agent"
