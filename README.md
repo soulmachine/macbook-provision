@@ -19,7 +19,7 @@
 ### 2. 运行 Playbook
 
 ```bash
-ansible-playbook -vv all.yml
+ansible-playbook main.yml
 ```
 
 运行单个 role：
@@ -31,12 +31,12 @@ ansible localhost -m include_role -a name=openclaw
 ### 3. 试运行（不修改系统）
 
 ```bash
-ansible-playbook -vv all.yml --check
+ansible-playbook main.yml --check
 ```
 
 ## 包含的 Roles
 
-### Playbook 中的 Roles（`all.yml`）
+### Playbook 中的 Roles（`main.yml`）
 
 | Role | 说明 |
 |------|------|
@@ -58,7 +58,7 @@ ansible-playbook -vv all.yml --check
 | beads | Beads 任务追踪工具（依赖 go、nodejs） |
 | ralph-tui | Ralph TUI 及技能（依赖 bun、claude-code） |
 
-### 可选 Roles（未包含在 `all.yml` 中）
+### 可选 Roles（未包含在 `main.yml` 中）
 
 | Role | 说明 |
 |------|------|

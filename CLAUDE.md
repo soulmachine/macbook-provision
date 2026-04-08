@@ -13,15 +13,15 @@ Ansible-based macOS development environment provisioner. Uses Homebrew (via Ansi
 ./install_ansible.sh
 
 # Run full provisioning
-ansible-playbook -vv all.yml
+ansible-playbook main.yml
 
 # Dry run
-ansible-playbook -vv all.yml --check
+ansible-playbook main.yml --check
 ```
 
 ## Architecture
 
-- **all.yml** — Main playbook that runs roles in order. Add new roles here.
+- **main.yml** — Main playbook that runs roles in order. Add new roles here.
 - **playbook.yml** — Legacy playbook (not actively used). Defines packages inline with Japanese comments.
 - **install_ansible.sh** — Bootstrap script. Prepares a fresh Mac for Ansible.
 - **roles/** — Each role provisions one tool or application.
@@ -41,5 +41,5 @@ Every role has `tasks/main.yml`. Some also have:
 ### Adding a New Role
 
 1. Create `roles/<name>/tasks/main.yml`
-2. Add the role name to the `roles:` list in `all.yml`
+2. Add the role name to the `roles:` list in `main.yml`
 3. If it depends on another role, add `meta/main.yml` with `dependencies:`
