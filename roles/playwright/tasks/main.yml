@@ -1,0 +1,5 @@
+---
+- name: Install Playwright Chromium
+  ansible.builtin.command: npx playwright install chromium
+  register: playwright_install
+  changed_when: "'downloading' in playwright_install.stdout | lower"
