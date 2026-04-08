@@ -6,11 +6,14 @@
   roles:
     - oh-my-zsh
     - direnv
+    - uv
     - go
     - nodejs
     - bun
     - jdk
     - gpg
+    - ffmpeg
+    - playwright
     - docker
     - vscode
     - sublime-text
@@ -21,5 +24,4 @@
     - openclaw
     - beads
     - ralph-tui
-    - playwright
-    - ffmpeg
+
