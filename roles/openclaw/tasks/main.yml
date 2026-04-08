@@ -40,7 +40,7 @@
 
 - name: Check installed OpenClaw skills
   ansible.builtin.shell:
-    cmd: set -o pipefail && openclaw skills list --json 2>&1 | sed -n '/^{/,$p'
+    cmd: set -o pipefail && openclaw skills list --json 2>/dev/null | sed -n '/^{/,$p'
   register: openclaw_skills
   changed_when: false
 
