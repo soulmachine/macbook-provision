@@ -1,0 +1,5 @@
+---
+- name: Install ffmpeg
+  community.general.homebrew:
+    name: ffmpeg
+    state: latest
