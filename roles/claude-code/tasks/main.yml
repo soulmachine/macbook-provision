@@ -44,6 +44,7 @@
     - snarktank/ralph
     - kepano/obsidian-skills
     - anthropics/claude-plugins-official
+    - Yeachan-Heo/oh-my-claudecode
   register: claude_code_mp
   changed_when: "'already' not in claude_code_mp.stdout"
 
@@ -54,6 +55,7 @@
     - obsidian@obsidian-skills
     - ralph-loop@claude-plugins-official
     - superpowers@claude-plugins-official
+    - oh-my-claudecode@omc
   when: "item not in claude_code_plugins_content"
   changed_when: true
 
