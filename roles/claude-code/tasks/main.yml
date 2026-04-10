@@ -43,7 +43,7 @@
   loop:
     - snarktank/ralph
     - kepano/obsidian-skills
-    - anthropics/claude-plugins-official
+    - anthropics/claude-plugins-official # https://claude.com/plugins
     - Yeachan-Heo/oh-my-claudecode
   register: claude_code_mp
   changed_when: "'already' not in claude_code_mp.stdout"

@@ -1,5 +1,10 @@
 ---
+- name: Install Playwright globally
+  ansible.builtin.command: npm install -g playwright@latest
+  register: playwright_npm
+  changed_when: "'added' in playwright_npm.stdout or 'updated' in playwright_npm.stdout"
+
 - name: Install Playwright Chromium
-  ansible.builtin.command: npx playwright install chromium
+  ansible.builtin.command: playwright install chromium
   register: playwright_install
   changed_when: "'downloading' in playwright_install.stdout | lower"
