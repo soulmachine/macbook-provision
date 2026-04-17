@@ -55,6 +55,7 @@
     - obsidian@obsidian-skills
     - ralph-loop@claude-plugins-official
     - superpowers@claude-plugins-official
+    - frontend-design@claude-plugins-official
     - oh-my-claudecode@omc
   when: "item not in claude_code_plugins_content"
   changed_when: true
