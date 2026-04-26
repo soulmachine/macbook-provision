@@ -1,0 +1,10 @@
+---
+- name: Tap farion1231/ccswitch
+  community.general.homebrew_tap:
+    name: farion1231/ccswitch
+    state: present
+
+- name: Install cc-switch
+  community.general.homebrew_cask:
+    name: cc-switch
+    state: present
