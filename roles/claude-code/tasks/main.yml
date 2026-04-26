@@ -45,6 +45,7 @@
     - kepano/obsidian-skills
     - anthropics/claude-plugins-official # https://claude.com/plugins
     - Yeachan-Heo/oh-my-claudecode
+    - OthmanAdi/planning-with-files
   register: claude_code_mp
   changed_when: "'already' not in claude_code_mp.stdout"
 
@@ -57,6 +58,7 @@
     - superpowers@claude-plugins-official
     - frontend-design@claude-plugins-official
     - oh-my-claudecode@omc
+    - planning-with-files@planning-with-files
   when: "item not in claude_code_plugins_content"
   changed_when: true
 
