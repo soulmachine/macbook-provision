@@ -1,0 +1,5 @@
+---
+- name: Install Paseo
+  community.general.homebrew_cask:
+    name: paseo
+    state: latest
