@@ -47,6 +47,7 @@
     - Yeachan-Heo/oh-my-claudecode
     - OthmanAdi/planning-with-files
     - thedotmack/claude-mem
+    - forrestchang/andrej-karpathy-skills
   register: claude_code_mp
   changed_when: "'already' not in claude_code_mp.stdout"
 
@@ -61,6 +62,7 @@
     - oh-my-claudecode@omc
     - planning-with-files@planning-with-files
     - claude-mem@thedotmack
+    - andrej-karpathy-skills@karpathy-skills
   when: "item not in claude_code_plugins_content"
   changed_when: true
 
