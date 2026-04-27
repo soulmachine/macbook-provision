@@ -62,10 +62,30 @@
   when: "item not in claude_code_plugins_content"
   changed_when: true
 
-- name: Install Claude Code Bridge # noqa: command-instead-of-module risky-shell-pipe
-  ansible.builtin.shell: curl -fsSL https://raw.githubusercontent.com/bfly123/claude_code_bridge/main/install.sh | bash
-  args:
-    creates: "{{ lookup('env', 'HOME') }}/.local/bin/ccb"
+- name: Check if Claude Code Bridge is installed
+  ansible.builtin.stat:
+    path: "{{ lookup('env', 'HOME') }}/.local/bin/ccb"
+  register: ccb_installed
+
+- name: Install Claude Code Bridge
+  when: not ccb_installed.stat.exists
+  block:
+    - name: Clone Claude Code Bridge repository # noqa: latest[git]
+      ansible.builtin.git:
+        repo: https://github.com/bfly123/claude_code_bridge.git
+        dest: /tmp/claude_code_bridge
+        version: HEAD
+        force: true
+    - name: Run Claude Code Bridge installer
+      ansible.builtin.command: ./install.sh install
+      args:
+        chdir: /tmp/claude_code_bridge
+      changed_when: true
+  always:
+    - name: Remove cloned Claude Code Bridge directory
+      ansible.builtin.file:
+        path: /tmp/claude_code_bridge
+        state: absent
 
 - name: Disable Co-Authored-By in commits
   ansible.builtin.copy:
