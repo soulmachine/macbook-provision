@@ -63,9 +63,9 @@ fi
 eval "$(mise activate bash)"
 
 # 5. Install Python via mise if not already managed by mise
-if ! command -v python3 2>/dev/null | grep -q mise; then
+if ! command -v python 2>/dev/null | grep -q mise; then
   mise use --global python@3
 fi
 
 # 6. Install Ansible
-pip3 install --quiet ansible
+pip install --quiet ansible
