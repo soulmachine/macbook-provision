@@ -69,6 +69,7 @@
 - name: Check if Claude Code Bridge is installed
   ansible.builtin.stat:
     path: "{{ lookup('env', 'HOME') }}/.local/bin/ccb"
+    follow: true
   register: ccb_installed
 
 - name: Install Claude Code Bridge
@@ -84,6 +85,8 @@
       ansible.builtin.command: ./install.sh install
       args:
         chdir: /tmp/claude_code_bridge
+      environment:
+        CCB_SOURCE_KIND: release
       changed_when: true
   always:
     - name: Remove cloned Claude Code Bridge directory
