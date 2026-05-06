@@ -30,3 +30,10 @@
     backrefs: true
   loop:
     - zsh-autosuggestions
+
+- name: Ensure ~/.local/bin is prepended to PATH in .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    regexp: '^export PATH=".*\$HOME/\.local/bin.*"$'
+    line: 'export PATH="$HOME/.local/bin:$PATH"'
+    state: present
