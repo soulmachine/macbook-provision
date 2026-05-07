@@ -4,6 +4,7 @@
   gather_facts: true
   become: false
   roles:
+    - homebrew
     - oh-my-zsh
     - direnv
     - uv
@@ -12,17 +13,13 @@
     - nodejs
     - bun
     - jdk
-    - gpg
-    - ffmpeg
-    - playwright
-    - playwright-cli
-    - docker
-    - vscode
-    - sublime-text
-    - intellij-idea
     - claude-code
     - codex
     - gemini
+    - playwright
+    - playwright-cli
+    - intellij-idea
+    - webstorm
     - openclaw
     - cc-switch
     - beads

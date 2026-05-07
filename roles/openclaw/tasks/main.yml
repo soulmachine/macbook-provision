@@ -85,15 +85,6 @@
     - not ansible_check_mode
     - openclaw_plugins_enabled_parsed is not defined
 
-- name: Enable OpenClaw plugins
-  ansible.builtin.command: openclaw plugins enable {{ item }}
-  loop:
-    - telegram
-  when:
-    - openclaw_plugins_enabled_parsed is defined
-    - item not in openclaw_plugins_enabled_parsed
-  changed_when: true
-
 # Menu-bar companion app for OpenClaw, see https://docs.openclaw.ai/platforms/macos
 - name: Install OpenClaw desktop app
   community.general.homebrew_cask:

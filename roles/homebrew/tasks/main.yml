@@ -1,0 +1,26 @@
+---
+- name: Install common Homebrew packages
+  community.general.homebrew:
+    name:
+      - tmux
+      - git
+      - curl
+      - wget
+      - jq
+      - ripgrep
+      - fd
+      - tree
+      - htop
+      - docker
+      - ffmpeg
+      - gnupg
+    state: latest
+
+- name: Install Homebrew cask apps
+  community.general.homebrew_cask:
+    name:
+      - pearcleaner
+      - pycharm
+      - sublime-text
+      - visual-studio-code
+    state: present

@@ -1,5 +1,0 @@
----
-- name: Install PyCharm
-  community.general.homebrew_cask:
-    name: pycharm
-    state: present

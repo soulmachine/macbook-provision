@@ -1,5 +1,0 @@
----
-- name: Install Docker CLI
-  community.general.homebrew:
-    name: docker
-    state: latest
