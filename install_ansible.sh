@@ -57,9 +57,11 @@ fi
 if ! command -v mise >/dev/null 2>&1; then
   curl -fsSL https://mise.run | sh
   # shellcheck disable=SC2016
+  grep -q 'export PATH="$HOME/.local/bin:$PATH"' ~/.zshrc 2>/dev/null || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
   grep -q 'mise activate zsh' ~/.zshrc 2>/dev/null || echo 'eval "$(mise activate zsh)"' >> ~/.zshrc
 fi
 # Activate mise in the current shell (needed for steps below)
+export PATH="$HOME/.local/bin:$PATH"
 eval "$(mise activate bash)"
 
 # 5. Install Python via mise if not already managed by mise
