@@ -1,0 +1,17 @@
+---
+- name: Install Ghostty
+  community.general.homebrew_cask:
+    name: ghostty
+    state: latest
+
+- name: Ensure ~/.config/ghostty directory exists
+  ansible.builtin.file:
+    path: "{{ lookup('env', 'HOME') }}/.config/ghostty"
+    state: directory
+    mode: "0755"
+
+- name: Deploy Ghostty config
+  ansible.builtin.copy:
+    src: config
+    dest: "{{ lookup('env', 'HOME') }}/.config/ghostty/config"
+    mode: "0644"
