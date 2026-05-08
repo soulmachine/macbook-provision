@@ -14,6 +14,7 @@
       - docker
       - ffmpeg
       - gnupg
+      - multica-ai/tap/multica
     state: latest
 
 - name: Install Homebrew cask apps
