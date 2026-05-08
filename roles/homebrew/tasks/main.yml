@@ -20,6 +20,10 @@
 - name: Install Homebrew cask apps
   community.general.homebrew_cask:
     name:
+      - chatgpt
+      - claude
+      - codex
+      - gemini
       - pearcleaner
       - pycharm
       - sublime-text
