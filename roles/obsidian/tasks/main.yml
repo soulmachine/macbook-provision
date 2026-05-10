@@ -1,0 +1,10 @@
+---
+- name: Install Obsidian
+  community.general.homebrew_cask:
+    name: obsidian
+    state: present
+
+- name: Install Obsidian skills for all agents
+  ansible.builtin.command:
+    cmd: npx skills add https://github.com/kepano/obsidian-skills --all -g -y
+    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/obsidian-cli"
