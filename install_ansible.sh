@@ -70,4 +70,4 @@ if ! command -v python 2>/dev/null | grep -q mise; then
 fi
 
 # 6. Install Ansible
-pip install --quiet ansible
+mise exec -- pip install --quiet ansible
