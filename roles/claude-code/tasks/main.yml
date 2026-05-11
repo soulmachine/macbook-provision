@@ -42,7 +42,6 @@
   ansible.builtin.command: claude plugin marketplace add {{ item }}
   loop:
     - snarktank/ralph
-    - kepano/obsidian-skills
     - anthropics/claude-plugins-official # https://claude.com/plugins
     - Yeachan-Heo/oh-my-claudecode
     - OthmanAdi/planning-with-files
@@ -55,7 +54,6 @@
   ansible.builtin.command: claude plugin install {{ item }}
   loop:
     - ralph-skills@ralph-marketplace
-    - obsidian@obsidian-skills
     - ralph-loop@claude-plugins-official
     - superpowers@claude-plugins-official
     - frontend-design@claude-plugins-official
@@ -65,6 +63,11 @@
     - andrej-karpathy-skills@karpathy-skills
   when: "item not in claude_code_plugins_content"
   changed_when: true
+
+- name: Install mattpocock skills for all agents
+  ansible.builtin.command:
+    cmd: npx skills add https://github.com/mattpocock/skills -all -g -y
+    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/diagnose"
 
 - name: Check if Claude Code Bridge is installed
   ansible.builtin.stat:
