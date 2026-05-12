@@ -7,7 +7,7 @@
 - name: Add ccd alias to .zshrc
   ansible.builtin.lineinfile:
     path: "{{ lookup('env', 'HOME') }}/.zshrc"
-    line: 'alias ccd="claude --dangerously-skip-permissions"'
+    line: 'alias ccd="claude --dangerously-skip-permissions --effort max"'
     regexp: '^alias ccd='
     state: present
 
