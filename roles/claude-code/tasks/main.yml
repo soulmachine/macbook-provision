@@ -43,7 +43,6 @@
   loop:
     - snarktank/ralph
     - anthropics/claude-plugins-official # https://claude.com/plugins
-    - Yeachan-Heo/oh-my-claudecode
     - OthmanAdi/planning-with-files
     - thedotmack/claude-mem
     - forrestchang/andrej-karpathy-skills
@@ -55,10 +54,8 @@
   loop:
     - ralph-skills@ralph-marketplace
     - ralph-loop@claude-plugins-official
-    - superpowers@claude-plugins-official
     - frontend-design@claude-plugins-official
     - feature-dev@claude-plugins-official
-    - oh-my-claudecode@omc
     - planning-with-files@planning-with-files
     - claude-mem@thedotmack
     - andrej-karpathy-skills@karpathy-skills
