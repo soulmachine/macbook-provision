@@ -57,6 +57,7 @@
     - ralph-loop@claude-plugins-official
     - superpowers@claude-plugins-official
     - frontend-design@claude-plugins-official
+    - feature-dev@claude-plugins-official
     - oh-my-claudecode@omc
     - planning-with-files@planning-with-files
     - claude-mem@thedotmack
