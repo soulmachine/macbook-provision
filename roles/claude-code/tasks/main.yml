@@ -102,7 +102,19 @@
     mode: "0644"
   when: (claude_code_settings.attribution.commit | default(none)) != ''
 
+- name: Re-read Claude Code settings
+  ansible.builtin.slurp:
+    src: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
+  register: claude_code_settings_raw
+  failed_when: false
+
+- name: Re-parse Claude Code settings
+  ansible.builtin.set_fact:
+    claude_code_settings: "{{ (claude_code_settings_raw.content | b64decode | from_json) if claude_code_settings_raw is succeeded else {} }}"
+
 - name: Enable Remote Control for all sessions
-  ansible.builtin.shell: "jq '. + {remoteControlAtStartup: true}' ~/.claude/settings.json > /tmp/s.json && mv /tmp/s.json ~/.claude/settings.json"
+  ansible.builtin.copy:
+    dest: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
+    content: "{{ claude_code_settings | combine({'remoteControlAtStartup': true}) | to_nice_json }}\n"
+    mode: "0644"
   when: (claude_code_settings.remoteControlAtStartup | default(false)) != true
-  changed_when: true
