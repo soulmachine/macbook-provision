@@ -20,7 +20,6 @@
 - name: Install Homebrew cask apps
   community.general.homebrew_cask:
     name:
-      - chatgpt
       - claude
       - codex
       - gemini
@@ -29,3 +28,15 @@
       - sublime-text
       - visual-studio-code
     state: present
+
+- name: Ensure architecture fact is gathered
+  ansible.builtin.setup:
+    gather_subset: architecture
+  when: ansible_architecture is not defined
+
+- name: Install Apple Silicon-only Homebrew cask apps
+  community.general.homebrew_cask:
+    name:
+      - chatgpt
+    state: present
+  when: ansible_architecture == "arm64"
