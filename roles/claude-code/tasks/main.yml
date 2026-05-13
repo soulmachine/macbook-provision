@@ -101,3 +101,8 @@
     content: "{{ claude_code_settings | combine({'attribution': {'commit': ''}}) | to_nice_json }}\n"
     mode: "0644"
   when: (claude_code_settings.attribution.commit | default(none)) != ''
+
+- name: Enable Remote Control for all sessions
+  ansible.builtin.shell: "jq '. + {remoteControlAtStartup: true}' ~/.claude/settings.json > /tmp/s.json && mv /tmp/s.json ~/.claude/settings.json"
+  when: (claude_code_settings.remoteControlAtStartup | default(false)) != true
+  changed_when: true
