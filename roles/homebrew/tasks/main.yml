@@ -13,6 +13,7 @@
       - htop
       - docker
       - ffmpeg
+      - gh
       - gnupg
       - multica-ai/tap/multica
     state: latest

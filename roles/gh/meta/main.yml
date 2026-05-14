@@ -1,6 +1,0 @@
----
-dependencies:
-  - claude-code
-  - codex
-  - gemini
-  - openclaw
