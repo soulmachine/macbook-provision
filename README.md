@@ -16,7 +16,29 @@
 ./install_ansible.sh
 ```
 
-### 2. 运行 Playbook
+### 2. 配置 SUDO_ASKPASS
+
+Ansible 中标注 `become: true` 的任务可以通过 `sudo -v` 提前缓存密码。但某些命令会派生子进程执行 `sudo`（例如 Homebrew），子进程不继承父进程的 sudo 凭证，仍会弹出密码框。配置 `SUDO_ASKPASS` 后，sudo 在需要密码时会调用指定脚本从 Keychain 自动获取，避免中断。
+
+```bash
+# 1. 把密码存入 Keychain（一次性，按提示输入）
+security add-generic-password -a "$USER" -s "sudo-askpass" -w
+
+# 2. 创建 askpass 脚本
+mkdir -p ~/.local/bin
+cat > ~/.local/bin/sudo-askpass <<'EOF'
+#!/bin/bash
+security find-generic-password -a "$USER" -s "sudo-askpass" -w
+EOF
+chmod 700 ~/.local/bin/sudo-askpass
+
+# 3. 导出环境变量（建议写入 ~/.zshrc 以持久化）
+export SUDO_ASKPASS="$HOME/.local/bin/sudo-askpass"
+```
+
+脚本首次运行时 Keychain 会弹窗确认权限，选 "Always Allow" 即可。
+
+### 3. 运行 Playbook
 
 ```bash
 ansible-playbook main.yml
@@ -28,7 +50,7 @@ ansible-playbook main.yml
 ansible localhost -m include_role -a name=openclaw
 ```
 
-### 3. 试运行（不修改系统）
+### 4. 试运行（不修改系统）
 
 ```bash
 ansible-playbook main.yml --check
