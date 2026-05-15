@@ -11,12 +11,34 @@
 # We remove the GUI cask first, then install the CLI + tailscaled via Homebrew.
 # Reference: https://github.com/tailscale/tailscale/wiki/Tailscaled-on-macOS
 #
-# Sudo note: if the GUI cask is currently installed, `brew uninstall --cask` will
-# internally invoke `sudo` to remove the root-owned System Extension. Prime the
-# sudo timestamp first with `sudo -v` in a real terminal, otherwise the task fails
-# This task doesn't set `become: true` because Homebrew refuses to run as root.
-# Instead, brew invokes `sudo` internally, which reads the password from the
-# SUDO_ASKPASS helper that bootstrap.sh installs.
+# Sudo handling for the cask uninstall:
+#   `brew uninstall --cask tailscale-app` invokes `sudo` internally to remove the
+#   root-owned files installed by the .pkg payload. That inner `sudo` call has no
+#   `-A` flag, so `SUDO_ASKPASS` alone is NOT enough — sudo only auto-runs the
+#   askpass helper when invoked with `-A` or with askpass set in /etc/sudo.conf.
+#   We prime sudo's timestamp here via our own `sudo -A -v`; brew's subsequent
+#   sudo calls then reuse the cached credential within sudo's default ~5 min
+#   timeout. We don't set `become: true` because Homebrew refuses to run as root.
+#
+# Login-item warning:
+#   The cask's uninstall recipe contains `login_item: Tailscale`, which brew
+#   removes via AppleScript `tell application "System Events"`. The terminal
+#   running ansible-playbook needs Automation → System Events permission (System
+#   Settings → Privacy & Security → Automation). Without it the AppleEvent times
+#   out with a non-fatal warning; the cask itself is still removed.
+- name: Check if Tailscale GUI cask is installed
+  ansible.builtin.command:
+    cmd: brew list --cask tailscale-app
+  register: _tailscale_cask_check
+  failed_when: false
+  changed_when: false
+
+- name: Prime sudo timestamp via askpass helper (brew's inner sudo has no -A)
+  ansible.builtin.command:
+    cmd: sudo -A -v
+  changed_when: false
+  when: _tailscale_cask_check.rc == 0
+
 - name: Ensure Tailscale GUI cask is absent
   community.general.homebrew_cask:
     name: tailscale-app
