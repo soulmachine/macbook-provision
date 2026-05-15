@@ -10,12 +10,14 @@ Ansible-based macOS development environment provisioner. Uses Homebrew (via Ansi
 
 ```bash
 # First-time setup (installs Xcode CLI Tools, Homebrew, mise, Python, Ansible)
-./install_ansible.sh
+./bootstrap.sh
 
 # Run full provisioning
+sudo -v # sudo is needed for tasks with become: true, for example tailscale role's `tailscale up` task
 ansible-playbook main.yml
 
 # Dry run
+sudo -v
 ansible-playbook main.yml --check
 ```
 
@@ -23,7 +25,7 @@ ansible-playbook main.yml --check
 
 - **main.yml** — Main playbook that runs roles in order. Add new roles here.
 - **playbook.yml** — Legacy playbook (not actively used). Defines packages inline with Japanese comments.
-- **install_ansible.sh** — Bootstrap script. Prepares a fresh Mac for Ansible.
+- **bootstrap.sh** — Bootstrap script. Prepares a fresh Mac for Ansible. Also configures `SUDO_ASKPASS` — sudo's standard mechanism for fetching a password from a helper program instead of prompting interactively. The script stores the sudo password in macOS Keychain and writes `~/.local/bin/sudo-askpass`, so Homebrew and other sudo subprocesses spawned during the playbook can read the password non-interactively (they don't inherit `sudo -v`'s cached credentials, so without this they would pop a GUI password prompt and stall the run). The script is idempotent — it skips the askpass setup if `~/.local/bin/sudo-askpass` already exists.
 - **roles/** — Each role provisions one tool or application.
 
 ### Role Structure

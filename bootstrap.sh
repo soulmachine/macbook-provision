@@ -1,6 +1,23 @@
 #!/bin/bash
 set -euo pipefail
 
+# Configure SUDO_ASKPASS so sudo subprocesses (e.g. Homebrew during the playbook)
+# can fetch the password from Keychain instead of popping a GUI prompt.
+if [[ ! -x "$HOME/.local/bin/sudo-askpass" ]]; then
+  if ! security find-generic-password -a "$USER" -s "sudo-askpass" -w >/dev/null 2>&1; then
+    echo "Storing sudo password in Keychain (one-time prompt)..."
+    security add-generic-password -a "$USER" -s "sudo-askpass" -w
+  fi
+  mkdir -p "$HOME/.local/bin"
+  cat > "$HOME/.local/bin/sudo-askpass" <<'EOF'
+#!/bin/bash
+security find-generic-password -a "$USER" -s "sudo-askpass" -w
+EOF
+  chmod 700 "$HOME/.local/bin/sudo-askpass"
+  grep -q 'SUDO_ASKPASS=' ~/.zshrc 2>/dev/null || echo 'export SUDO_ASKPASS="$HOME/.local/bin/sudo-askpass"' >> ~/.zshrc
+fi
+export SUDO_ASKPASS="$HOME/.local/bin/sudo-askpass"
+
 if command -v ansible >/dev/null 2>&1; then
   echo "Ansible is already installed: $(ansible --version | head -1)"
   exit 0
