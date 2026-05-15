@@ -18,6 +18,16 @@ EOF
 fi
 export SUDO_ASKPASS="$HOME/.local/bin/sudo-askpass"
 
+# Prime the terminal's Automation (AppleEvents) permission. macOS shows a
+# one-time consent dialog the first time the terminal sends AppleEvents to
+# another app; later runs no longer prompt. Without this, headless steps that
+# invoke osascript — e.g. `brew uninstall --cask <gui-app>` running
+# `tell application "<App>" to quit` — hang on a dialog nobody is around to
+# click. See roles/tailscale/tasks/main.yml for the canonical case.
+echo "Priming Automation (AppleEvents) permission for the terminal..."
+echo "If a consent dialog appears, click 'OK' to grant access."
+osascript -e 'tell application "System Events" to count processes' >/dev/null 2>&1 || true
+
 if command -v ansible >/dev/null 2>&1; then
   echo "Ansible is already installed: $(ansible --version | head -1)"
   exit 0
