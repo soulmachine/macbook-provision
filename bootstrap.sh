@@ -16,7 +16,6 @@ EOF
   chmod 700 "$HOME/.local/bin/sudo-askpass"
   grep -q 'SUDO_ASKPASS=' ~/.zshrc 2>/dev/null || echo 'export SUDO_ASKPASS="$HOME/.local/bin/sudo-askpass"' >> ~/.zshrc
 fi
-export SUDO_ASKPASS="$HOME/.local/bin/sudo-askpass"
 
 # Prime the terminal's Automation (AppleEvents) permission. macOS shows a
 # one-time consent dialog the first time the terminal sends AppleEvents to
