@@ -44,6 +44,27 @@
     name: tailscale-app
     state: absent
 
+# The standalone GUI app installs a CLI shim at /usr/local/bin/tailscale
+# (`#!/bin/sh` → /Applications/Tailscale.app/...). The cask uninstall above
+# removes the .app but orphans this shim. On Apple Silicon /usr/local/bin
+# precedes /opt/homebrew/bin on PATH, so the dead shim shadows the Homebrew
+# CLI and every `tailscale` call fails with "No such file or directory".
+# Homebrew's own CLI is always a symlink (into Cellar) — the GUI shim is a
+# regular file — so `not islnk` safely targets only the stale shim.
+- name: Detect leftover standalone Tailscale CLI shim
+  ansible.builtin.stat:
+    path: /usr/local/bin/tailscale
+  register: _tailscale_usr_local_cli
+
+- name: Remove stale standalone Tailscale CLI shim (shadows Homebrew CLI on PATH)
+  ansible.builtin.file:
+    path: /usr/local/bin/tailscale
+    state: absent
+  become: true
+  when:
+    - _tailscale_usr_local_cli.stat.exists
+    - not _tailscale_usr_local_cli.stat.islnk
+
 - name: Install tailscale CLI and tailscaled daemon
   community.general.homebrew:
     name: tailscale
