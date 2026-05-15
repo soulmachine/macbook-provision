@@ -13,11 +13,9 @@ Ansible-based macOS development environment provisioner. Uses Homebrew (via Ansi
 ./bootstrap.sh
 
 # Run full provisioning
-sudo -v # sudo is needed for tasks with become: true, for example tailscale role's `tailscale up` task
 ansible-playbook main.yml
 
 # Dry run
-sudo -v
 ansible-playbook main.yml --check
 ```
 
@@ -26,7 +24,14 @@ ansible-playbook main.yml --check
 - **main.yml** — Main playbook that runs roles in order. Add new roles here.
 - **playbook.yml** — Legacy playbook (not actively used). Defines packages inline with Japanese comments.
 - **bootstrap.sh** — Bootstrap script. Prepares a fresh Mac for Ansible. Also configures `SUDO_ASKPASS` — sudo's standard mechanism for fetching a password from a helper program instead of prompting interactively. The script stores the sudo password in macOS Keychain and writes `~/.local/bin/sudo-askpass`, so Homebrew and other sudo subprocesses spawned during the playbook can read the password non-interactively (they don't inherit `sudo -v`'s cached credentials, so without this they would pop a GUI password prompt and stall the run). The script is idempotent — it skips the askpass setup if `~/.local/bin/sudo-askpass` already exists.
+- **`.env` / `.envrc`** — Optional. `.envrc` runs `dotenv_if_exists .env` so direnv loads `.env` into the shell. Currently only the `tailscale` role consumes this (reads `TAILSCALE_AUTH_KEY` to auto-run `tailscale up`); new roles that need secrets should follow the same pattern — gate the task on `lookup('env', 'VAR') | length > 0` and document the var in `.env.example`.
 - **roles/** — Each role provisions one tool or application.
+
+#### Tailscale role specifics
+
+- Installs the CLI/`tailscaled` via Homebrew (not the App Store GUI cask — sandboxed builds can't enable Tailscale SSH). See header comment in `roles/tailscale/tasks/main.yml` for the full rationale.
+- The auto-login task uses `become: true` and is gated on `TAILSCALE_AUTH_KEY`; if the var is unset, the role just installs the binary and the user must run `tailscale up` manually.
+- MagicDNS does not auto-configure with `tailscaled` — user must enable it in the admin console; the role already passes `--accept-dns`.
 
 ### Role Structure
 

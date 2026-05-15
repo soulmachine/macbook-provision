@@ -23,7 +23,6 @@
 ### 2. 运行 Playbook
 
 ```bash
-sudo -v # 某些task有 become: true, 需要root权限
 ansible-playbook main.yml
 ```
 
@@ -38,6 +37,30 @@ ansible localhost -m include_role -a name=openclaw
 ```bash
 ansible-playbook main.yml --check
 ```
+
+### 4. 可选：Tailscale 配置
+
+如果 `.env` 文件存在且包含 `TAILSCALE_AUTH_KEY`，`roles/tailscale` 会额外执行一个步骤完成本机登录，等价于手工执行 `sudo tailscale up --auth-key=tskey-auth-xxxxxxxxxxxxx --accept-dns --ssh --operator=$USER`。
+
+#### 获取并配置 Tailscale auth key
+
+1. 访问 https://login.tailscale.com/admin/settings/keys ，创建一个启用了 "Reusable" 的 auth key。
+2. 把 auth key 写入 `.env`：先 `cp .env.example .env`，然后把里面的 `tskey-auth-xxxxxx` 替换成真实 key，接着 `direnv allow`，最后运行 `ansible-playbook main.yml`。
+
+`tailscale up` flag 说明：
+
+- `--accept-dns`：启用 MagicDNS，详见下一节。
+- `--ssh`：开启 Tailscale SSH，使用 tailnet 身份认证，无需维护 `authorized_keys`。
+- `--operator=$USER`：把当前用户登记为 operator，之后跑 `tailscale status`、`tailscale set` 等命令不再需要 `sudo`。
+
+#### 启用 MagicDNS
+
+GUI 版的 Tailscale 会自动配置 DNS，使用 `tailscaled` CLI 时需要手动开启 MagicDNS：
+
+1. 访问 https://login.tailscale.com/admin/dns ，启用 MagicDNS。
+2. 在 `tailscale up` 命令上追加 `--accept-dns`（本 role 已自动追加）。
+
+若只通过 Tailscale IP 或完整的 `*.ts.net` 域名访问主机，可以跳过此步骤。
 
 ## 包含的 Roles
 
@@ -62,6 +85,7 @@ ansible-playbook main.yml --check
 | openclaw | OpenClaw 及 ClawHub CLI（依赖 nodejs） |
 | beads | Beads 任务追踪工具（依赖 go、nodejs） |
 | ralph-tui | Ralph TUI 及技能（依赖 bun、claude-code） |
+| tailscale | Tailscale CLI 及 `tailscaled` 守护进程；若 `.env` 中有 `TAILSCALE_AUTH_KEY` 则自动登录 |
 
 ### 可选 Roles（未包含在 `main.yml` 中）
 

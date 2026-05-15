@@ -1,0 +1,66 @@
+---
+# Why CLI tailscaled instead of the GUI (App Store) Tailscale:
+#   - The App Store build is sandboxed and cannot enable Tailscale SSH.
+#     The standalone tailscaled supports it, giving identity-based auth.
+#   - tailscaled can run at system boot before any user has logged in
+#     (e.g. VNC into the machine after a power outage).
+#   - Uses the /dev/utun TUN interface instead of Apple's Network Extension API.
+#   - Fully open source (the GUI client is not open source on macOS).
+#   - Trade-offs: tailscaled on macOS is less tested, and MagicDNS requires
+#     manually setting 100.100.100.100 as a DNS server (it won't auto-configure).
+# We remove the GUI cask first, then install the CLI + tailscaled via Homebrew.
+# Reference: https://github.com/tailscale/tailscale/wiki/Tailscaled-on-macOS
+#
+# Sudo note: if the GUI cask is currently installed, `brew uninstall --cask` will
+# internally invoke `sudo` to remove the root-owned System Extension. Prime the
+# sudo timestamp first with `sudo -v` in a real terminal, otherwise the task fails
+# This task doesn't set `become: true` because Homebrew refuses to run as root.
+# Instead, brew invokes `sudo` internally, which reads the password from the
+# SUDO_ASKPASS helper that bootstrap.sh installs.
+- name: Ensure Tailscale GUI cask is absent
+  community.general.homebrew_cask:
+    name: tailscale-app
+    state: absent
+
+- name: Install tailscale CLI and tailscaled daemon
+  community.general.homebrew:
+    name: tailscale
+    state: latest
+
+# Registers tailscaled as a system LaunchDaemon at /Library/LaunchDaemons/, so it
+# starts at boot before any user logs in. Required for the `tailscale up` task
+# below to find a running daemon to talk to.
+- name: Install tailscaled as a system LaunchDaemon
+  ansible.builtin.command: tailscaled install-system-daemon
+  become: true
+  args:
+    creates: /Library/LaunchDaemons/com.tailscale.tailscaled.plist
+
+# Auto-connect to the tailnet when `TAILSCALE_AUTH_KEY` is set in the environment.
+# Copy `.env.example` to `.env`, fill in the real key, then `direnv allow` so the
+# variable is exported into the shell running `ansible-playbook`.
+- name: Load Tailscale auth key from environment
+  ansible.builtin.set_fact:
+    tailscale_auth_key: "{{ lookup('env', 'TAILSCALE_AUTH_KEY') }}"
+
+- name: Auto-connect to tailnet when auth key is provided
+  when: tailscale_auth_key | length > 0
+  block:
+    - name: Check current tailscale state
+      ansible.builtin.command: tailscale status --json
+      register: tailscale_status
+      changed_when: false
+      failed_when: false
+
+    - name: Bring tailscale up with auth key
+      ansible.builtin.command: >
+        tailscale up
+        --auth-key={{ tailscale_auth_key }}
+        --accept-dns
+        --ssh
+        --operator={{ lookup('env', 'USER') }}
+      become: true
+      no_log: true
+      when: >
+        tailscale_status.rc != 0
+        or (tailscale_status.stdout | from_json).BackendState != 'Running'
