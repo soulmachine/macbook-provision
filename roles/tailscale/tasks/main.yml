@@ -6,8 +6,8 @@
 #     (e.g. VNC into the machine after a power outage).
 #   - Uses the /dev/utun TUN interface instead of Apple's Network Extension API.
 #   - Fully open source (the GUI client is not open source on macOS).
-#   - Trade-offs: tailscaled on macOS is less tested, and MagicDNS requires
-#     manually setting 100.100.100.100 as a DNS server (it won't auto-configure).
+#   - Trade-offs: tailscaled on macOS is less tested. MagicDNS doesn't
+#     auto-configure either — this role writes /etc/resolver/ts.net below.
 # We remove the GUI cask first, then install the CLI + tailscaled via Homebrew.
 # Reference: https://github.com/tailscale/tailscale/wiki/Tailscaled-on-macOS
 #
@@ -57,6 +57,31 @@
   become: true
   args:
     creates: /Library/LaunchDaemons/com.tailscale.tailscaled.plist
+
+# tailscaled on macOS only writes /etc/resolver/search.tailscale with a search
+# domain, no `nameserver` line. Without a per-domain resolver pointing at
+# 100.100.100.100, *.ts.net lookups bypass tailscaled, fall through to the
+# upstream resolver, and fail (NXDOMAIN). Adding /etc/resolver/ts.net tells
+# macOS to route those queries to tailscaled's MagicDNS resolver.
+# Reference: https://github.com/tailscale/tailscale/wiki/Tailscaled-on-macOS
+- name: Ensure /etc/resolver directory exists
+  ansible.builtin.file:
+    path: /etc/resolver
+    state: directory
+    owner: root
+    group: wheel
+    mode: '0755'
+  become: true
+
+- name: Route *.ts.net DNS queries to tailscaled MagicDNS
+  ansible.builtin.copy:
+    dest: /etc/resolver/ts.net
+    content: "nameserver 100.100.100.100\n"
+    owner: root
+    group: wheel
+    mode: '0644'
+  become: true
+  notify: Flush DNS cache
 
 # Auto-connect to the tailnet when `TAILSCALE_AUTH_KEY` is set in the environment.
 # Copy `.env.example` to `.env`, fill in the real key, then `direnv allow` so the

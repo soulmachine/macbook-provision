@@ -31,7 +31,7 @@ ansible-playbook main.yml --check
 
 - Installs the CLI/`tailscaled` via Homebrew (not the App Store GUI cask — sandboxed builds can't enable Tailscale SSH). See header comment in `roles/tailscale/tasks/main.yml` for the full rationale.
 - The auto-login task uses `become: true` and is gated on `TAILSCALE_AUTH_KEY`; if the var is unset, the role just installs the binary and the user must run `tailscale up` manually.
-- MagicDNS does not auto-configure with `tailscaled` — user must enable it in the admin console; the role already passes `--accept-dns`.
+- MagicDNS on macOS needs two things: (1) enabled tailnet-wide in the admin console (one-time), and (2) `/etc/resolver/ts.net` containing `nameserver 100.100.100.100` so macOS routes `*.ts.net` queries to tailscaled. The role writes that file because tailscaled itself only adds the search domain; without the resolver file, `ssh host.<tailnet>.ts.net` fails with NXDOMAIN even though MagicDNS is enabled.
 
 ### Role Structure
 

@@ -1,0 +1,4 @@
+---
+- name: Flush DNS cache
+  ansible.builtin.command: killall -HUP mDNSResponder
+  become: true

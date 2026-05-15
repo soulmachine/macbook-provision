@@ -55,12 +55,14 @@ ansible-playbook main.yml --check
 
 #### 启用 MagicDNS
 
-GUI 版的 Tailscale 会自动配置 DNS，使用 `tailscaled` CLI 时需要手动开启 MagicDNS：
+GUI 版的 Tailscale 会自动配置 DNS，使用 `tailscaled` CLI 时需要两步：
 
-1. 访问 https://login.tailscale.com/admin/dns ，启用 MagicDNS。
+1. 访问 https://login.tailscale.com/admin/dns ，在 tailnet 层面启用 MagicDNS（一次性配置）。
 2. 在 `tailscale up` 命令上追加 `--accept-dns`（本 role 已自动追加）。
 
-若只通过 Tailscale IP 或完整的 `*.ts.net` 域名访问主机，可以跳过此步骤。
+`tailscaled` 在 macOS 上只会写入 `/etc/resolver/search.tailscale`（只有 search domain，没有 nameserver），所以 `*.ts.net` 的 DNS 查询不会走到 tailscaled，会返回 NXDOMAIN。本 role 会额外写入 `/etc/resolver/ts.net`（内容为 `nameserver 100.100.100.100`），让 macOS 把 `*.ts.net` 的查询交给 tailscaled 的 MagicDNS resolver 处理。
+
+若只通过 Tailscale IP 访问主机，可以跳过此节。
 
 ## 包含的 Roles
 
