@@ -79,6 +79,76 @@
   args:
     creates: /Library/LaunchDaemons/com.tailscale.tailscaled.plist
 
+# Full Disk Access (FDA) for tailscaled:
+#   When `tailscale ssh` connects to this Mac, tailscaled spawns the login
+#   shell. That shell inherits tailscaled's TCC sandbox — NOT the interactive
+#   user's. So without FDA on /usr/local/bin/tailscaled, commands like
+#   `cd ~/Desktop` or `cd ~/Documents` fail with "Operation not permitted"
+#   inside SSH sessions.
+#
+#   macOS TCC is designed to resist scripted grants: `tccutil` only RESETs
+#   permissions, the system TCC.db is SIP-protected, and unsigned PPPC
+#   profiles still need manual approval. On an unmanaged (non-MDM) Mac there
+#   is no full-automation path — we open the FDA pane and pause for the user.
+#
+#   A marker under ~/.local/state suppresses the prompt on later runs; delete
+#   it if you ever revoke FDA and need to be re-prompted.
+- name: Check FDA acknowledgment marker for tailscaled
+  ansible.builtin.stat:
+    path: "{{ lookup('env', 'HOME') }}/.local/state/macbook-provision/tailscaled-fda-acknowledged"
+  register: _tailscaled_fda_marker
+
+- name: Grant Full Disk Access to tailscaled
+  when: not _tailscaled_fda_marker.stat.exists
+  block:
+    - name: Open System Settings → Privacy & Security → Full Disk Access
+      ansible.builtin.command:
+        cmd: open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+      changed_when: false
+
+    - name: Wait for user to grant FDA to /usr/local/bin/tailscaled
+      ansible.builtin.pause:
+        prompt: |
+
+          ================================================================
+          Manual step: grant Full Disk Access to tailscaled
+          ================================================================
+
+          Tailscale SSH spawns shells as children of tailscaled, so they
+          inherit its TCC sandbox. Without FDA, `cd ~/Desktop` and
+          `cd ~/Documents` fail inside SSH sessions.
+
+          The Full Disk Access pane is now open. Steps:
+            1. Click the "+" button (unlock with Touch ID if asked)
+            2. Press Cmd+Shift+G and paste:
+                 /usr/local/bin/tailscaled
+            3. Press Return, then click "Open"
+            4. Ensure the toggle next to tailscaled is ON
+
+          Press Enter once done. (If you skip this, delete
+          ~/.local/state/macbook-provision/tailscaled-fda-acknowledged
+          to be prompted again next run.)
+
+    - name: Ensure state directory for FDA marker exists
+      ansible.builtin.file:
+        path: "{{ lookup('env', 'HOME') }}/.local/state/macbook-provision"
+        state: directory
+        mode: '0755'
+
+    - name: Record FDA acknowledgment to skip prompt on future runs
+      ansible.builtin.file:
+        path: "{{ lookup('env', 'HOME') }}/.local/state/macbook-provision/tailscaled-fda-acknowledged"
+        state: touch
+        mode: '0644'
+
+    # TCC is checked at process start, so tailscaled (already launched by
+    # install-system-daemon above) must be restarted to see the new grant.
+    - name: Restart tailscaled so the new FDA grant takes effect
+      ansible.builtin.command:
+        cmd: launchctl kickstart -k system/com.tailscale.tailscaled
+      become: true
+      changed_when: true
+
 # tailscaled on macOS only writes /etc/resolver/search.tailscale with a search
 # domain, no `nameserver` line. Without a per-domain resolver pointing at
 # 100.100.100.100, *.ts.net lookups bypass tailscaled, fall through to the
