@@ -118,3 +118,22 @@
     content: "{{ claude_code_settings | combine({'remoteControlAtStartup': true}) | to_nice_json }}\n"
     mode: "0644"
   when: (claude_code_settings.remoteControlAtStartup | default(false)) != true
+
+# `claude plugin install` adds a plugin to ~/.claude/plugins/installed_plugins.json
+# but does NOT add it to `enabledPlugins` in ~/.claude/settings.json, and only
+# enabled plugins appear in `/plugin`. So we explicitly enable each one. Gate on
+# key absence (not value), so a user's manual `/plugin` disable is respected on
+# re-runs. Runs last so the earlier shallow-merge writes can't clobber the
+# enabledPlugins map.
+- name: Enable plugins
+  ansible.builtin.command: claude plugin enable {{ item }}
+  loop:
+    - ralph-skills@ralph-marketplace
+    - ralph-loop@claude-plugins-official
+    - frontend-design@claude-plugins-official
+    - feature-dev@claude-plugins-official
+    - planning-with-files@planning-with-files
+    - claude-mem@thedotmack
+    - andrej-karpathy-skills@karpathy-skills
+  when: "item not in (claude_code_settings.enabledPlugins | default({}))"
+  changed_when: true
