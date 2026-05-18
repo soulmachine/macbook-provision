@@ -1,204 +1,145 @@
 ---
-# Why CLI tailscaled instead of the GUI (App Store) Tailscale:
-#   - The App Store build is sandboxed and cannot enable Tailscale SSH.
-#     The standalone tailscaled supports it, giving identity-based auth.
-#   - tailscaled can run at system boot before any user has logged in
-#     (e.g. VNC into the machine after a power outage).
-#   - Uses the /dev/utun TUN interface instead of Apple's Network Extension API.
-#   - Fully open source (the GUI client is not open source on macOS).
-#   - Trade-offs: tailscaled on macOS is less tested. MagicDNS doesn't
-#     auto-configure either — this role writes /etc/resolver/ts.net below.
-# We remove the GUI cask first, then install the CLI + tailscaled via Homebrew.
-# Reference: https://github.com/tailscale/tailscale/wiki/Tailscaled-on-macOS
+# Why the standalone Tailscale.app cask (not the App Store build, not the
+# open-source CLI tailscaled):
+#   - The `tailscale-app` cask ships the official build from tailscale.com.
+#   - Uses Apple's Network Extension API; the embedded daemon auto-handles
+#     MagicDNS, so no /etc/resolver/ts.net file is required.
+#   - Officially supported by Tailscale and auto-updated through the GUI.
 #
-# Sudo handling for the cask uninstall:
-#   `brew uninstall --cask tailscale-app` invokes `sudo` internally to remove the
-#   root-owned files installed by the .pkg payload. That inner `sudo` call has no
-#   `-A` flag, so `SUDO_ASKPASS` alone is NOT enough — sudo only auto-runs the
-#   askpass helper when invoked with `-A` or with askpass set in /etc/sudo.conf.
-#   We prime sudo's timestamp here via our own `sudo -A -v`; brew's subsequent
-#   sudo calls then reuse the cached credential within sudo's default ~5 min
-#   timeout. We don't set `become: true` because Homebrew refuses to run as root.
-#
-# Login-item warning:
-#   The cask's uninstall recipe contains `login_item: Tailscale`, which brew
-#   removes via AppleScript `tell application "System Events"`. The terminal
-#   running ansible-playbook needs Automation → System Events permission (System
-#   Settings → Privacy & Security → Automation). Without it the AppleEvent times
-#   out with a non-fatal warning; the cask itself is still removed.
-- name: Check if Tailscale GUI cask is installed
+# On a fresh Mac the user must launch Tailscale.app once, click "Allow"
+# on the "would like to add VPN configurations" dialog, and toggle the
+# Network Extension on in System Settings → General → Login Items &
+# Extensions → Network Extensions. The role auto-detects the extension
+# state via `systemextensionsctl list` and only pauses if it's not yet
+# `[activated enabled]`.
+
+# Sudo priming for the cask install:
+#   `brew install --cask tailscale-app` is .pkg-based; brew invokes `sudo`
+#   internally WITHOUT `-A` to expand root-owned files into /Applications.
+#   SUDO_ASKPASS alone isn't consulted by sudo unless `-A` is passed, so we
+#   prime sudo's timestamp via our own `sudo -A -v` and brew's later
+#   un-flagged sudo reuses the cached credential within the ~5 min window.
+- name: Check if Tailscale.app cask is already installed
   ansible.builtin.command:
     cmd: brew list --cask tailscale-app
   register: _tailscale_cask_check
   failed_when: false
   changed_when: false
 
-- name: Prime sudo timestamp via askpass helper (brew's inner sudo has no -A)
+- name: Prime sudo timestamp before brew cask install
   ansible.builtin.command:
     cmd: sudo -A -v
   changed_when: false
-  when: _tailscale_cask_check.rc == 0
+  when: _tailscale_cask_check.rc != 0
 
-- name: Ensure Tailscale GUI cask is absent
+- name: Install Tailscale.app (standalone cask, NOT App Store)
   community.general.homebrew_cask:
     name: tailscale-app
-    state: absent
-
-# The standalone GUI app installs a CLI shim at /usr/local/bin/tailscale
-# (`#!/bin/sh` → /Applications/Tailscale.app/...). The cask uninstall above
-# removes the .app but orphans this shim. On Apple Silicon /usr/local/bin
-# precedes /opt/homebrew/bin on PATH, so the dead shim shadows the Homebrew
-# CLI and every `tailscale` call fails with "No such file or directory".
-# Homebrew's own CLI is always a symlink (into Cellar) — the GUI shim is a
-# regular file — so `not islnk` safely targets only the stale shim.
-- name: Detect leftover standalone Tailscale CLI shim
-  ansible.builtin.stat:
-    path: /usr/local/bin/tailscale
-  register: _tailscale_usr_local_cli
-
-- name: Remove stale standalone Tailscale CLI shim (shadows Homebrew CLI on PATH)
-  ansible.builtin.file:
-    path: /usr/local/bin/tailscale
-    state: absent
-  become: true
-  when:
-    - _tailscale_usr_local_cli.stat.exists
-    - not _tailscale_usr_local_cli.stat.islnk
-
-- name: Install tailscale CLI and tailscaled daemon
-  community.general.homebrew:
-    name: tailscale
     state: latest
 
-# Registers tailscaled as a system LaunchDaemon at /Library/LaunchDaemons/, so it
-# starts at boot before any user logs in. Required for the `tailscale up` task
-# below to find a running daemon to talk to.
-- name: Install tailscaled as a system LaunchDaemon
-  ansible.builtin.command: tailscaled install-system-daemon
-  become: true
+# Verify the Tailscale Network Extension is enabled before attempting
+# `tailscale up`. On macOS Sonoma+ the user must toggle the extension on in
+# System Settings → General → Login Items & Extensions → Network Extensions;
+# until they do, the embedded daemon can't run the packet-tunnel provider
+# and `tailscale up` fails. `systemextensionsctl list` shows
+# `[activated enabled]` when the extension is on, or a different state
+# (`activated waiting for user`, `terminated waiting for user`, etc.) — or
+# omits the row entirely if Tailscale.app has never been launched.
+- name: Check whether Tailscale Network Extension is enabled
+  ansible.builtin.shell: |
+    set -o pipefail
+    systemextensionsctl list 2>/dev/null | grep -i tailscale | grep -q '\[activated enabled\]'
   args:
-    creates: /Library/LaunchDaemons/com.tailscale.tailscaled.plist
+    executable: /bin/bash
+  register: _tailscale_netext_check
+  failed_when: false
+  changed_when: false
 
-# Full Disk Access (FDA) for tailscaled:
-#   When `tailscale ssh` connects to this Mac, tailscaled spawns the login
-#   shell. That shell inherits tailscaled's TCC sandbox — NOT the interactive
-#   user's. So without FDA on /usr/local/bin/tailscaled, commands like
-#   `cd ~/Desktop` or `cd ~/Documents` fail with "Operation not permitted"
-#   inside SSH sessions.
-#
-#   macOS TCC is designed to resist scripted grants: `tccutil` only RESETs
-#   permissions, the system TCC.db is SIP-protected, and unsigned PPPC
-#   profiles still need manual approval. On an unmanaged (non-MDM) Mac there
-#   is no full-automation path — we open the FDA pane and pause for the user.
-#
-#   A marker under ~/.local/state suppresses the prompt on later runs; delete
-#   it if you ever revoke FDA and need to be re-prompted.
-- name: Check FDA acknowledgment marker for tailscaled
-  ansible.builtin.stat:
-    path: "{{ lookup('env', 'HOME') }}/.local/state/macbook-provision/tailscaled-fda-acknowledged"
-  register: _tailscaled_fda_marker
-
-- name: Grant Full Disk Access to tailscaled
-  when: not _tailscaled_fda_marker.stat.exists
+- name: Prompt user to enable the Tailscale Network Extension
+  when: _tailscale_netext_check.rc != 0
   block:
-    - name: Open System Settings → Privacy & Security → Full Disk Access
+    - name: Launch Tailscale.app so the extension registers and the toggle appears
       ansible.builtin.command:
-        cmd: open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+        cmd: open -a Tailscale
       changed_when: false
 
-    - name: Wait for user to grant FDA to /usr/local/bin/tailscaled
+    - name: Wait for user to enable Tailscale in Network Extensions
       ansible.builtin.pause:
         prompt: |
 
           ================================================================
-          Manual step: grant Full Disk Access to tailscaled
+          Manual step: enable Tailscale Network Extension
           ================================================================
 
-          Tailscale SSH spawns shells as children of tailscaled, so they
-          inherit its TCC sandbox. Without FDA, `cd ~/Desktop` and
-          `cd ~/Documents` fail inside SSH sessions.
+          The Tailscale Network Extension is not currently enabled, so
+          the tailnet tunnel can't activate. Enable it:
 
-          The Full Disk Access pane is now open. Steps:
-            1. Click the "+" button (unlock with Touch ID if asked)
-            2. Press Cmd+Shift+G and paste:
-                 /usr/local/bin/tailscaled
-            3. Press Return, then click "Open"
-            4. Ensure the toggle next to tailscaled is ON
+            System Settings → General → Login Items & Extensions →
+            Network Extensions → toggle Tailscale ON
 
-          Press Enter once done. (If you skip this, delete
-          ~/.local/state/macbook-provision/tailscaled-fda-acknowledged
-          to be prompted again next run.)
+          (If a "Tailscale would like to add VPN configurations" dialog
+          also appears, click Allow.)
 
-    - name: Ensure state directory for FDA marker exists
-      ansible.builtin.file:
-        path: "{{ lookup('env', 'HOME') }}/.local/state/macbook-provision"
-        state: directory
-        mode: '0755'
+          Press Enter once Tailscale is toggled ON.
 
-    - name: Record FDA acknowledgment to skip prompt on future runs
-      ansible.builtin.file:
-        path: "{{ lookup('env', 'HOME') }}/.local/state/macbook-provision/tailscaled-fda-acknowledged"
-        state: touch
-        mode: '0644'
-
-    # TCC is checked at process start, so tailscaled (already launched by
-    # install-system-daemon above) must be restarted to see the new grant.
-    - name: Restart tailscaled so the new FDA grant takes effect
-      ansible.builtin.command:
-        cmd: launchctl kickstart -k system/com.tailscale.tailscaled
-      become: true
-      changed_when: true
-
-# tailscaled on macOS only writes /etc/resolver/search.tailscale with a search
-# domain, no `nameserver` line. Without a per-domain resolver pointing at
-# 100.100.100.100, *.ts.net lookups bypass tailscaled, fall through to the
-# upstream resolver, and fail (NXDOMAIN). Adding /etc/resolver/ts.net tells
-# macOS to route those queries to tailscaled's MagicDNS resolver.
-# Reference: https://github.com/tailscale/tailscale/wiki/Tailscaled-on-macOS
-- name: Ensure /etc/resolver directory exists
-  ansible.builtin.file:
-    path: /etc/resolver
-    state: directory
-    owner: root
-    group: wheel
-    mode: '0755'
-  become: true
-
-- name: Route *.ts.net DNS queries to tailscaled MagicDNS
-  ansible.builtin.copy:
-    dest: /etc/resolver/ts.net
-    content: "nameserver 100.100.100.100\n"
-    owner: root
-    group: wheel
-    mode: '0644'
-  become: true
-  notify: Flush DNS cache
-
-# Auto-connect to the tailnet when `TAILSCALE_AUTH_KEY` is set in the environment.
-# Copy `.env.example` to `.env`, fill in the real key, then `direnv allow` so the
-# variable is exported into the shell running `ansible-playbook`.
+# Auto-connect to the tailnet when an auth key is provided.
 - name: Load Tailscale auth key from environment
   ansible.builtin.set_fact:
     tailscale_auth_key: "{{ lookup('env', 'TAILSCALE_AUTH_KEY') }}"
+  no_log: true
 
 - name: Auto-connect to tailnet when auth key is provided
   when: tailscale_auth_key | length > 0
   block:
-    - name: Check current tailscale state
+    - name: Check current Tailscale state
       ansible.builtin.command: tailscale status --json
-      register: tailscale_status
+      register: _tailscale_status
       changed_when: false
       failed_when: false
 
-    - name: Bring tailscale up with auth key
+    - name: Bring Tailscale up
       ansible.builtin.command: >
         tailscale up
-        --auth-key={{ tailscale_auth_key }}
         --accept-dns
-        --ssh
         --operator={{ lookup('env', 'USER') }}
+        --auth-key={{ tailscale_auth_key }}
       become: true
       no_log: true
-      when: >
-        tailscale_status.rc != 0
-        or (tailscale_status.stdout | from_json).BackendState != 'Running'
+      changed_when: true
+      when: _tailscale_status.rc != 0 or (_tailscale_status.stdout | from_json).BackendState != 'Running'
+
+# Disable node-key expiry via the Tailscale REST API. The CLI has no
+# equivalent command, so we POST directly. Requires TAILSCALE_API_ACCESS_TOKEN
+# with the `devices` write scope. The device identifier is this node's
+# stable ID from `tailscale status --json` (Self.ID, which the API accepts
+# as its nodeId).
+- name: Load Tailscale API access token from environment
+  ansible.builtin.set_fact:
+    tailscale_api_token: "{{ lookup('env', 'TAILSCALE_API_ACCESS_TOKEN') }}"
+  no_log: true
+
+- name: Disable key expiry when API token is provided
+  when:
+    - tailscale_api_token | length > 0
+    - tailscale_auth_key | length > 0
+  block:
+    - name: Read Tailscale status to get this node's stable ID
+      ansible.builtin.command: tailscale status --json
+      register: _tailscale_status_for_id
+      changed_when: false
+
+    - name: Extract this node's stable device ID
+      ansible.builtin.set_fact:
+        tailscale_device_id: "{{ (_tailscale_status_for_id.stdout | from_json).Self.ID }}"
+
+    - name: Disable key expiry for this node
+      ansible.builtin.uri:
+        url: "https://api.tailscale.com/api/v2/device/{{ tailscale_device_id }}/key"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ tailscale_api_token }}"
+        body_format: json
+        body:
+          keyExpiryDisabled: true
+        status_code: [200]
+      no_log: true
