@@ -14,11 +14,15 @@
 # `[activated enabled]`.
 
 # Sudo priming for the cask install:
-#   `brew install --cask tailscale-app` is .pkg-based; brew invokes `sudo`
-#   internally WITHOUT `-A` to expand root-owned files into /Applications.
-#   SUDO_ASKPASS alone isn't consulted by sudo unless `-A` is passed, so we
-#   prime sudo's timestamp via our own `sudo -A -v` and brew's later
-#   un-flagged sudo reuses the cached credential within the ~5 min window.
+#   `brew install --cask tailscale-app` is .pkg-based, so brew shells out to
+#   macOS's `installer` under `sudo` to expand root-owned payload into system
+#   locations: /Applications/Tailscale.app, the embedded `tailscaled` binary,
+#   and /Library/LaunchDaemons entries that an unprivileged user can't write.
+#   Brew invokes that `sudo` WITHOUT `-A`, and sudo only consults
+#   $SUDO_ASKPASS when `-A` is passed — so the askpass helper alone isn't
+#   enough. We prime sudo's timestamp via our own `sudo -A -v` first, and
+#   brew's later un-flagged sudo reuses the cached credential within sudo's
+#   default ~5 min window.
 - name: Check if Tailscale.app cask is already installed
   ansible.builtin.command:
     cmd: brew list --cask tailscale-app
