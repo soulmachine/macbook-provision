@@ -101,6 +101,25 @@
       changed_when: false
       failed_when: false
 
+    - name: Remind user that admin approval may be required
+      ansible.builtin.debug:
+        msg: |
+
+          ================================================================
+          About to run `tailscale up`. If your tailnet has Device Approval
+          enabled, this task will HANG until the device is approved.
+
+          Recommended: disable Device Approval entirely so this (and
+          future provisioning runs) never hang:
+
+            https://login.tailscale.com/admin/settings/device-management
+
+          Otherwise, approve this Mac manually at:
+
+            https://login.tailscale.com/admin/machines
+          ================================================================
+      when: _tailscale_status.rc != 0 or (_tailscale_status.stdout | from_json).BackendState != 'Running'
+
     - name: Bring Tailscale up
       ansible.builtin.command: >
         tailscale up
