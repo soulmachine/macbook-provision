@@ -105,6 +105,7 @@
       ansible.builtin.command: >
         tailscale up
         --accept-dns
+        --accept-routes
         --operator={{ lookup('env', 'USER') }}
         --auth-key={{ tailscale_auth_key }}
       become: true
