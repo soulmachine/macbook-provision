@@ -40,7 +40,13 @@
 
 - name: Check installed OpenClaw skills
   ansible.builtin.shell:
-    cmd: set -o pipefail && openclaw skills list --json 2>/dev/null | sed -n '/^{/,$p'
+    # Redirect through a temp file: openclaw truncates stdout to 64 KiB when piped
+    # (exits before draining process.stdout), so a direct `... | sed` loses the tail.
+    cmd: |
+      tmp=$(mktemp)
+      trap 'rm -f "$tmp"' EXIT
+      openclaw skills list --json >"$tmp" 2>/dev/null
+      sed -n '/^{/,$p' "$tmp"
   register: openclaw_skills
   changed_when: false
 
@@ -69,7 +75,12 @@
 
 - name: Check enabled OpenClaw plugins
   ansible.builtin.shell:
-    cmd: set -o pipefail && openclaw plugins list --enabled --json 2>&1 | sed -n '/^{/,$p'
+    # Same stdout-truncation workaround as the skills task above.
+    cmd: |
+      tmp=$(mktemp)
+      trap 'rm -f "$tmp"' EXIT
+      openclaw plugins list --enabled --json >"$tmp" 2>&1
+      sed -n '/^{/,$p' "$tmp"
   register: openclaw_plugins_enabled
   changed_when: false
 
