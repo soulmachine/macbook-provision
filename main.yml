@@ -16,6 +16,7 @@
     - claude-code
     - codex
     - gemini
+    - skills
     - playwright
     - playwright-cli
     - intellij-idea

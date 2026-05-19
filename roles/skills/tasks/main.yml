@@ -1,0 +1,15 @@
+---
+- name: Install baoyu-youtube-transcript skill for all agents
+  ansible.builtin.command:
+    cmd: npx skills add jimliu/baoyu-skills --skill baoyu-youtube-transcript -g -y
+    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/baoyu-youtube-transcript"
+
+- name: Install mattpocock skills for all agents
+  ansible.builtin.command:
+    cmd: npx skills add https://github.com/mattpocock/skills -all -g -y
+    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/diagnose"
+
+- name: Install soulmachine skills for all agents
+  ansible.builtin.command:
+    cmd: npx skills add soulmachine/claude-code-skills -g -y --all
+    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/mac-mini-as-headless-server"
