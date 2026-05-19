@@ -67,6 +67,11 @@
     cmd: npx skills add https://github.com/mattpocock/skills -all -g -y
     creates: "{{ lookup('env', 'HOME') }}/.agents/skills/diagnose"
 
+- name: Install soulmachine skills for all agents
+  ansible.builtin.command:
+    cmd: npx skills add https://github.com/soulmachine/claude-code-skills -g -y --all
+    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/mac-mini-as-headless-server"
+
 - name: Check if Claude Code Bridge is installed
   ansible.builtin.stat:
     path: "{{ lookup('env', 'HOME') }}/.local/bin/ccb"
