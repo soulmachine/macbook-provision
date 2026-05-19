@@ -1,7 +1,7 @@
 ---
-- name: Install baoyu-youtube-transcript skill for all agents
+- name: Install baoyu skills for all agents
   ansible.builtin.command:
-    cmd: npx skills add jimliu/baoyu-skills --skill baoyu-youtube-transcript -g -y
+    cmd: npx skills add jimliu/baoyu-skills -g -y --all
     creates: "{{ lookup('env', 'HOME') }}/.agents/skills/baoyu-youtube-transcript"
 
 - name: Install mattpocock skills for all agents
