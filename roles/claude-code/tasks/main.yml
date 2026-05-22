@@ -41,7 +41,6 @@
 - name: Add plugin marketplaces
   ansible.builtin.command: claude plugin marketplace add {{ item }}
   loop:
-    - snarktank/ralph
     - anthropics/claude-plugins-official # https://claude.com/plugins
     - OthmanAdi/planning-with-files
     - thedotmack/claude-mem
@@ -52,8 +51,6 @@
 - name: Install plugins
   ansible.builtin.command: claude plugin install {{ item }}
   loop:
-    - ralph-skills@ralph-marketplace
-    - ralph-loop@claude-plugins-official
     - frontend-design@claude-plugins-official
     - feature-dev@claude-plugins-official
     - planning-with-files@planning-with-files
@@ -61,6 +58,17 @@
     - andrej-karpathy-skills@karpathy-skills
   when: "item not in claude_code_plugins_content"
   changed_when: true
+
+- name: Update plugins to the latest version
+  ansible.builtin.command: claude plugin update {{ item }}
+  loop:
+    - frontend-design@claude-plugins-official
+    - feature-dev@claude-plugins-official
+    - planning-with-files@planning-with-files
+    - claude-mem@thedotmack
+    - andrej-karpathy-skills@karpathy-skills
+  register: claude_code_update
+  changed_when: "'already' not in claude_code_update.stdout"
 
 - name: Check if Claude Code Bridge is installed
   ansible.builtin.stat:
@@ -123,8 +131,6 @@
 - name: Enable plugins
   ansible.builtin.command: claude plugin enable {{ item }}
   loop:
-    - ralph-skills@ralph-marketplace
-    - ralph-loop@claude-plugins-official
     - frontend-design@claude-plugins-official
     - feature-dev@claude-plugins-official
     - planning-with-files@planning-with-files
