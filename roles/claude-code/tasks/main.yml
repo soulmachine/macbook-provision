@@ -50,6 +50,7 @@
     - OthmanAdi/planning-with-files
     - thedotmack/claude-mem
     - forrestchang/andrej-karpathy-skills
+    - swe-workflow/swe-workflow
   register: claude_code_mp
   changed_when: "'already' not in claude_code_mp.stdout"
 
@@ -61,6 +62,7 @@
     - planning-with-files@planning-with-files
     - claude-mem@thedotmack
     - andrej-karpathy-skills@karpathy-skills
+    - swe-workflow@swe-workflow
   when: "item not in claude_code_plugins_content"
   changed_when: true
 
@@ -72,6 +74,7 @@
     - planning-with-files@planning-with-files
     - claude-mem@thedotmack
     - andrej-karpathy-skills@karpathy-skills
+    - swe-workflow@swe-workflow
   register: claude_code_update
   changed_when: "'already' not in claude_code_update.stdout"
 
@@ -163,5 +166,6 @@
     - planning-with-files@planning-with-files
     - claude-mem@thedotmack
     - andrej-karpathy-skills@karpathy-skills
+    - swe-workflow@swe-workflow
   when: "item not in (claude_code_settings.enabledPlugins | default({}))"
   changed_when: true
