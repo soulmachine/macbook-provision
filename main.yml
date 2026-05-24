@@ -17,6 +17,7 @@
     - codex
     - gemini
     - skills
+    - smux
     - playwright
     - playwright-cli
     - intellij-idea
