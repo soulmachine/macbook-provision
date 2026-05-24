@@ -128,11 +128,16 @@
         dest: /tmp/ccb-release/download.tar.gz
         mode: "0644"
         force: true
-    - name: Extract Claude Code Bridge release tarball
-      ansible.builtin.unarchive:
-        src: /tmp/ccb-release/download.tar.gz
-        dest: /tmp/ccb-release
-        remote_src: true
+    # Use native tar, NOT ansible.builtin.unarchive. The unarchive module's
+    # .tar.gz handler hard-rejects BSD tar ("detected as tar type bsd. GNU tar
+    # required.") and only macOS-default /usr/bin/tar (bsdtar) is provisioned, no
+    # gtar. bsdtar extracts .tar.gz natively, so call it directly rather than add
+    # a gnu-tar dependency purely to satisfy the module.
+    - name: Extract Claude Code Bridge release tarball # noqa: command-instead-of-module
+      ansible.builtin.command: tar -xzf download.tar.gz
+      args:
+        chdir: /tmp/ccb-release
+      changed_when: true
     - name: Run Claude Code Bridge installer
       ansible.builtin.command: ./install.sh install
       args:
