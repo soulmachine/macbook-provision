@@ -76,8 +76,29 @@
     follow: true
   register: ccb_installed
 
-- name: Install Claude Code Bridge
-  when: not ccb_installed.stat.exists
+- name: Check Claude Code Bridge for updates
+  ansible.builtin.command: ccb version
+  register: ccb_version
+  changed_when: false
+  failed_when: false
+  when: ccb_installed.stat.exists
+
+# Clone + re-run install.sh is one uniform path for a fresh install, the
+# v5 -> v7 major jump, and ongoing updates alike — `ccb update` can't cover all
+# three (it needs ccb already present, and v5's updater is broken: its git path
+# wants a .git the install never has since install.sh rsyncs --exclude .git, and
+# its tarball path hardcoded the pre-rename "claude_code_bridge-main" vs the
+# renamed repo's "claude_codex_bridge-main"). Cloning to a dest we name avoids
+# all that. CCB_CONFIRM_MAJOR_UPGRADE=1 auto-accepts breaking major bumps that
+# install.sh otherwise refuses non-interactively. Idempotent: gated on a missing
+# install or `ccb version` reporting an update (matched case-insensitively — v5
+# prints "Update available", v7 release installs print "Release update
+# available"); after installing, `ccb version` reports "Up to date" and the
+# block is skipped.
+- name: Install or update Claude Code Bridge
+  when: >-
+    not ccb_installed.stat.exists
+    or 'update available' in (ccb_version.stdout | default('') | lower)
   block:
     - name: Clone Claude Code Bridge repository # noqa: latest[git]
       ansible.builtin.git:
@@ -91,6 +112,7 @@
         chdir: /tmp/claude_code_bridge
       environment:
         CCB_SOURCE_KIND: release
+        CCB_CONFIRM_MAJOR_UPGRADE: "1"
       changed_when: true
   always:
     - name: Remove cloned Claude Code Bridge directory
