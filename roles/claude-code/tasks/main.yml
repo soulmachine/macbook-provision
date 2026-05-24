@@ -91,41 +91,59 @@
   failed_when: false
   when: ccb_installed.stat.exists
 
-# Clone + re-run install.sh is one uniform path for a fresh install, the
-# v5 -> v7 major jump, and ongoing updates alike — `ccb update` can't cover all
-# three (it needs ccb already present, and v5's updater is broken: its git path
-# wants a .git the install never has since install.sh rsyncs --exclude .git, and
-# its tarball path hardcoded the pre-rename "claude_code_bridge-main" vs the
-# renamed repo's "claude_codex_bridge-main"). Cloning to a dest we name avoids
-# all that. CCB_CONFIRM_MAJOR_UPGRADE=1 auto-accepts breaking major bumps that
-# install.sh otherwise refuses non-interactively. Idempotent: gated on a missing
-# install or `ccb version` reporting an update (matched case-insensitively — v5
-# prints "Update available", v7 release installs print "Release update
-# available"); after installing, `ccb version` reports "Up to date" and the
-# block is skipped.
+# Install from the official release tarball, NOT a git clone. As of CCB v7 a
+# git-checkout `install.sh install` runs in "source dev mode", which compiles the
+# Rust `ccb-agent-sidebar` helper locally and so demands a cargo/rustc toolchain
+# we don't provision (it errors: "Rust toolchain required to build
+# ccb-agent-sidebar"). CCB_SOURCE_KIND=release can't fix that — a clone ships
+# only wrapper scripts in bin/, no prebuilt binary. The release tarball, by
+# contrast, bundles a prebuilt universal bin/ccb-agent-sidebar, so install.sh
+# links it instead of building and needs no Rust. The tarball is also one uniform
+# path for fresh install, the v5 -> v7 major jump, and ongoing updates alike.
+# GitHub's /releases/latest/download/ URL always 302s to the newest stable asset,
+# so this auto-tracks releases without hitting the API. CCB_CONFIRM_MAJOR_UPGRADE=1
+# auto-accepts breaking major bumps install.sh otherwise refuses non-interactively.
+# Idempotent: gated on a missing install or `ccb version` reporting an update
+# (matched case-insensitively — covers both "Update available" and "Release update
+# available"); after installing, `ccb version` reports "Up to date" and the block
+# is skipped. Repo note: bfly123/claude_code_bridge was transferred to
+# SeemSeam/claude_codex_bridge; we target the canonical URL directly.
 - name: Install or update Claude Code Bridge
   when: >-
     not ccb_installed.stat.exists
     or 'update available' in (ccb_version.stdout | default('') | lower)
   block:
-    - name: Clone Claude Code Bridge repository # noqa: latest[git]
-      ansible.builtin.git:
-        repo: https://github.com/bfly123/claude_code_bridge.git
-        dest: /tmp/claude_code_bridge
-        version: HEAD
+    # Extract into a dedicated staging dir, NOT /tmp: the release tarball bundles
+    # a copy of itself (a `ccb-macos-universal.tar.gz` member at archive root), so
+    # unpacking alongside the source archive makes tar refuse to overwrite it.
+    # The download is named download.tar.gz so it can't collide with that member.
+    - name: Create Claude Code Bridge staging directory
+      ansible.builtin.file:
+        path: /tmp/ccb-release
+        state: directory
+        mode: "0755"
+    - name: Download Claude Code Bridge release tarball
+      ansible.builtin.get_url:
+        url: https://github.com/SeemSeam/claude_codex_bridge/releases/latest/download/ccb-macos-universal.tar.gz
+        dest: /tmp/ccb-release/download.tar.gz
+        mode: "0644"
         force: true
+    - name: Extract Claude Code Bridge release tarball
+      ansible.builtin.unarchive:
+        src: /tmp/ccb-release/download.tar.gz
+        dest: /tmp/ccb-release
+        remote_src: true
     - name: Run Claude Code Bridge installer
       ansible.builtin.command: ./install.sh install
       args:
-        chdir: /tmp/claude_code_bridge
+        chdir: /tmp/ccb-release/ccb-macos-universal
       environment:
-        CCB_SOURCE_KIND: release
         CCB_CONFIRM_MAJOR_UPGRADE: "1"
       changed_when: true
   always:
-    - name: Remove cloned Claude Code Bridge directory
+    - name: Remove Claude Code Bridge staging directory
       ansible.builtin.file:
-        path: /tmp/claude_code_bridge
+        path: /tmp/ccb-release
         state: absent
 
 - name: Disable Co-Authored-By in commits
