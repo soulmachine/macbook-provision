@@ -4,6 +4,11 @@
   args:
     creates: "{{ lookup('env', 'HOME') }}/.local/bin/claude"
 
+- name: Update Claude Code to the latest version
+  ansible.builtin.command: claude update
+  register: claude_code_self_update
+  changed_when: "'Claude Code is up to date' not in claude_code_self_update.stdout"
+
 - name: Add ccd alias to .zshrc
   ansible.builtin.lineinfile:
     path: "{{ lookup('env', 'HOME') }}/.zshrc"
