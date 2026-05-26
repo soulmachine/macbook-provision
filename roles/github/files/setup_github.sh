@@ -80,7 +80,10 @@ echo "Using email: $GITHUB_EMAIL"
 
 # ── Generate SSH key if absent ────────────────────────────────────────────────
 
-if [[ ! -f "$HOME/.ssh/id_ed25519.pub" && \
+# Skipped when GITHUB_SSH_KEY is set: the user is pointing at an existing key,
+# so the selection step below validates that key instead of generating one.
+if [[ -z "${GITHUB_SSH_KEY:-}" && \
+      ! -f "$HOME/.ssh/id_ed25519.pub" && \
       ! -f "$HOME/.ssh/id_ecdsa.pub"   && \
       ! -f "$HOME/.ssh/id_rsa.pub" ]]; then
     echo ""
@@ -92,38 +95,40 @@ if [[ ! -f "$HOME/.ssh/id_ed25519.pub" && \
 fi
 
 # ── Select SSH key ───────────────────────────────────────────────────────────
+# Set GITHUB_SSH_KEY to force a specific key (an absolute path, a ~/ path, or a
+# bare name resolved under ~/.ssh; the .pub suffix is optional). Otherwise
+# KEY_FILES is built in preference order (ed25519 > ecdsa > rsa) and we take the
+# most-preferred one, so the script stays non-interactive — it runs headless
+# under Ansible (no TTY to prompt on).
 
 echo ""
 echo "── Select SSH key ───────────────────────────────────────────────────────"
-KEY_FILES=()
-for f in "$HOME/.ssh/id_ed25519.pub" "$HOME/.ssh/id_ecdsa.pub" "$HOME/.ssh/id_rsa.pub"; do
-    [[ -f "$f" ]] && KEY_FILES+=("$f")
-done
-
-if [[ ${#KEY_FILES[@]} -eq 0 ]]; then
-    echo "Error: no SSH public key found." >&2
-    exit 1
-elif [[ ${#KEY_FILES[@]} -eq 1 ]]; then
-    PUBLIC_KEY_FILE="${KEY_FILES[0]}"
-    echo "Using key: $PUBLIC_KEY_FILE"
-else
-    echo "Multiple SSH keys found. Select one to register on GitHub:"
-    for i in "${!KEY_FILES[@]}"; do
-        echo "  $((i+1))) ${KEY_FILES[$i]}"
-    done
-    if [[ ! -t 0 ]]; then
-        echo "Error: multiple keys found but stdin is not a TTY — cannot prompt." >&2
-        echo "Re-run interactively or remove unwanted key files." >&2
+if [[ -n "${GITHUB_SSH_KEY:-}" ]]; then
+    key="${GITHUB_SSH_KEY/#\~\//$HOME/}"                          # expand a leading ~/
+    [[ "$key" != /* && "$key" != */* ]] && key="$HOME/.ssh/$key"  # bare name → ~/.ssh
+    [[ "$key" == *.pub ]] || key="${key}.pub"                     # .pub suffix optional
+    if [[ ! -f "$key" ]]; then
+        echo "Error: GITHUB_SSH_KEY='$GITHUB_SSH_KEY' resolved to '$key', which does not exist." >&2
         exit 1
     fi
-    while true; do
-        read -rp "Enter number [1-${#KEY_FILES[@]}]: " choice
-        if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#KEY_FILES[@]} )); then
-            PUBLIC_KEY_FILE="${KEY_FILES[$((choice-1))]}"
-            break
-        fi
-        echo "Invalid selection, try again."
+    PUBLIC_KEY_FILE="$key"
+    echo "Using key from GITHUB_SSH_KEY: $PUBLIC_KEY_FILE"
+else
+    KEY_FILES=()
+    for f in "$HOME/.ssh/id_ed25519.pub" "$HOME/.ssh/id_ecdsa.pub" "$HOME/.ssh/id_rsa.pub"; do
+        [[ -f "$f" ]] && KEY_FILES+=("$f")
     done
+
+    if [[ ${#KEY_FILES[@]} -eq 0 ]]; then
+        echo "Error: no SSH public key found." >&2
+        exit 1
+    fi
+
+    PUBLIC_KEY_FILE="${KEY_FILES[0]}"
+    if [[ ${#KEY_FILES[@]} -gt 1 ]]; then
+        echo "Multiple SSH keys found: ${KEY_FILES[*]}"
+        echo "Auto-selecting the preferred key by type (ed25519 > ecdsa > rsa); set GITHUB_SSH_KEY to override."
+    fi
     echo "Using key: $PUBLIC_KEY_FILE"
 fi
 

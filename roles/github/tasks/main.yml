@@ -23,6 +23,7 @@
       ansible.builtin.command: /tmp/setup_github.sh
       environment:
         GH_TOKEN: "{{ github_token }}"
+        GITHUB_SSH_KEY: "{{ lookup('env', 'GITHUB_SSH_KEY') }}"
       register: _github_setup
       changed_when: "'CHANGED' in _github_setup.stdout"
       no_log: true
