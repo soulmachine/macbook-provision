@@ -5,6 +5,7 @@
   become: false
   roles:
     - homebrew
+    - github
     - oh-my-zsh
     - direnv
     - uv
