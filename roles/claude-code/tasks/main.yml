@@ -51,6 +51,7 @@
     - thedotmack/claude-mem
     - forrestchang/andrej-karpathy-skills
     - swe-workflow/swe-workflow
+    - veelenga/claude-mermaid
   register: claude_code_mp
   changed_when: "'already' not in claude_code_mp.stdout"
 
@@ -63,6 +64,7 @@
     - claude-mem@thedotmack
     - andrej-karpathy-skills@karpathy-skills
     - swe-workflow@swe-workflow
+    - claude-mermaid@claude-mermaid
   when: "item not in claude_code_plugins_content"
   changed_when: true
 
@@ -75,6 +77,7 @@
     - claude-mem@thedotmack
     - andrej-karpathy-skills@karpathy-skills
     - swe-workflow@swe-workflow
+    - claude-mermaid@claude-mermaid
   register: claude_code_update
   changed_when: "'already' not in claude_code_update.stdout"
 
@@ -190,5 +193,6 @@
     - claude-mem@thedotmack
     - andrej-karpathy-skills@karpathy-skills
     - swe-workflow@swe-workflow
+    - claude-mermaid@claude-mermaid
   when: "item not in (claude_code_settings.enabledPlugins | default({}))"
   changed_when: true
