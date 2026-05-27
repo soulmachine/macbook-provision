@@ -13,6 +13,7 @@
     - go
     - nodejs
     - bun
+    - rust
     - jdk
     - claude-code
     - codex

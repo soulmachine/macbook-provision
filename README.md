@@ -79,6 +79,7 @@ ansible-playbook main.yml --check
 | go | Go 语言（通过 mise 安装） |
 | nodejs | Node.js（通过 mise 安装） |
 | bun | Bun JavaScript 运行时 |
+| rust | Rust 工具链（通过官方 rustup 安装；额外含 rust-src、rust-analyzer 组件） |
 | jdk | JDK（通过 mise 安装） |
 | gpg | GnuPG 加密工具 |
 | docker | Docker CLI |
