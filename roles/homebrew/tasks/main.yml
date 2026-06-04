@@ -1,4 +1,15 @@
 ---
+- name: Trust farion1231/ccswitch tap if present
+  ansible.builtin.shell: |
+    brew tap | grep -q 'farion1231/ccswitch' && brew trust farion1231/ccswitch || true
+  changed_when: false
+
+- name: Fix fd symlink conflict if present
+  ansible.builtin.command:
+    cmd: brew link --overwrite fd
+  changed_when: false
+  failed_when: false
+
 - name: Install common Homebrew packages
   community.general.homebrew:
     name:
