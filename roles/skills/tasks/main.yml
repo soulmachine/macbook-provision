@@ -13,3 +13,8 @@
   ansible.builtin.command:
     cmd: npx skills add soulmachine/claude-code-skills -g -y --all
     creates: "{{ lookup('env', 'HOME') }}/.agents/skills/mac-mini-as-headless-server"
+
+- name: Install last30days skill for all agents
+  ansible.builtin.command:
+    cmd: npx skills add mvanhorn/last30days-skill -g -y --all
+    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/last30days"
