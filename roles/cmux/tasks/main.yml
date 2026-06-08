@@ -1,0 +1,24 @@
+---
+- name: Tap manaflow-ai/cmux
+  community.general.homebrew_tap:
+    name: manaflow-ai/cmux
+    state: present
+
+- name: Install cmux
+  community.general.homebrew_cask:
+    name: cmux
+    state: present
+
+# cmux ships its CLI inside the app bundle; expose it on PATH via ~/.local/bin.
+# force: true mirrors `ln -sf` — it replaces an existing file/symlink at the dest.
+- name: Symlink cmux CLI into ~/.local/bin
+  ansible.builtin.file:
+    src: /Applications/cmux.app/Contents/Resources/bin/cmux
+    dest: "{{ lookup('env', 'HOME') }}/.local/bin/cmux"
+    state: link
+    force: true
+
+- name: Install cmux skills for all agents
+  ansible.builtin.command:
+    cmd: npx skills add manaflow-ai/cmux -g -y --all
+    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/cmux"
