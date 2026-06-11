@@ -11,7 +11,7 @@
 
 - name: Install soulmachine skills for all agents
   ansible.builtin.command:
-    cmd: npx skills add soulmachine/claude-code-skills -g -y --all
+    cmd: npx skills add soulmachine/skills -g -y --all
     creates: "{{ lookup('env', 'HOME') }}/.agents/skills/mac-mini-as-headless-server"
 
 - name: Install last30days skill for all agents
