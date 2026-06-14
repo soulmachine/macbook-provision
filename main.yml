@@ -26,6 +26,7 @@
     - intellij-idea
     - webstorm
     - openclaw
+    - claude-mem
     - cc-switch
     - beads
     - ralph-tui
