@@ -18,6 +18,7 @@
     - claude-code
     - codex
     - gemini
+    - opencode
     - skills
     - smux
     - playwright
