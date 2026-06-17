@@ -26,9 +26,9 @@ claude_mem_openclaw_marker: "{{ lookup('env', 'HOME') }}/.openclaw/extensions/cl
 claude_mem_ides:
   - name: claude-code
     marker: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
-  - name: gemini
+  - name: gemini-cli
     marker: "{{ lookup('env', 'HOME') }}/.gemini/settings.json"
-  - name: codex
+  - name: codex-cli
     marker: "{{ lookup('env', 'HOME') }}/.codex/config.toml"
   - name: opencode
     marker: "{{ lookup('env', 'HOME') }}/.config/opencode/plugins/claude-mem.js"
