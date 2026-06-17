@@ -1,0 +1,50 @@
+---
+# Apple's `container` — runs Linux containers in lightweight virtual machines
+# on the macOS Virtualization framework. Apple Silicon only (it boots an
+# aarch64 Linux guest), so the whole role is gated on arm64.
+#
+# Distribution: the official Apache-2.0 tool, shipped as the Homebrew *core*
+# formula `container` (no tap needed). The bottle installs the CLI plus the
+# apiserver and plugin helpers (vmnet networking, core-images,
+# machine-apiserver) under the Cellar, with the CLI shim at
+# /opt/homebrew/bin/container.
+
+- name: Ensure architecture fact is gathered
+  ansible.builtin.setup:
+    gather_subset: architecture
+  when: ansible_facts['architecture'] is not defined
+
+- name: Provision Apple container (Apple Silicon only)
+  when: ansible_facts['architecture'] == "arm64"
+  block:
+    - name: Install Apple container
+      community.general.homebrew:
+        name: container
+        state: latest
+
+    # `container system start` registers the apiserver and plugin helpers as
+    # launchd *user* agents (appRoot lives under ~/Library/Application Support),
+    # so no sudo priming is required. It isn't idempotent on its own —
+    # re-running re-prompts about the kernel — so we only start when the
+    # apiserver isn't already up. `container system status --format json`
+    # reports {"status":"running"} and exits 0 once services are live; when
+    # stopped it either exits non-zero or reports a non-running status, both
+    # of which the guard below treats as "needs starting".
+    - name: Check whether container services are running
+      ansible.builtin.command:
+        cmd: container system status --format json
+      register: _container_status
+      changed_when: false
+      failed_when: false
+
+    # --enable-kernel-install fetches the default Linux kernel non-interactively
+    # on first start (without the flag the command prompts). Later runs reuse
+    # the cached kernel. The `or` short-circuits so from_json is only evaluated
+    # when rc is 0 (i.e. stdout is valid JSON).
+    - name: Start container services and install the default kernel
+      ansible.builtin.command:
+        cmd: container system start --enable-kernel-install
+      changed_when: true
+      when: >
+        _container_status.rc != 0
+        or (_container_status.stdout | from_json).status != 'running'
