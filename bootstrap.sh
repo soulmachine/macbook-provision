@@ -1,20 +1,21 @@
 #!/bin/bash
 set -euo pipefail
 
-# Configure SUDO_ASKPASS so sudo subprocesses (e.g. Homebrew during the playbook)
-# can fetch the password from Keychain instead of popping a GUI prompt.
-if [[ ! -x "$HOME/.local/bin/sudo-askpass" ]]; then
-  if ! security find-generic-password -a "$USER" -s "sudo-askpass" -w >/dev/null 2>&1; then
-    echo "Storing sudo password in Keychain (one-time prompt)..."
-    security add-generic-password -a "$USER" -s "sudo-askpass" -w
+# Configure passwordless sudo so the playbook's sudo subprocesses (Homebrew casks,
+# the pkgutil/rm cleanup below, Ansible `become`) run unattended via a /etc/sudoers.d
+# drop-in. The first sudo call prompts once on a fresh Mac; every sudo after is passwordless.
+SUDOERS_FILE="/etc/sudoers.d/$(whoami)-nopasswd"
+if [[ ! -f "$SUDOERS_FILE" ]]; then
+  echo "Configuring passwordless sudo for $(whoami) (one-time password prompt)..."
+  echo "$(whoami) ALL=(ALL) NOPASSWD: ALL" | sudo tee "$SUDOERS_FILE" > /dev/null
+  sudo chmod 0440 "$SUDOERS_FILE"
+  if sudo visudo -cf "$SUDOERS_FILE"; then
+    echo "DONE: passwordless sudo enabled for $(whoami)"
+  else
+    sudo rm -f "$SUDOERS_FILE"
+    echo "REVERTED: validation failed, file removed" >&2
+    exit 1
   fi
-  mkdir -p "$HOME/.local/bin"
-  cat > "$HOME/.local/bin/sudo-askpass" <<'EOF'
-#!/bin/bash
-security find-generic-password -a "$USER" -s "sudo-askpass" -w
-EOF
-  chmod 700 "$HOME/.local/bin/sudo-askpass"
-  grep -q 'SUDO_ASKPASS=' ~/.zshrc 2>/dev/null || echo 'export SUDO_ASKPASS="$HOME/.local/bin/sudo-askpass"' >> ~/.zshrc
 fi
 
 # Prime the terminal's Automation (AppleEvents) permission. macOS shows a

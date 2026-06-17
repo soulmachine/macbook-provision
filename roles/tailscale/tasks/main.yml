@@ -13,29 +13,9 @@
 # state via `systemextensionsctl list` and only pauses if it's not yet
 # `[activated enabled]`.
 
-# Sudo priming for the cask install:
-#   `brew install --cask tailscale-app` is .pkg-based, so brew shells out to
-#   macOS's `installer` under `sudo` to expand root-owned payload into system
-#   locations: /Applications/Tailscale.app, the embedded `tailscaled` binary,
-#   and /Library/LaunchDaemons entries that an unprivileged user can't write.
-#   Brew invokes that `sudo` WITHOUT `-A`, and sudo only consults
-#   $SUDO_ASKPASS when `-A` is passed — so the askpass helper alone isn't
-#   enough. We prime sudo's timestamp via our own `sudo -A -v` first, and
-#   brew's later un-flagged sudo reuses the cached credential within sudo's
-#   default ~5 min window.
-- name: Check if Tailscale.app cask is already installed
-  ansible.builtin.command:
-    cmd: brew list --cask tailscale-app
-  register: _tailscale_cask_check
-  failed_when: false
-  changed_when: false
-
-- name: Prime sudo timestamp before brew cask install
-  ansible.builtin.command:
-    cmd: sudo -A -v
-  changed_when: false
-  when: _tailscale_cask_check.rc != 0
-
+# brew's .pkg-based cask install shells out to `sudo` internally (no `-A`) to
+# expand root-owned payload; passwordless sudo (configured by bootstrap.sh) lets
+# that succeed unattended, so no timestamp priming is needed.
 - name: Install Tailscale.app (standalone cask, NOT App Store)
   community.general.homebrew_cask:
     name: tailscale-app
@@ -142,7 +122,7 @@
     tailscale_api_token: "{{ lookup('env', 'TAILSCALE_API_ACCESS_TOKEN') }}"
   no_log: true
 
-- name: Disable key expiry when API token is provided
+- name: (Optional)Disable key expiry when API token is provided
   when:
     - tailscale_api_token | length > 0
     - tailscale_auth_key | length > 0

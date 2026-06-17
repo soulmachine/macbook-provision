@@ -14,11 +14,13 @@
 ./bootstrap.sh
 ```
 
-该脚本会自动安装 Xcode Command Line Tools、Homebrew、mise、Python 和 Ansible，并配置 `SUDO_ASKPASS`。
+该脚本会自动安装 Xcode Command Line Tools、Homebrew、mise、Python 和 Ansible，并配置免密 sudo（passwordless sudo）。
 
-> **关于 `SUDO_ASKPASS`**：`SUDO_ASKPASS` 是 `sudo` 标准的密码获取机制——指向一个辅助程序，`sudo` 在需要密码时会调用它读取密码，而非交互式提示用户输入。Ansible 中标注 `become: true` 的任务可以用 `sudo -v` 提前缓存凭证，但 Homebrew 等命令会派生子进程执行 `sudo`，子进程不继承父进程的缓存，仍会弹出 GUI 密码框打断 playbook。脚本会把密码存入 macOS Keychain，并生成 `~/.local/bin/sudo-askpass`——`sudo` 在需要密码时会调用该脚本从 Keychain 读取，使整个过程无需人工干预。
+> **关于免密 sudo**：Ansible 中标注 `become: true` 的任务，以及 Homebrew cask 等会在内部派生 `sudo` 子进程的命令，都需要 `sudo` 在无人值守时不弹密码框。脚本通过在 `/etc/sudoers.d/<用户名>-nopasswd` 写入一条 `<用户名> ALL=(ALL) NOPASSWD: ALL` 规则（权限 0440，写入后用 `visudo -cf` 校验，校验失败自动回滚）来实现免密 sudo，使整个 provisioning 过程无需人工输入密码。
 >
-> 首次运行会一次性提示输入 macOS 用户密码（写入 Keychain），随后 Keychain 弹窗确认权限时选 "Always Allow" 即可。`bootstrap.sh` 重复执行时会跳过已完成的配置。
+> 首次运行会一次性提示输入 macOS 用户密码（用于写入 sudoers 文件），之后所有 `sudo` 调用都免密。`bootstrap.sh` 重复执行时若该 drop-in 文件已存在会自动跳过。
+>
+> **安全提示**：`NOPASSWD: ALL` 意味着以当前用户身份运行的任何进程都能静默取得 root 权限。如需收紧，可改为仅对特定命令免密，或改用 Touch ID（`pam_tid`，但需交互、不适合无人值守）。
 
 ### 2. 运行 Playbook
 
