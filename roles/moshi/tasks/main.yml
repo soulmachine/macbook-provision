@@ -1,0 +1,45 @@
+---
+# moshi-hook — installed from the third-party tap rjyo/moshi and run as a
+# Homebrew background service.
+#
+# Reference: https://github.com/rjyo/homebrew-moshi
+#
+# `brew tap rjyo/moshi` maps to the GitHub repo rjyo/homebrew-moshi, so the
+# tap name passed to homebrew_tap is the short form `rjyo/moshi`.
+
+- name: Tap rjyo/moshi
+  community.general.homebrew_tap:
+    name: rjyo/moshi
+    state: present
+
+# Homebrew 6.x refuses to load formulae from third-party (non-official) taps
+# until they are trusted (HOMEBREW_REQUIRE_TAP_TRUST), so the install below
+# would fail with "Refusing to load formula ... from untrusted tap" unless we
+# trust the tap first. Trusted entries are recorded in trust.json; reading it
+# keeps this idempotent — `brew trust` only runs when rjyo/moshi isn't already
+# trusted. `brew trust --json v1` is read-only, hence changed_when: false.
+- name: Read Homebrew tap trust state
+  ansible.builtin.command:
+    cmd: brew trust --json v1
+  register: _moshi_trust
+  changed_when: false
+
+- name: Trust rjyo/moshi tap
+  ansible.builtin.command:
+    cmd: brew trust rjyo/moshi
+  when: >
+    'rjyo/moshi' not in
+    ((_moshi_trust.stdout | default('{}', true) | from_json).taps | default([]))
+
+- name: Install moshi-hook
+  community.general.homebrew:
+    name: moshi-hook
+    state: latest
+
+# `state: present` is the idempotent equivalent of `brew services start
+# moshi-hook` — the module inspects the current service state and only starts
+# it when it isn't already running, so re-runs report no change.
+- name: Start moshi-hook service
+  community.general.homebrew_services:
+    name: moshi-hook
+    state: present
