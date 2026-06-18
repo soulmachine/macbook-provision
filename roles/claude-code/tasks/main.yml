@@ -79,7 +79,13 @@
     - swe-workflow@swe-workflow
     - claude-mermaid@claude-mermaid
   register: claude_code_update
-  changed_when: "'already' not in claude_code_update.stdout"
+  # Two no-op outcomes: versioned plugins print "already at the latest version";
+  # unversioned ones (version "unknown", e.g. frontend-design/feature-dev) can't
+  # report a version so they always print "refreshed from source" instead. Neither
+  # is a real change — treat both as unchanged so re-runs report changed=0.
+  changed_when:
+    - "'already' not in claude_code_update.stdout"
+    - "'refreshed from source' not in claude_code_update.stdout"
 
 - name: Check if Claude Code Bridge is installed
   ansible.builtin.stat:
