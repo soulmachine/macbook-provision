@@ -1,8 +1,9 @@
 ---
-- name: Trust farion1231/ccswitch tap if present
-  ansible.builtin.shell: |
-    brew tap | grep -q 'farion1231/ccswitch' && brew trust farion1231/ccswitch || true
-  changed_when: false
+# NOTE: third-party taps (farion1231/ccswitch, multica-ai/tap, rjyo/moshi, ...)
+# are tapped, trusted, and installed by their own roles (cc-switch, multica-cli,
+# moshi). Don't install user/tap/formula packages here — brew auto-taps them and,
+# under HOMEBREW_REQUIRE_TAP_TRUST, refuses the untrusted formula, failing this
+# role before the owning role's guarded `brew trust` step ever runs.
 
 - name: Fix fd symlink conflict if present
   ansible.builtin.command:
@@ -25,7 +26,6 @@
       - ffmpeg
       - gh
       - gnupg
-      - multica-ai/tap/multica
     state: latest
 
 - name: Install Homebrew cask apps

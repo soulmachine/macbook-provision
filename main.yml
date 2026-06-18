@@ -30,7 +30,8 @@
     - cc-switch
     - beads
     - ralph-tui
-    - paseo
+    - role: paseo
+      tags: [agent-multiplexer]
     - ghostty
     - cmux
     - obsidian

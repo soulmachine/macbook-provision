@@ -4,6 +4,23 @@
     name: farion1231/ccswitch
     state: present
 
+# Homebrew 6.x refuses to load casks/formulae from untrusted third-party taps
+# (HOMEBREW_REQUIRE_TAP_TRUST), so the install below fails on a fresh host with
+# "Refusing to load ... from untrusted tap" unless the tap is trusted first.
+# Guarded against trust.json to stay idempotent (same pattern as the moshi role).
+- name: Read Homebrew tap trust state
+  ansible.builtin.command:
+    cmd: brew trust --json v1
+  register: _ccswitch_trust
+  changed_when: false
+
+- name: Trust farion1231/ccswitch
+  ansible.builtin.command:
+    cmd: brew trust farion1231/ccswitch
+  when: >
+    'farion1231/ccswitch' not in
+    ((_ccswitch_trust.stdout | default('{}', true) | from_json).taps | default([]))
+
 - name: Install cc-switch
   community.general.homebrew_cask:
     name: cc-switch

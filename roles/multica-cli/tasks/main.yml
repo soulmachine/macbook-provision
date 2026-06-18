@@ -4,6 +4,23 @@
     name: multica-ai/tap
     state: present
 
+# Homebrew 6.x refuses to load formulae from untrusted third-party taps
+# (HOMEBREW_REQUIRE_TAP_TRUST), so the install below fails on a fresh host with
+# "Refusing to load formula ... from untrusted tap" unless the tap is trusted
+# first. Guarded against trust.json to stay idempotent (same pattern as moshi).
+- name: Read Homebrew tap trust state
+  ansible.builtin.command:
+    cmd: brew trust --json v1
+  register: _multica_trust
+  changed_when: false
+
+- name: Trust multica-ai/tap
+  ansible.builtin.command:
+    cmd: brew trust multica-ai/tap
+  when: >
+    'multica-ai/tap' not in
+    ((_multica_trust.stdout | default('{}', true) | from_json).taps | default([]))
+
 - name: Install multica CLI
   community.general.homebrew:
     name: multica-ai/tap/multica
