@@ -38,6 +38,7 @@
   register: _tailscale_netext_check
   failed_when: false
   changed_when: false
+  check_mode: false # read-only probe; run in --check so the guard below has a real rc
 
 - name: Prompt user to enable the Tailscale Network Extension
   when: _tailscale_netext_check.rc != 0
@@ -80,6 +81,7 @@
       register: _tailscale_status
       changed_when: false
       failed_when: false
+      check_mode: false # read-only probe; run in --check so the from_json guard has real JSON
 
     - name: Remind user that admin approval may be required
       ansible.builtin.debug:
@@ -131,6 +133,7 @@
       ansible.builtin.command: tailscale status --json
       register: _tailscale_status_for_id
       changed_when: false
+      check_mode: false # read-only probe; run in --check so the from_json below has real JSON
 
     - name: Extract this node's stable device ID
       ansible.builtin.set_fact:

@@ -13,6 +13,7 @@
     cmd: brew trust --json v1
   register: _multica_trust
   changed_when: false
+  check_mode: false # read-only probe; run in --check so the trust guard sees real state
 
 - name: Trust multica-ai/tap
   ansible.builtin.command:

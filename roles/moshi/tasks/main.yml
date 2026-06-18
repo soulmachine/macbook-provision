@@ -14,6 +14,7 @@
     cmd: brew --repository
   register: _brew_repo
   changed_when: false
+  check_mode: false # read-only probe; run in --check so the tap's creates path is real
 
 - name: Tap rjyo/moshi
   ansible.builtin.command:
@@ -29,6 +30,7 @@
     cmd: brew trust --json v1
   register: _moshi_trust
   changed_when: false
+  check_mode: false # read-only probe; run in --check so the trust guard sees real state
 
 - name: Trust rjyo/moshi
   ansible.builtin.command:
@@ -44,6 +46,7 @@
   register: _moshi_installed
   changed_when: false
   failed_when: false
+  check_mode: false # read-only probe; run in --check so the install guard sees real state
 
 - name: Install moshi-hook
   ansible.builtin.command:
@@ -57,6 +60,7 @@
   register: _moshi_service
   changed_when: false
   failed_when: false
+  check_mode: false # read-only probe; run in --check so the service guard sees real state
 
 - name: Start moshi-hook service
   ansible.builtin.command:
