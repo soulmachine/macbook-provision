@@ -4,7 +4,15 @@
   register: playwright_cli_install
   changed_when: "'added' in playwright_cli_install.stdout or 'updated' in playwright_cli_install.stdout"
 
+# `playwright-cli install --skills` initializes the skill into a `.claude/skills/`
+# directory relative to its working directory. Pin cwd to $HOME so it installs to
+# ~/.claude/skills/playwright-cli (user-global, alongside the other agent skills)
+# instead of polluting whatever directory the playbook happens to be invoked from.
+# `creates` skips the shell-out once the skill is present, keeping the task idempotent.
 - name: Install Playwright CLI skills
   ansible.builtin.command: playwright-cli install --skills
+  args:
+    chdir: "{{ lookup('env', 'HOME') }}"
+    creates: "{{ lookup('env', 'HOME') }}/.claude/skills/playwright-cli"
   register: playwright_cli_skills
-  changed_when: "'downloading' in playwright_cli_skills.stdout | lower"
+  changed_when: "'downloading' in (playwright_cli_skills.stdout | default('') | lower)"
