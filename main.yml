@@ -38,5 +38,12 @@
     - multica-cli
     - tailscale
     - apple-container
-    - moshi
+    - role: moshi
+      tags: [agent-multiplexer]
+    - role: zellij
+      tags: [terminal-multiplexer]
+    - role: tmux
+      tags: [terminal-multiplexer]
+    - role: herdr
+      tags: [terminal-multiplexer]
 

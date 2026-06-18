@@ -1,0 +1,11 @@
+---
+# herdr — multiplexer that lives in your terminal. Shipped as the Homebrew core
+# formula `herdr` (no tap needed). https://herdr.dev
+#
+# NOTE: a non-Homebrew herdr may already exist at ~/.local/bin/herdr, which
+# precedes /opt/homebrew/bin on PATH and would shadow this brew-installed copy.
+
+- name: Install herdr
+  community.general.homebrew:
+    name: herdr
+    state: latest

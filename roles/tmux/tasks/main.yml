@@ -1,0 +1,12 @@
+---
+# tmux — terminal multiplexer. Shipped as the Homebrew core formula `tmux`
+# (no tap needed). https://github.com/tmux/tmux
+#
+# NOTE: tmux is also listed in the `homebrew` role's common-packages task, so
+# it may already be installed by the time this role runs. Both use state:
+# latest, so the duplication is harmless (the later task is a no-op).
+
+- name: Install tmux
+  community.general.homebrew:
+    name: tmux
+    state: latest

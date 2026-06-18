@@ -13,7 +13,6 @@
 - name: Install common Homebrew packages
   community.general.homebrew:
     name:
-      - tmux
       - git
       - curl
       - wget

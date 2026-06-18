@@ -1,0 +1,8 @@
+---
+# zellij — pluggable terminal workspace / multiplexer (Rust). Shipped as the
+# Homebrew core formula `zellij` (no tap needed). https://zellij.dev
+
+- name: Install zellij
+  community.general.homebrew:
+    name: zellij
+    state: latest
