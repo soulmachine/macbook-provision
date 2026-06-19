@@ -9,3 +9,37 @@
   community.general.homebrew:
     name: herdr
     state: latest
+
+# herdr ships its agent skill as a single self-contained SKILL.md at the repo
+# root (frontmatter `name: herdr`). `npx skills add` would copy the entire
+# repository (Rust sources, vendored deps, website) into the skill dir because
+# the SKILL.md isn't in a dedicated skill subfolder, so fetch just the file into
+# ~/.agents/skills/herdr/ instead. force re-checks the upstream each run but only
+# reports changed when the doc actually changes, keeping the task idempotent.
+- name: Ensure ~/.agents/skills/herdr directory exists
+  ansible.builtin.file:
+    path: "{{ lookup('env', 'HOME') }}/.agents/skills/herdr"
+    state: directory
+    mode: "0755"
+
+- name: Install herdr skill to ~/.agents/skills
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/ogulcancelik/herdr/master/SKILL.md
+    dest: "{{ lookup('env', 'HOME') }}/.agents/skills/herdr/SKILL.md"
+    mode: "0644"
+    force: true
+
+# Bridge the universal skill into Claude Code's per-agent skills dir with the
+# same symlink `npx skills add -g` creates, so Claude loads it too.
+- name: Ensure ~/.claude/skills directory exists
+  ansible.builtin.file:
+    path: "{{ lookup('env', 'HOME') }}/.claude/skills"
+    state: directory
+    mode: "0755"
+
+- name: Symlink ~/.claude/skills/herdr to ~/.agents/skills/herdr
+  ansible.builtin.file:
+    src: "{{ lookup('env', 'HOME') }}/.agents/skills/herdr"
+    dest: "{{ lookup('env', 'HOME') }}/.claude/skills/herdr"
+    state: link
+    force: true
