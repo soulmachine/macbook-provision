@@ -11,6 +11,13 @@
     global: true
     state: latest
 
+# `openclaw update` updates plugins + refreshes the gateway. The plugin
+# summary ("N updated") lands on stdout; "0 updated" means nothing changed.
+- name: Update OpenClaw to the latest version
+  ansible.builtin.command: openclaw update
+  register: openclaw_self_update
+  changed_when: "'0 updated' not in (openclaw_self_update.stdout + openclaw_self_update.stderr)"
+
 - name: Read current OpenClaw config
   ansible.builtin.shell: |
     echo "tools.profile=$(openclaw config get tools.profile 2>/dev/null)"
