@@ -3,32 +3,30 @@
 # agents and the LLM provider, cutting the tokens sent upstream by 60–95%.
 # https://github.com/chopratejas/headroom
 #
-# pip --user puts the `headroom` script in ~/.local/bin, which bootstrap.sh and
-# the oh-my-zsh role keep on PATH. The `[all]` extra pulls in the memory +
-# code-graph dependencies, so the `--memory`/`--code-graph` flags work when you
-# later run `headroom wrap claude --memory --code-graph` yourself.
-- name: Install Headroom CLI (headroom-ai with all extras)
-  ansible.builtin.pip:
-    name: "headroom-ai[all]"
-    executable: pip3
-    extra_args: --user
-
-# `headroom wrap openclaw` is safe to run here. Unlike `wrap claude`/`wrap codex`
-# — which start the proxy and then launch the agent's interactive TUI in the
-# foreground (wrap.py: `subprocess.run([claude_bin, ...])`), blocking the
-# playbook forever — for OpenClaw `wrap` instead installs + configures the
-# Headroom plugin, sets the `plugins.slots.contextEngine` slot, restarts the
-# gateway, and RETURNS. It needs the `openclaw` CLI, so this role depends on the
-# `openclaw` role (see meta/main.yml). Gated on the contextEngine slot so the plugin
-# is installed (and the gateway bounced) only on the first run.
-- name: Check whether OpenClaw already uses Headroom as its context engine
-  ansible.builtin.command: openclaw config get plugins.slots.contextEngine
-  register: headroom_openclaw_ctx
+# Installed with `uv tool` (NOT pip/pipx). headroom-ai pulls in litellm, which
+# caps at Requires-Python <3.14; this repo's mise Python is 3.14, so a plain
+# pip install can't resolve it. `uv tool install` auto-selects a compatible
+# managed Python (3.12/3.13) for the isolated tool env, so no Python pin is
+# needed. The `headroom` shim lands in ~/.local/bin (kept on PATH by
+# bootstrap.sh + the oh-my-zsh role). `[all]` pulls in the memory + code-graph
+# deps so `headroom wrap claude --memory --code-graph` works when you run it.
+- name: Check whether Headroom is already installed via uv
+  ansible.builtin.command: uv tool list
+  register: headroom_uv_tools
   changed_when: false
-  failed_when: false
   check_mode: false
 
-- name: Wrap OpenClaw with Headroom (install plugin + set contextEngine slot)
-  ansible.builtin.command: headroom wrap openclaw
-  when: "'headroom' not in (headroom_openclaw_ctx.stdout | default(''))"
+- name: Install Headroom CLI (headroom-ai[all]) via uv tool
+  ansible.builtin.command: uv tool install "headroom-ai[all]"
+  when: "'headroom-ai' not in headroom_uv_tools.stdout"
   changed_when: true
+
+# NOTE: `headroom wrap openclaw` is intentionally NOT run here. headroom 0.26.0
+# is incompatible with the current openclaw CLI: it installs the plugin under
+# the wrong npm name (`headroom-ai/openclaw` vs the real `headroom-openclaw`)
+# AND writes a plugin config (startupTimeoutMs, gatewayProviderIds) that
+# openclaw now rejects as invalid — an upstream bug with no role-level fix.
+# Because the wrap can never succeed, it would run and fail on every play
+# (never setting the contextEngine slot), so it cannot be made idempotent.
+# To wrap manually once upstream is fixed: `headroom wrap openclaw`. Re-add a
+# task here gated on `openclaw config get plugins.slots.contextEngine`.
