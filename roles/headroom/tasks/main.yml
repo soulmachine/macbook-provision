@@ -9,7 +9,7 @@
 # managed Python (3.12/3.13) for the isolated tool env, so no Python pin is
 # needed. The `headroom` shim lands in ~/.local/bin (kept on PATH by
 # bootstrap.sh + the oh-my-zsh role). `[all]` pulls in the memory + code-graph
-# deps so `headroom wrap claude --memory --code-graph` works when you run it.
+# deps for `headroom wrap claude --memory --code-graph`.
 - name: Check whether Headroom is already installed via uv
   ansible.builtin.command: uv tool list
   register: headroom_uv_tools
@@ -21,6 +21,17 @@
   when: "'headroom-ai' not in headroom_uv_tools.stdout"
   changed_when: true
 
-# Install-only: `headroom wrap openclaw` is intentionally omitted — headroom
-# 0.26.0 is incompatible with the current openclaw CLI (see git history). Run
-# `headroom wrap openclaw` manually once upstream fixes it.
+# `headroom wrap <agent>` starts the proxy and then launches the agent's
+# interactive TUI in the foreground, so it can't be a playbook task (it would
+# block the play forever). Expose the wraps as aliases instead — run them to
+# start a wrapped session. (`wrap openclaw` is omitted: incompatible with the
+# current openclaw CLI as of headroom 0.26.0 — see git history.)
+- name: Add Headroom wrap aliases to .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    line: "{{ item.line }}"
+    regexp: "{{ item.regexp }}"
+    state: present
+  loop:
+    - { regexp: '^alias cch=', line: 'alias cch="headroom wrap claude --memory --code-graph"' }
+    - { regexp: '^alias cxh=', line: 'alias cxh="headroom wrap codex"' }
