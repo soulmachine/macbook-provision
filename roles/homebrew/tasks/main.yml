@@ -32,7 +32,6 @@
   community.general.homebrew_cask:
     name:
       - claude
-      - codex
       - gemini
       - pearcleaner
       - pycharm

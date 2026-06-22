@@ -4,10 +4,3 @@
     name: "@openai/codex"
     global: true
     state: latest
-
-# `codex update` self-updates the codex binary (it shells out to
-# `brew upgrade --cask codex`). "already installed" lands on stderr.
-- name: Update Codex to the latest version
-  ansible.builtin.command: codex update
-  register: codex_self_update
-  changed_when: "'latest version is already installed' not in (codex_self_update.stdout + codex_self_update.stderr)"

@@ -21,12 +21,6 @@
   when: "'headroom-ai' not in headroom_uv_tools.stdout"
   changed_when: true
 
-# NOTE: `headroom wrap openclaw` is intentionally NOT run here. headroom 0.26.0
-# is incompatible with the current openclaw CLI: it installs the plugin under
-# the wrong npm name (`headroom-ai/openclaw` vs the real `headroom-openclaw`)
-# AND writes a plugin config (startupTimeoutMs, gatewayProviderIds) that
-# openclaw now rejects as invalid — an upstream bug with no role-level fix.
-# Because the wrap can never succeed, it would run and fail on every play
-# (never setting the contextEngine slot), so it cannot be made idempotent.
-# To wrap manually once upstream is fixed: `headroom wrap openclaw`. Re-add a
-# task here gated on `openclaw config get plugins.slots.contextEngine`.
+# Install-only: `headroom wrap openclaw` is intentionally omitted — headroom
+# 0.26.0 is incompatible with the current openclaw CLI (see git history). Run
+# `headroom wrap openclaw` manually once upstream fixes it.
