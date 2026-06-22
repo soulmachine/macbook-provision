@@ -11,12 +11,19 @@
     global: true
     state: latest
 
-# `openclaw update` updates plugins + refreshes the gateway. The plugin
-# summary ("N updated") lands on stdout; "0 updated" means nothing changed.
+# `openclaw update` updates plugins. Use --no-restart: restarting the managed
+# gateway fails when its port is still busy ("gateway port ... still busy after
+# LaunchAgent stop"), which blocked the play on hosts with a running gateway.
+# --yes keeps it non-interactive. failed_when: false makes it best-effort — the
+# npm install above already updates the CLI, so a gateway/plugin hiccup must not
+# block the rest of the play. "0 updated" on stdout means nothing changed.
 - name: Update OpenClaw to the latest version
-  ansible.builtin.command: openclaw update
+  ansible.builtin.command: openclaw update --no-restart --yes
   register: openclaw_self_update
-  changed_when: "'0 updated' not in (openclaw_self_update.stdout + openclaw_self_update.stderr)"
+  changed_when:
+    - openclaw_self_update.rc == 0
+    - "'0 updated' not in openclaw_self_update.stdout"
+  failed_when: false
 
 - name: Read current OpenClaw config
   ansible.builtin.shell: |
