@@ -4,3 +4,10 @@
     name: "@openai/codex"
     global: true
     state: latest
+
+- name: Add codex-yolo alias to .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    line: 'alias codex-yolo="codex --yolo -c model_reasoning_effort=xhigh"'
+    regexp: '^alias codex-yolo='
+    state: present
