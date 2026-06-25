@@ -27,6 +27,15 @@
       register: _github_setup
       changed_when: "'CHANGED' in _github_setup.stdout"
       no_log: true
+  rescue:
+    - name: Warn that GitHub setup failed (non-fatal — play continues)
+      ansible.builtin.debug:
+        msg:
+          - "GitHub setup script failed — continuing anyway (non-fatal)."
+          - "Most likely GH_TOKEN is expired/invalid or missing scopes (admin:ssh_signing_key, admin:public_key, user:email, read:user)."
+          - "SSH auth + signing keys are already on GitHub, so git-over-SSH and SSH commit signing keep working without the PAT."
+          - "Diagnose: 'source .env && gh api -i /user' and look for HTTP 401 / x-oauth-scopes."
+          - "Fix: regenerate the PAT, update GH_TOKEN in .env, then re-run. (Or run with GH_TOKEN unset to skip this role.)"
 
 - name: Skip GitHub setup (GH_TOKEN not set)
   ansible.builtin.debug:
