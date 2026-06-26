@@ -22,22 +22,15 @@
     creates: "{{ _brew_repo.stdout }}/Library/Taps/rjyo/homebrew-moshi"
 
 # brew trust rjyo/moshi
-# Homebrew 6.x refuses to load formulae from untrusted third-party taps
-# (HOMEBREW_REQUIRE_TAP_TRUST), so this must run before install. Trusted entries
-# live in trust.json; reading it keeps the trust step idempotent.
-- name: Read Homebrew tap trust state
-  ansible.builtin.command:
-    cmd: brew trust --json v1
-  register: _moshi_trust
-  changed_when: false
-  check_mode: false # read-only probe; run in --check so the trust guard sees real state
-
+# Homebrew refuses to load formulae from untrusted third-party taps
+# (HOMEBREW_REQUIRE_TAP_TRUST), so this must run before install. `brew trust
+# --tap` is idempotent (rc=0 whether or not already trusted); keying changed_when
+# off its output reports changed only on the run that adds the tap.
 - name: Trust rjyo/moshi
   ansible.builtin.command:
-    cmd: brew trust rjyo/moshi
-  when: >
-    'rjyo/moshi' not in
-    ((_moshi_trust.stdout | default('{}', true) | from_json).taps | default([]))
+    cmd: brew trust --tap rjyo/moshi
+  register: _moshi_trust
+  changed_when: "'Already trusted tap' not in _moshi_trust.stdout"
 
 # brew install moshi-hook
 - name: Check whether moshi-hook is installed
