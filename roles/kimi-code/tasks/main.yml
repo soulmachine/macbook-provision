@@ -7,3 +7,10 @@
   ansible.builtin.shell: curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash
   args:
     creates: "{{ lookup('env', 'HOME') }}/.kimi-code/bin/kimi"
+
+- name: Add kimi-yolo alias to .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    line: 'alias kimi-yolo="kimi --yolo"'
+    regexp: '^alias kimi-yolo='
+    state: present
