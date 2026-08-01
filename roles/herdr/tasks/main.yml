@@ -10,32 +10,21 @@
     name: herdr
     state: latest
 
-# herdr ships its agent skill as a single self-contained SKILL.md at the repo
-# root (frontmatter `name: herdr`). `npx skills add` would copy the entire
-# repository (Rust sources, vendored deps, website) into the skill dir because
-# the SKILL.md isn't in a dedicated skill subfolder, so fetch just the file into
-# ~/.agents/skills/herdr/ instead. force re-checks the upstream each run but only
-# reports changed when the doc actually changes, keeping the task idempotent.
-- name: Ensure ~/.agents/skills/herdr directory exists
-  ansible.builtin.file:
-    path: "{{ lookup('env', 'HOME') }}/.agents/skills/herdr"
-    state: directory
-    mode: "0755"
+# Two tasks keep this both idempotent and fresh: `add` installs once (guarded by
+# `creates`, so it no-ops once the skill exists), and `update` re-checks upstream
+# every run — reporting `changed` only when the SKILL.md actually moves. `skills
+# update` prints "…up to date" (on both stdout and stderr) when nothing changed,
+# so keying `changed_when` off that phrase keeps unchanged runs green and quiet.
+- name: Install the herdr skill (teaches the agent to control Herdr from inside a Herdr pane)
+  ansible.builtin.command:
+    cmd: npx skills add herdrdev/herdr --skill herdr -g -y
+    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/herdr"
 
-- name: Install herdr skill to ~/.agents/skills
-  ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/ogulcancelik/herdr/master/SKILL.md
-    dest: "{{ lookup('env', 'HOME') }}/.agents/skills/herdr/SKILL.md"
-    mode: "0644"
-    force: true
-
-# Bridge the universal skill into Claude Code's per-agent skills dir with the
-# same symlink `npx skills add -g` creates, so Claude loads it too.
-- name: Ensure ~/.claude/skills directory exists
-  ansible.builtin.file:
-    path: "{{ lookup('env', 'HOME') }}/.claude/skills"
-    state: directory
-    mode: "0755"
+- name: Keep the herdr skill up to date from upstream
+  ansible.builtin.command:
+    cmd: npx skills update herdr -g -y
+  register: herdr_update
+  changed_when: "'up to date' not in (herdr_update.stdout + herdr_update.stderr)"
 
 - name: Symlink ~/.claude/skills/herdr to ~/.agents/skills/herdr
   ansible.builtin.file:
