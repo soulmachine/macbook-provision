@@ -1,9 +1,11 @@
 ---
+# The cask, not npm: an npm global install lands inside the active node
+# prefix and silently disappears whenever mise replaces the node version.
+# `state: upgraded` installs when missing and upgrades on every run.
 - name: Install Codex CLI
-  community.general.npm:
-    name: "@openai/codex"
-    global: true
-    state: latest
+  community.general.homebrew_cask:
+    name: codex
+    state: upgraded
 
 - name: Add codex-yolo alias to .zshrc
   ansible.builtin.lineinfile:
