@@ -44,3 +44,17 @@
     dest: "{{ lookup('env', 'HOME') }}/.pi/agent/"
     mode: "0644"
     directory_mode: "0755"
+
+- name: Add pi-yolo alias to .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    line: 'alias pi-yolo="pi --thinking=max --approve"'
+    regexp: '^alias pi-yolo='
+    state: present
+
+- name: Add pi-yolo-kimi alias to .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    line: 'alias pi-yolo-kimi="pi --thinking=max --approve --model k3"'
+    regexp: '^alias pi-yolo-kimi='
+    state: present
