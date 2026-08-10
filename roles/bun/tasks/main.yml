@@ -3,3 +3,16 @@
   ansible.builtin.shell: curl -fsSL https://bun.com/install | bash
   args:
     creates: "{{ lookup('env', 'HOME') }}/.bun/bin/bun"
+
+# `bun upgrade` replaces the binary at its own location, so the full path
+# matters: PATH may resolve a different bun (e.g. the one bundled with mise's
+# node). On the latest version it exits 0 with "Congrats! You're already on
+# the latest version of Bun" on stderr. ignore_errors: the version check hits
+# the GitHub API unauthenticated and gets rate-limited (HTTPForbidden) often
+# enough that a failed upgrade check must not abort the whole play — bun
+# itself is guaranteed present by the install task above.
+- name: Upgrade bun
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/bun upgrade"
+  register: bun_upgrade
+  changed_when: "'already on the latest version' not in bun_upgrade.stderr + bun_upgrade.stdout"
+  ignore_errors: true
