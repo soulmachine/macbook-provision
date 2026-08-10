@@ -1,0 +1,44 @@
+---
+# Hermes — Nous Research's personal AI agent. https://github.com/NousResearch/hermes-agent
+#
+# The official installer clones the repo to ~/.hermes/hermes-agent, builds a
+# uv-managed venv beside it, installs Playwright/Chromium and Node deps, then
+# writes `hermes` / `hermes-acp` launchers into ~/.local/bin — appending that
+# dir to .zshrc itself (grep-guarded), so no PATH task is needed here.
+#
+# `--skip-setup` is required for unattended runs: the setup wizard reads from
+# /dev/tty rather than stdin, so under ansible-playbook it renders its prompts
+# into Ansible's captured stdout and then blocks the play forever waiting on
+# input nobody can see. Run `hermes setup` interactively once afterwards to
+# configure the model provider and any messaging gateways.
+- name: Install hermes # noqa: command-instead-of-module risky-shell-pipe
+  ansible.builtin.shell: >-
+    curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-setup
+  args:
+    creates: "{{ lookup('env', 'HOME') }}/.local/bin/hermes"
+
+# Two tasks keep this both idempotent and fresh: `creates:` above installs once,
+# and `hermes update` re-checks upstream every run. Use `update --check` for the
+# probe, not `hermes version` — the latter's update status is cached for 6 hours
+# in ~/.hermes/.update_check, while `--check` does a live `git fetch`.
+#
+# Gate on the POSITIVE sentinel. `update --check` prints "⚕ Update available…"
+# only when the checkout is actually behind; it prints "✓ Already up to date."
+# when converged, and exits 1 with a "✗ …" line on every failure branch
+# (network error, auth failure, failed fetch, branch not found). A negated
+# "not up to date" test would fire on all of those and burn a full reinstall on
+# every converged run, so `failed_when: false` swallows the transient ones and
+# the apply task simply doesn't trigger.
+- name: Check whether a hermes update is available
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.local/bin/hermes update --check"
+  register: hermes_update_check
+  changed_when: false
+  failed_when: false
+
+# `hermes update` is safe unattended: its two prompts (restore stashed local
+# changes, add an 'upstream' remote for forks) read stdin — not /dev/tty — and
+# both catch EOFError, so under Ansible they fall through to their safe default.
+- name: Update hermes to the latest version
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.local/bin/hermes update"
+  when: "'Update available' in hermes_update_check.stdout"
+  changed_when: true
