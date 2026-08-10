@@ -32,6 +32,7 @@
     - cc-switch
     - beads
     - ralph-tui
+    - omp
     - role: paseo
       tags: [agent-multiplexer]
     - ghostty
