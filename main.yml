@@ -33,6 +33,7 @@
     - beads
     - ralph-tui
     - omp
+    - pi
     - role: paseo
       tags: [agent-multiplexer]
     - ghostty

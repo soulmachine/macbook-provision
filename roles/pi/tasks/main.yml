@@ -1,0 +1,46 @@
+---
+# `--ignore-scripts` skips the package's postinstall (a native-binary download
+# helper); pi runs fine without it and bun blocks it by default anyway.
+- name: Install pi coding agent
+  ansible.builtin.command: bun add -g --ignore-scripts @earendil-works/pi-coding-agent
+  environment:
+    PATH: "{{ lookup('env', 'HOME') }}/.bun/bin:{{ lookup('env', 'PATH') }}"
+  args:
+    creates: "{{ lookup('env', 'HOME') }}/.bun/bin/pi"
+
+- name: Check installed pi version
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/pi --version"
+  register: pi_version_before
+  changed_when: false
+
+# `@latest` on purpose: the recorded dependency range (^x.y.z) would keep
+# `bun update -g` from ever crossing a major version. Bun prints the same
+# "installed ...@<version>" line whether or not anything changed, so change
+# is detected by comparing against the version installed before.
+- name: Update pi coding agent
+  ansible.builtin.command: >-
+    {{ lookup('env', 'HOME') }}/.bun/bin/bun add -g --ignore-scripts
+    @earendil-works/pi-coding-agent@latest
+  register: pi_update
+  changed_when: >-
+    'installed @earendil-works/pi-coding-agent@' ~ (pi_version_before.stdout | trim)
+    not in pi_update.stdout
+
+# Mirrors https://github.com/kunchenguid/dotfiles/tree/main/home/.pi/agent,
+# minus the `calm` extension. The author's rationale for each setting is at
+# https://blog.kunchenguid.com/p/kuns-pi-agent-config.
+# Extensions are auto-discovered from every *.js /
+# *.ts file and */index.{js,ts} under ~/.pi/agent/extensions, so leaving the
+# `calm/` directory out of files/ is the whole of "without calm" — no
+# settings.json entry references it.
+#
+# This is a merge, not a sync: `copy` only writes the files shipped here, so
+# the sibling ~/.pi/agent/skills tree (populated by the `skills` role) and
+# pi's own runtime state are left alone. It does overwrite settings.json on
+# every run, so tweaks made in-app via `/settings` belong in files/ to survive.
+- name: Install pi agent configuration
+  ansible.builtin.copy:
+    src: agent/
+    dest: "{{ lookup('env', 'HOME') }}/.pi/agent/"
+    mode: "0644"
+    directory_mode: "0755"
