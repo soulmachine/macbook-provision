@@ -1,6 +1,7 @@
 ---
+# The brew formula, not npm: an npm global install lands inside the active
+# node prefix and silently disappears whenever mise replaces the node version.
 - name: Install Gemini CLI
-  community.general.npm:
-    name: "@google/gemini-cli"
-    global: true
+  community.general.homebrew:
+    name: gemini-cli
     state: latest
