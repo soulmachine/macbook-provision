@@ -11,11 +11,33 @@
 # into Ansible's captured stdout and then blocks the play forever waiting on
 # input nobody can see. Run `hermes setup` interactively once afterwards to
 # configure the model provider and any messaging gateways.
+#
+# `--no-skills` keeps ~/.hermes/skills/ a blank slate. That directory is already
+# a symlink farm into ~/.agents/skills maintained by the `skills` role; without
+# this flag the installer seeds ~13 bundled skill *directories* alongside those
+# symlinks and re-injects them on every `hermes update`.
 - name: Install hermes # noqa: command-instead-of-module risky-shell-pipe
   ansible.builtin.shell: >-
-    curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-setup
+    curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-setup --no-skills
   args:
     creates: "{{ lookup('env', 'HOME') }}/.local/bin/hermes"
+
+# `--no-skills` above only takes effect on a fresh install, and the `creates:`
+# guard means the installer never runs again on a host provisioned before the
+# flag was added — so converge the opt-out separately. All the flag really does
+# is write ~/.hermes/.no-bundled-skills, the marker that skills_sync.py and
+# `hermes update` both honor; `hermes skills opt-out` writes exactly that and
+# touches nothing already on disk.
+#
+# Bundled skills seeded by an earlier flag-less run stay put. Clear them by
+# hand with `hermes skills opt-out --remove` — it deletes only pristine,
+# manifest-tracked bundled skills, never user-edited ones and never the
+# `skills`-role symlinks — deliberately left out of the role so provisioning
+# never deletes skills on its own.
+- name: Opt out of hermes bundled-skill seeding
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.local/bin/hermes skills opt-out"
+  args:
+    creates: "{{ lookup('env', 'HOME') }}/.hermes/.no-bundled-skills"
 
 # Two tasks keep this both idempotent and fresh: `creates:` above installs once,
 # and `hermes update` re-checks upstream every run. Use `update --check` for the
