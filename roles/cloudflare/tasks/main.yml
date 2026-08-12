@@ -1,4 +1,5 @@
 ---
+# cf — Cloudflare's CLI. https://blog.cloudflare.com/cf-cli-local-explorer/
 - name: Install cf CLI
   community.general.npm:
     name: cf
