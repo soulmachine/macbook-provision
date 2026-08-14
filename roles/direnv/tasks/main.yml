@@ -4,9 +4,13 @@
     name: direnv
     state: latest
 
+# `omz` is a zsh function defined when ~/.zshrc sources oh-my-zsh (guaranteed
+# by the meta dependency), so it needs an interactive zsh (-i), not a binary
+# lookup. Enabling exits 0 with "plugins enabled: direnv."; when already
+# enabled it exits 1 with "plugin 'direnv' is already enabled." — that's the
+# converged state, not a failure, so failed_when whitelists it.
 - name: Enable direnv oh-my-zsh plugin in .zshrc
-  ansible.builtin.lineinfile:
-    path: "{{ lookup('env', 'HOME') }}/.zshrc"
-    regexp: '^(plugins=\((?!.*\bdirenv\b).*)\)$'
-    line: '\1 direnv)'
-    backrefs: true
+  ansible.builtin.command: zsh -ic 'omz plugin enable direnv'
+  register: direnv_omz_plugin
+  changed_when: "'already enabled' not in direnv_omz_plugin.stdout + direnv_omz_plugin.stderr"
+  failed_when: direnv_omz_plugin.rc != 0 and 'already enabled' not in direnv_omz_plugin.stdout + direnv_omz_plugin.stderr
