@@ -18,9 +18,13 @@
   changed_when: "'latest version' not in uv_self_update.stderr + uv_self_update.stdout"
   ignore_errors: true
 
+# `omz` is a zsh function defined when ~/.zshrc sources oh-my-zsh (guaranteed
+# by the meta dependency), so it needs an interactive zsh (-i), not a binary
+# lookup. Enabling exits 0 with "plugins enabled: uv."; when already enabled
+# it exits 1 with "plugin 'uv' is already enabled." — that's the converged
+# state, not a failure, so failed_when whitelists it.
 - name: Enable uv oh-my-zsh plugin in .zshrc
-  ansible.builtin.lineinfile:
-    path: "{{ lookup('env', 'HOME') }}/.zshrc"
-    regexp: '^(plugins=\((?!.*\buv\b).*)\)$'
-    line: '\1 uv)'
-    backrefs: true
+  ansible.builtin.command: zsh -ic 'omz plugin enable uv'
+  register: uv_omz_plugin
+  changed_when: "'already enabled' not in uv_omz_plugin.stdout + uv_omz_plugin.stderr"
+  failed_when: uv_omz_plugin.rc != 0 and 'already enabled' not in uv_omz_plugin.stdout + uv_omz_plugin.stderr
