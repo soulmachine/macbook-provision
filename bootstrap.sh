@@ -144,7 +144,7 @@ ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 # Hand OMZ's overlapping jobs to the stack. Invariants:
 #  - ZSH_THEME="" : starship must be the only prompt owner
 #  - zoxide plugin, never the legacy z plugin (the `z` command collides)
-#  - plugin order: fzf-tab → autosuggestions → syntax-highlighting (last);
+#  - plugin order: fzf-tab first, syntax-highlighting last;
 #    OMZ runs compinit before sourcing plugins, so fzf-tab's requirement holds
 #  - atuin eval is the last line so nothing rebinds Ctrl-R after it
 if grep -q '^ZSH_THEME=' ~/.zshrc; then
@@ -162,6 +162,11 @@ zsh -ic 'omz plugin disable z' >/dev/null 2>&1 || true   # legacy z collides wit
 omz_out=$(zsh -ic 'omz plugin enable git uv zoxide fzf-tab zsh-autosuggestions zsh-syntax-highlighting' 2>&1 </dev/null) \
   || [[ "$omz_out" == *"already enabled"* ]] \
   || warn "omz plugin enable failed: $omz_out"
+# Move fzf-tab to the front of the array: it must load before widget-wrapping
+# plugins (zsh-autosuggestions), and append-only enables can't guarantee that
+# when a wrapper predates it in plugins=(). No-op when already first or absent.
+sed -i '' -E -e 's/^plugins=\((.*)fzf-tab ?(.*)\)/plugins=(fzf-tab \1\2)/' \
+  -e 's/^(plugins=\(.*[^ ]) +\)/\1)/' ~/.zshrc
 grep -q 'starship init zsh' ~/.zshrc || echo 'eval "$(starship init zsh)"' >> ~/.zshrc
 grep -q 'atuin init zsh'    ~/.zshrc || echo 'eval "$(atuin init zsh)"'    >> ~/.zshrc
 
