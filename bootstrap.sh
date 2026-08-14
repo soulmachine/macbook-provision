@@ -109,8 +109,8 @@ if ! command -v uv >/dev/null 2>&1 && [[ ! -x "$HOME/.local/bin/uv" ]]; then
   curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 export PATH="$HOME/.local/bin:$PATH"
-# (`omz plugin enable uv` needs an interactive zsh; the plugins= line below
-#  enables the uv plugin instead.)
+# (the uv omz plugin is enabled by `omz plugin enable` in the CLI-stack
+#  section below, together with the rest of the plugin set)
 uv python find 3.14 >/dev/null 2>&1 || \
   uv python install 3.14 --default   # prebuilt CPython → ~/.local/bin/python3.14 + python3 + python
 uv python pin --global 3.14          # idempotent: rewrites the same user-level pin
@@ -152,11 +152,16 @@ if grep -q '^ZSH_THEME=' ~/.zshrc; then
 else
   warn 'no ZSH_THEME= line found in ~/.zshrc; is oh-my-zsh installed?'
 fi
-if grep -q '^plugins=' ~/.zshrc; then
-  sed -i '' 's/^plugins=.*/plugins=(git uv zoxide fzf-tab zsh-autosuggestions zsh-syntax-highlighting)/' ~/.zshrc
-else
-  warn 'no plugins= line found in ~/.zshrc; add the plugins array manually'
-fi
+# `omz` is a zsh function, so both calls run in an interactive zsh. Plugins
+# are appended in argument order, which preserves the ordering invariant on a
+# fresh plugins=(git) line; already-enabled plugins are skipped in place, so
+# re-runs and plugins added by the Ansible roles (rust, direnv) are left
+# alone. When EVERY plugin is already enabled omz exits 1 — that's the
+# converged state, not a failure, hence the "already enabled" whitelist.
+zsh -ic 'omz plugin disable z' >/dev/null 2>&1 || true   # legacy z collides with zoxide
+omz_out=$(zsh -ic 'omz plugin enable git uv zoxide fzf-tab zsh-autosuggestions zsh-syntax-highlighting' 2>&1 </dev/null) \
+  || [[ "$omz_out" == *"already enabled"* ]] \
+  || warn "omz plugin enable failed: $omz_out"
 grep -q 'starship init zsh' ~/.zshrc || echo 'eval "$(starship init zsh)"' >> ~/.zshrc
 grep -q 'atuin init zsh'    ~/.zshrc || echo 'eval "$(atuin init zsh)"'    >> ~/.zshrc
 
