@@ -1,11 +1,20 @@
 ---
 # The cask, not npm: an npm global install lands inside the active node
 # prefix and silently disappears whenever mise replaces the node version.
-# `state: upgraded` installs when missing and upgrades on every run.
 - name: Install Codex CLI
   community.general.homebrew_cask:
     name: codex
-    state: upgraded
+    state: present
+
+# `codex update` detects the brew install and delegates to
+# `brew upgrade --cask codex` itself, so the cask above only needs
+# `state: present`. When already current it still exits 0 ("Update ran
+# successfully!") while brew warns "Not upgrading codex, the latest version
+# is already installed" on stderr — that warning is the no-change sentinel.
+- name: Update Codex CLI
+  ansible.builtin.command: codex update
+  register: codex_update
+  changed_when: "'already installed' not in codex_update.stderr + codex_update.stdout"
 
 - name: Add codex-yolo alias to .zshrc
   ansible.builtin.lineinfile:

@@ -6,21 +6,12 @@
   args:
     creates: "{{ lookup('env', 'HOME') }}/.bun/bin/omp"
 
-- name: Check installed oh-my-pi version
-  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/omp --version"
-  register: omp_version_before
-  changed_when: false
-
-# `@latest` on purpose: the recorded dependency range (^x.y.z) would keep
-# `bun update -g` from ever crossing a major version. Bun prints the same
-# "installed ...@<version>" line whether or not anything changed, so change
-# is detected by comparing against the version installed before.
+# `omp update` checks and installs in one step. When already current it
+# exits 0 with "✔ Already up to date".
 - name: Update oh-my-pi
-  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/bun install -g @oh-my-pi/pi-coding-agent@latest"
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/omp update"
   register: omp_update
-  changed_when: >-
-    'installed @oh-my-pi/pi-coding-agent@' ~ (omp_version_before.stdout.split('/') | last)
-    not in omp_update.stdout
+  changed_when: "'Already up to date' not in omp_update.stdout + omp_update.stderr"
 
 - name: Add omp-yolo alias to .zshrc
   ansible.builtin.lineinfile:
