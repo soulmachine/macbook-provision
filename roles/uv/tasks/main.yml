@@ -4,6 +4,20 @@
   args:
     creates: "{{ lookup('env', 'HOME') }}/.local/bin/uv"
 
+# Full path because ~/.local/bin may not be on Ansible's PATH. When already
+# current it exits 0 with "You're already on version vX.Y.Z of uv (the latest
+# version)."; an actual upgrade prints "Upgraded uv from vX to vY" instead, so
+# "latest version" only appears in the no-op branch. ignore_errors: the update
+# check hits the GitHub releases API unauthenticated (uv's --help suggests a
+# token to "reduce the chance of encountering rate limits"), and a rate-limited
+# check must not abort the play — uv itself is guaranteed present by the
+# install task above.
+- name: Update uv
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.local/bin/uv self update"
+  register: uv_self_update
+  changed_when: "'latest version' not in uv_self_update.stderr + uv_self_update.stdout"
+  ignore_errors: true
+
 - name: Enable uv oh-my-zsh plugin in .zshrc
   ansible.builtin.lineinfile:
     path: "{{ lookup('env', 'HOME') }}/.zshrc"
