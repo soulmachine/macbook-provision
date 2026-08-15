@@ -1,5 +1,5 @@
 ---
-- name: Install uv
+- name: Install uv # noqa: command-instead-of-module risky-shell-pipe
   ansible.builtin.shell: curl -LsSf https://astral.sh/uv/install.sh | sh
   args:
     creates: "{{ lookup('env', 'HOME') }}/.local/bin/uv"
@@ -18,13 +18,5 @@
   changed_when: "'latest version' not in uv_self_update.stderr + uv_self_update.stdout"
   ignore_errors: true
 
-# `omz` is a zsh function defined when ~/.zshrc sources oh-my-zsh (guaranteed
-# by the meta dependency), so it needs an interactive zsh (-i), not a binary
-# lookup. Enabling exits 0 with "plugins enabled: uv."; when already enabled
-# it exits 1 with "plugin 'uv' is already enabled." — that's the converged
-# state, not a failure, so failed_when whitelists it.
-- name: Enable uv oh-my-zsh plugin in .zshrc
-  ansible.builtin.command: zsh -ic 'omz plugin enable uv'
-  register: uv_omz_plugin
-  changed_when: "'already enabled' not in uv_omz_plugin.stdout + uv_omz_plugin.stderr"
-  failed_when: uv_omz_plugin.rc != 0 and 'already enabled' not in uv_omz_plugin.stdout + uv_omz_plugin.stderr
+# (the uv oh-my-zsh plugin is enabled by the oh-my-zsh role, with the rest of
+# the plugin set)

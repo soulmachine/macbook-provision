@@ -1,15 +1,15 @@
 #!/bin/bash
-# Provision a new macOS machine (MacBook, Mac mini, etc).
-# Runnable version of macos-provision-omz-plus-cli-stack.md — oh-my-zsh plus the
-# modern CLI stack (starship, zoxide, atuin, fzf-tab), uv-managed Python, mise.
+# Bootstrap a new macOS machine (MacBook, Mac mini, etc) for the Ansible
+# playbook: Xcode CLI Tools, Homebrew, uv-managed Python, mise, Ansible.
+# oh-my-zsh and the modern CLI stack (starship, zoxide, atuin, fzf-tab) are
+# provisioned by the oh-my-zsh role in main.yml, not here.
 #
-# Usage: bash macos-provision-omz-plus-cli-stack.sh
+# Usage: bash bootstrap.sh
 # Idempotent: safe to re-run. One sudo password prompt on a fresh machine; the
 # rest runs unattended (except the macOS GUI consent dialogs it primes).
 set -euo pipefail
 
 log()  { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
-warn() { printf '\033[1;33mWARN: %s\033[0m\n' "$*" >&2; }
 
 # ---------------------------------------------------------------- Passwordless sudo
 # /etc/sudoers.d drop-in so later sudo subprocesses (Homebrew casks, Ansible
@@ -75,13 +75,6 @@ grep -q 'brew shellenv' ~/.zprofile 2>/dev/null || \
 brew doctor || true
 brew update
 
-# ------------------------------------------------------------------- Install oh-my-zsh
-# Before any .zshrc edits: the installer overwrites the file.
-log "oh-my-zsh"
-if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-fi
-
 # -------------------------------------------- Remove python.org Python (.dmg installs)
 # Uninstall Python versions installed via official .dmg files from python.org,
 # so they can't shadow the uv-managed interpreters below. No-op when absent.
@@ -109,8 +102,7 @@ if ! command -v uv >/dev/null 2>&1 && [[ ! -x "$HOME/.local/bin/uv" ]]; then
   curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 export PATH="$HOME/.local/bin:$PATH"
-# (the uv omz plugin is enabled by `omz plugin enable` in the CLI-stack
-#  section below, together with the rest of the plugin set)
+# (the uv omz plugin is enabled by the oh-my-zsh role, with the rest of the plugin set)
 uv python find 3.14 >/dev/null 2>&1 || \
   uv python install 3.14 --default   # prebuilt CPython → ~/.local/bin/python3.14 + python3 + python
 uv python pin --global 3.14          # idempotent: rewrites the same user-level pin
@@ -129,55 +121,6 @@ grep -q 'mise activate zsh' ~/.zshrc 2>/dev/null || \
 MISE_BIN="$(command -v mise || echo "$HOME/.local/bin/mise")"
 eval "$("$MISE_BIN" activate bash)"
 
-# ------------------------- Install Modern CLI Stack (starship, zoxide, atuin, fzf-tab)
-log "Modern CLI stack"
-brew install starship zoxide atuin fzf   # fzf is fzf-tab's engine
-
-ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
-[[ -d "$ZSH_CUSTOM/plugins/fzf-tab" ]] || \
-  git clone https://github.com/Aloxaf/fzf-tab "$ZSH_CUSTOM/plugins/fzf-tab"
-[[ -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]] || \
-  git clone https://github.com/zsh-users/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
-[[ -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]] || \
-  git clone https://github.com/zsh-users/zsh-syntax-highlighting "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting"
-
-# Hand OMZ's overlapping jobs to the stack. Invariants:
-#  - ZSH_THEME="" : starship must be the only prompt owner
-#  - zoxide plugin, never the legacy z plugin (the `z` command collides)
-#  - plugin order: fzf-tab first, syntax-highlighting last;
-#    OMZ runs compinit before sourcing plugins, so fzf-tab's requirement holds
-#  - atuin eval is the last line so nothing rebinds Ctrl-R after it
-if grep -q '^ZSH_THEME=' ~/.zshrc; then
-  sed -i '' 's/^ZSH_THEME=.*/ZSH_THEME=""/' ~/.zshrc
-else
-  warn 'no ZSH_THEME= line found in ~/.zshrc; is oh-my-zsh installed?'
-fi
-# `omz` is a zsh function, so both calls run in an interactive zsh. Plugins
-# are appended in argument order, which preserves the ordering invariant on a
-# fresh plugins=(git) line; already-enabled plugins are skipped in place, so
-# re-runs and plugins added by the Ansible roles (rust, direnv) are left
-# alone. When EVERY plugin is already enabled omz exits 1 — that's the
-# converged state, not a failure, hence the "already enabled" whitelist.
-zsh -ic 'omz plugin disable z' >/dev/null 2>&1 || true   # legacy z collides with zoxide
-omz_out=$(zsh -ic 'omz plugin enable git uv zoxide fzf-tab zsh-autosuggestions zsh-syntax-highlighting' 2>&1 </dev/null) \
-  || [[ "$omz_out" == *"already enabled"* ]] \
-  || warn "omz plugin enable failed: $omz_out"
-# Move fzf-tab to the front of the array: it must load before widget-wrapping
-# plugins (zsh-autosuggestions), and append-only enables can't guarantee that
-# when a wrapper predates it in plugins=(). No-op when already first or absent.
-sed -i '' -E -e 's/^plugins=\((.*)fzf-tab ?(.*)\)/plugins=(fzf-tab \1\2)/' \
-  -e 's/^(plugins=\(.*[^ ]) +\)/\1)/' ~/.zshrc
-grep -q 'starship init zsh' ~/.zshrc || echo 'eval "$(starship init zsh)"' >> ~/.zshrc
-grep -q 'atuin init zsh'    ~/.zshrc || echo 'eval "$(atuin init zsh)"'    >> ~/.zshrc
-
-# Guard against compinit "insecure directories" complaints from brew-owned dirs.
-chmod -R go-w "$(brew --prefix)/share" 2>/dev/null || true
-
-# atuin: import local history once; login/sync are interactive — left to the user.
-if command -v atuin >/dev/null 2>&1 && [[ ! -s "$HOME/.local/share/atuin/history.db" ]]; then
-  atuin import auto || true
-fi
-
 # ---------------------------------------------------------------------- Install Ansible
 # Last step: Ansible for the provisioning playbooks.
 # ansible-core ships the console scripts; --with ansible adds the
@@ -187,13 +130,15 @@ command -v ansible >/dev/null 2>&1 || uv tool install --with ansible ansible-cor
 ansible --version | head -1
 
 # ------------------------------------------------------------------------------- Done
-log "Provisioning complete"
+log "Bootstrap complete"
 cat <<'EOF'
-Next steps (manual):
-  1. Open a NEW terminal tab (login+interactive shell) and verify:
+Next steps:
+  1. Run the playbook (oh-my-zsh, the modern CLI stack, and everything else):
+       ansible-playbook main.yml
+  2. Then open a NEW terminal tab (login+interactive shell) and verify:
        - starship prompt renders, `z <fragment>` jumps after a few cd's,
          Ctrl-R opens atuin, Tab opens the fzf picker
        - time zsh -i -c exit   # expect ~100-300 ms (the oh-my-zsh tax)
-  2. Cross-machine history sync:  atuin login && atuin sync
-  3. Credentials go in ~/.zshenv (chmod 600); PATH edits in ~/.zprofile.
+  3. Cross-machine history sync:  atuin login && atuin sync
+  4. Credentials go in ~/.zshenv (chmod 600); PATH edits in ~/.zprofile.
 EOF

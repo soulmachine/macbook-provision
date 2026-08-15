@@ -1,4 +1,8 @@
 ---
+# On a fresh machine the installer replaces any existing ~/.zshrc (backup in
+# ~/.zshrc.pre-oh-my-zsh), dropping lines bootstrap.sh appended — every later
+# task that a fresh .zshrc needs (PATH, mise, prompt, plugin lines) re-ensures
+# its own line, so run them all after this one.
 - name: Install oh-my-zsh
   ansible.builtin.shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
   args:
@@ -15,21 +19,75 @@
   changed_when: true
   when: oh_my_zsh_current_shell.stdout != '/bin/zsh'
 
-- name: Install zsh-autosuggestions # noqa: latest[git]
+- name: Install modern CLI stack
+  community.general.homebrew:
+    name:
+      - starship
+      - zoxide
+      - atuin
+      - fzf # fzf-tab's engine
+    state: latest
+
+- name: Install custom oh-my-zsh plugins # noqa: latest[git]
   ansible.builtin.git:
-    repo: https://github.com/zsh-users/zsh-autosuggestions
-    dest: "{{ lookup('env', 'HOME') }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+    repo: "https://github.com/{{ item }}"
+    dest: "{{ lookup('env', 'HOME') }}/.oh-my-zsh/custom/plugins/{{ item | basename }}"
     version: HEAD
     update: false
+  loop:
+    - Aloxaf/fzf-tab
+    - zsh-users/zsh-autosuggestions
+    - zsh-users/zsh-syntax-highlighting
 
-- name: Enable oh-my-zsh plugins in .zshrc
+# Hand OMZ's overlapping jobs to the stack. Invariants:
+#  - ZSH_THEME="" : starship must be the only prompt owner
+#  - zoxide plugin, never the legacy z plugin (the `z` command collides)
+#  - plugin order: fzf-tab first, syntax-highlighting last;
+#    OMZ runs compinit before sourcing plugins, so fzf-tab's requirement holds
+#  - atuin eval is the last line so nothing rebinds Ctrl-R after it
+- name: Hand the prompt to starship
   ansible.builtin.lineinfile:
     path: "{{ lookup('env', 'HOME') }}/.zshrc"
-    regexp: '^(plugins=\((?!.*\b{{ item }}\b).*)\)$'
-    line: '\1 {{ item }})'
-    backrefs: true
-  loop:
-    - zsh-autosuggestions
+    regexp: '^ZSH_THEME='
+    line: 'ZSH_THEME=""'
+
+# `omz` is a zsh function defined when ~/.zshrc sources oh-my-zsh (installed
+# above), so it needs an interactive zsh (-i), not a binary lookup. When z is
+# not in plugins=() omz warns "plugin 'z' is not enabled." and exits 1 —
+# that's the converged state, not a failure.
+- name: Disable the legacy z oh-my-zsh plugin
+  ansible.builtin.command: zsh -ic 'omz plugin disable z'
+  register: oh_my_zsh_z_disable
+  changed_when: "'plugins disabled' in oh_my_zsh_z_disable.stdout + oh_my_zsh_z_disable.stderr"
+  failed_when: oh_my_zsh_z_disable.rc != 0 and 'is not enabled' not in oh_my_zsh_z_disable.stdout + oh_my_zsh_z_disable.stderr
+
+# Plugins are appended in argument order, which preserves the ordering
+# invariant on a fresh plugins=(git) line; already-enabled plugins are
+# skipped in place (warn "plugin 'x' is already enabled."), so re-runs and
+# plugins added by other roles (rust, direnv) are left alone. "plugins
+# enabled:" is printed exactly when at least one plugin was added; when EVERY
+# plugin is already enabled omz prints nothing else and exits 1 — that's the
+# converged state, not a failure.
+- name: Enable oh-my-zsh plugins in .zshrc
+  ansible.builtin.command: zsh -ic 'omz plugin enable git uv zoxide fzf-tab zsh-autosuggestions zsh-syntax-highlighting'
+  register: oh_my_zsh_plugin_enable
+  changed_when: "'plugins enabled' in oh_my_zsh_plugin_enable.stdout + oh_my_zsh_plugin_enable.stderr"
+  failed_when: oh_my_zsh_plugin_enable.rc != 0 and 'already enabled' not in oh_my_zsh_plugin_enable.stdout + oh_my_zsh_plugin_enable.stderr
+
+# fzf-tab must load before widget-wrapping plugins (zsh-autosuggestions), and
+# append-only enables can't guarantee that when a wrapper predates it in
+# plugins=(). No-op when already first or absent.
+- name: Move fzf-tab to the front of the plugins array
+  ansible.builtin.replace:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    regexp: '^plugins=\((.*)fzf-tab ?(.*)\)$'
+    replace: 'plugins=(fzf-tab \1\2)'
+
+- name: Clean up trailing whitespace in the plugins array
+  ansible.builtin.replace:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    regexp: '^(plugins=\(.*[^ ]) +\)$'
+    replace: '\1)'
 
 - name: Ensure ~/.local/bin is prepended to PATH in .zshrc
   ansible.builtin.lineinfile:
@@ -37,3 +95,46 @@
     regexp: '^export PATH=".*\$HOME/\.local/bin.*"$'
     line: 'export PATH="$HOME/.local/bin:$PATH"'
     state: present
+
+# bootstrap.sh appends this line too, but on a fresh machine the oh-my-zsh
+# installer above replaces ~/.zshrc, dropping bootstrap's edit. The regexp
+# matches any existing spelling (e.g. a full ~/.local/bin/mise path) so an
+# existing activation line is normalized in place, not duplicated.
+- name: Ensure mise is activated in .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    regexp: 'mise activate zsh'
+    line: 'eval "$(mise activate zsh)"'
+    state: present
+
+- name: Ensure starship is initialized in .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    line: 'eval "$(starship init zsh)"'
+    state: present
+
+# Keep this the last .zshrc append in the role (atuin-last invariant).
+- name: Ensure atuin is initialized in .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    line: 'eval "$(atuin init zsh)"'
+    state: present
+
+# Guard against compinit "insecure directories" complaints from brew-owned dirs.
+- name: Ensure brew share dirs are not group/world-writable
+  ansible.builtin.shell: chmod -R go-w "$(brew --prefix)/share"
+  changed_when: false
+  failed_when: false
+
+# atuin: import pre-atuin shell history once. A non-empty history.db means a
+# prior import or live atuin usage — nothing left to do. Login/sync are
+# interactive and left to the user (atuin login && atuin sync).
+- name: Import existing shell history into atuin
+  ansible.builtin.shell: |
+    if [[ ! -s "$HOME/.local/share/atuin/history.db" ]]; then
+      atuin import auto && echo IMPORTED
+    fi
+  args:
+    executable: /bin/zsh
+  register: oh_my_zsh_atuin_import
+  changed_when: "'IMPORTED' in oh_my_zsh_atuin_import.stdout"
