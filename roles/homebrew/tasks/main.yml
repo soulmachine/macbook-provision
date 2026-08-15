@@ -11,6 +11,15 @@
   changed_when: false
   failed_when: false
 
+# brew update && brew upgrade: refresh metadata first so the install tasks
+# below see current versions, then upgrade everything already installed —
+# plain `brew upgrade` (what upgrade_all runs) covers formulae and casks.
+# Casks with auto_updates are skipped, as with the CLI.
+- name: Update Homebrew and upgrade all installed packages
+  community.general.homebrew:
+    update_homebrew: true
+    upgrade_all: true
+
 - name: Install common Homebrew packages
   community.general.homebrew:
     name:
