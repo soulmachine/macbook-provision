@@ -1,7 +1,20 @@
 ---
-- name: Install Python CLI tools
-  ansible.builtin.pip:
-    name: "{{ item }}"
-    executable: pip3
-    extra_args: --user
+# `<pkg>@latest`, not a bare `uv tool install <pkg>`: the bare form no-ops with
+# "`<pkg>` is already installed" once any version is present, so a converged
+# machine would never pick up new releases. `@latest` re-resolves every run and
+# also overrides an exact-version pin left by an earlier manual install.
+# Full path because ~/.local/bin may not be on Ansible's PATH.
+#
+# changed_when: uv prints an audit line per package it actually wrote
+# ("Installed 3 packages" / "Uninstalled 1 package"); when everything is
+# already current it prints "Checked 3 packages" and only the unconditional
+# "Installed 1 executable: <name>" line — which the "package" in the pattern
+# deliberately excludes.
+- name: Install Python CLI tools with uv
+  ansible.builtin.command: >-
+    {{ lookup('env', 'HOME') }}/.local/bin/uv tool install {{ item }}@latest
   loop: "{{ python_cli_tools }}"
+  register: python_uv_tool_install
+  changed_when: >-
+    (python_uv_tool_install.stderr + python_uv_tool_install.stdout)
+    is search('Installed [0-9]+ package')

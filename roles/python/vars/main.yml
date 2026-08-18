@@ -1,4 +1,9 @@
 ---
+# `uv tool install` refuses a package that ships no console scripts ("No
+# executables are provided by package `x`; removing tool", exit 2), so only
+# real CLIs belong here. Pure libraries (faster-whisper used to sit in this
+# list) are not provisioned globally — reach for them with
+# `uv run --with faster-whisper python ...` instead.
 python_cli_tools:
   - yamllint
   - ansible-lint
@@ -6,4 +11,4 @@ python_cli_tools:
   - pre-commit
   - httpie
   - openai-whisper
-  - faster-whisper
+  - whisper-ctranslate2
