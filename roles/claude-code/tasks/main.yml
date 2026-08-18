@@ -24,7 +24,7 @@
 
 - name: Decode installed plugins
   ansible.builtin.set_fact:
-    claude_code_plugins_content: "{{ (claude_code_plugins_raw.content | default('') | b64decode) if claude_code_plugins_raw is succeeded else '' }}"
+    claude_code_plugins_content: "{{ claude_code_plugins_raw.content | default('') | b64decode }}"
 
 # Read claude code settings
 - name: Ensure ~/.claude directory exists
@@ -33,6 +33,9 @@
     state: directory
     mode: "0755"
 
+# `failed_when: false` on the slurps above forces `failed: false`, so
+# `... is succeeded` is true even when the file is missing and no `content` key
+# was ever set — hence the guards below test `content` itself, not task status.
 - name: Read existing Claude Code settings
   ansible.builtin.slurp:
     src: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
@@ -41,7 +44,10 @@
 
 - name: Parse existing Claude Code settings
   ansible.builtin.set_fact:
-    claude_code_settings: "{{ (claude_code_settings_raw.content | b64decode | from_json) if claude_code_settings_raw is succeeded else {} }}"
+    claude_code_settings: >-
+      {{ (claude_code_settings_raw.content | b64decode | from_json)
+         if (claude_code_settings_raw.content | default('') | b64decode | trim | length > 0)
+         else {} }}
 
 - name: Add plugin marketplaces
   ansible.builtin.command: claude plugin marketplace add {{ item }}
@@ -175,7 +181,10 @@
 
 - name: Re-parse Claude Code settings
   ansible.builtin.set_fact:
-    claude_code_settings: "{{ (claude_code_settings_raw.content | b64decode | from_json) if claude_code_settings_raw is succeeded else {} }}"
+    claude_code_settings: >-
+      {{ (claude_code_settings_raw.content | b64decode | from_json)
+         if (claude_code_settings_raw.content | default('') | b64decode | trim | length > 0)
+         else {} }}
 
 - name: Enable Remote Control for all sessions
   ansible.builtin.copy:
