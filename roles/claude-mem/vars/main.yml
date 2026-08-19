@@ -2,12 +2,13 @@
 # Install parameters shared by every `claude-mem install` invocation.
 #
 # NOTE on the model: the published docs use `--model opus`, but claude-mem
-# v13.6.0 rejects the "opus" alias ("Unknown Claude model: opus. Allowed:
-# claude-haiku-4-5-20251001, claude-sonnet-4-6, claude-opus-4-7"). We therefore
-# pass the accepted full id `claude-opus-4-7` — the Opus model claude-mem
-# currently supports. Bump this when claude-mem starts accepting a newer Opus.
+# rejects the "opus" alias and only accepts full model ids — and the accepted set
+# shrinks with each release as old ids are retired (v13.6.0 allowed
+# claude-opus-4-7; v13.15.2 allows claude-haiku-4-5-20251001, claude-sonnet-5,
+# claude-opus-4-8). A retired id is a hard `Fatal error: Unknown Claude model`
+# that fails the play, so bump this whenever claude-mem drops the current Opus.
 claude_mem_provider: claude
-claude_mem_model: claude-opus-4-7
+claude_mem_model: claude-opus-4-8
 claude_mem_runtime: worker
 
 # claude-mem is a Claude Code plugin (installed under the `thedotmack`
@@ -23,11 +24,15 @@ claude_mem_openclaw_marker: "{{ lookup('env', 'HOME') }}/.openclaw/extensions/cl
 # One `claude-mem install --ide <name>` per IDE. `marker` is a file whose
 # presence-of-the-string "claude-mem" proves that IDE is already wired up, so we
 # only run the (heavy) installer for IDEs that aren't configured yet.
+#
+# Only IDEs claude-mem still supports may be listed — an unknown name is a hard
+# `Unknown IDE` failure, not a skip. v13.15.2 supports: claude-code, opencode,
+# openclaw, windsurf, codex-cli, cursor, copilot-cli, antigravity, goose,
+# roo-code, warp. `gemini-cli` was supported once and has since been dropped
+# upstream, so it is deliberately absent; re-add it only if it comes back.
 claude_mem_ides:
   - name: claude-code
     marker: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
-  - name: gemini-cli
-    marker: "{{ lookup('env', 'HOME') }}/.gemini/settings.json"
   - name: codex-cli
     marker: "{{ lookup('env', 'HOME') }}/.codex/config.toml"
   - name: opencode
