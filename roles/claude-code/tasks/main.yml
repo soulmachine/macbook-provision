@@ -55,7 +55,6 @@
     - anthropics/claude-plugins-official # https://claude.com/plugins
     - OthmanAdi/planning-with-files
     - thedotmack/claude-mem
-    - forrestchang/andrej-karpathy-skills
     - swe-workflow/swe-workflow
     - veelenga/claude-mermaid
   register: claude_code_mp
@@ -68,7 +67,6 @@
     - feature-dev@claude-plugins-official
     - planning-with-files@planning-with-files
     - claude-mem@thedotmack
-    - andrej-karpathy-skills@karpathy-skills
     - swe-workflow@swe-workflow
     - claude-mermaid@claude-mermaid
   when: "item not in claude_code_plugins_content"
@@ -81,7 +79,6 @@
     - feature-dev@claude-plugins-official
     - planning-with-files@planning-with-files
     - claude-mem@thedotmack
-    - andrej-karpathy-skills@karpathy-skills
     - swe-workflow@swe-workflow
     - claude-mermaid@claude-mermaid
   register: claude_code_update
@@ -133,7 +130,6 @@
     - feature-dev@claude-plugins-official
     - planning-with-files@planning-with-files
     - claude-mem@thedotmack
-    - andrej-karpathy-skills@karpathy-skills
     - swe-workflow@swe-workflow
     - claude-mermaid@claude-mermaid
   when: "item not in (claude_code_settings.enabledPlugins | default({}))"
