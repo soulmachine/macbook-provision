@@ -39,3 +39,13 @@
 **Justification:** Reading playwright-core's bundled registry (`coreBundle.js`) settles it two ways. First, `install()` takes the lock at its top, *before* the per-browser "already installed" check — so a converged machine contends for the lock with nothing to do, which is exactly how this failure happened (all three components, chromium-1234/headless-shell-1234/ffmpeg-1011, were already marked COMPLETE). Second, the lock is a proper-lockfile with the default `stale: 10s` and a 5s refresh, so Playwright *already* reclaims a crashed installer's lock unaided; a lock still standing after that has a live holder, and deleting it would let two installs unpack into the same directory at once. Both the "always delete" and "delete when stale" options are therefore either unsafe or dead code. Verified live: with a wedged third-party installer holding the lock, the role went from a 7m49s failure to a 1.9s skip.
 **Outcome:** applied
 **Ref:** 7b3380d
+
+## Q5 — interactive/claude-extras-role — deviation
+
+**Question:** The new `claude-extras` role was asked to run `uv tool install claude-swap`, but the python role already installs claude-swap via `python_cli_tools`. Should the python role keep its entry?
+**Options considered:** keep both (each is idempotent, but the tool is provisioned twice) / drop it from `python_cli_tools` so `claude-extras` is the single owner
+**Chosen:** Drop `claude-swap` from `roles/python/vars/main.yml`; `claude-extras` is now the only role that installs it.
+**Decided-by:** agent
+**Justification:** Same single-owner reasoning as Q1. The request to put claude-swap in a Claude-Code-specific role reads as relocating it, not duplicating it — claude-swap is a Claude Code account switcher that merely happens to ship as a Python package, so `python_cli_tools` (generic language-runtime CLIs) was always the weaker home. Leaving both would have two roles converging the same `uv tool` state, and a future version pin or removal would have to be applied in two places. The literal ask (a claude-extras role that installs it) is satisfied either way, so this is a deviation only in what it removes.
+**Outcome:** applied
+**Ref:** 81955ec
