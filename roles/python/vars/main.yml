@@ -12,5 +12,3 @@ python_cli_tools:
   - httpie
   - openai-whisper
   - whisper-ctranslate2
-  # Ships two entrypoints, `claude-swap` and the short `cswap`.
-  - claude-swap

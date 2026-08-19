@@ -16,6 +16,7 @@
     - rust
     - jdk
     - claude-code
+    - claude-extras
     - codex
     - gemini
     - opencode
