@@ -6,12 +6,15 @@
 #     MagicDNS, so no /etc/resolver/ts.net file is required.
 #   - Officially supported by Tailscale and auto-updated through the GUI.
 #
-# On a fresh Mac the user must launch Tailscale.app once, click "Allow"
-# on the "would like to add VPN configurations" dialog, and toggle the
-# Network Extension on in System Settings → General → Login Items &
-# Extensions → Network Extensions. The role auto-detects the extension
-# state via `systemextensionsctl list` and only pauses if it's not yet
-# `[activated enabled]`.
+# Two steps on a fresh Mac are GUI-only and cannot be automated: enabling the
+# Network Extension, and installing the `tailscale` CLI launcher. This role
+# detects both and FAILS with instructions rather than prompting. A prompt was
+# the original design, but `ansible.builtin.pause` degrades badly: with a
+# non-interactive stdin Ansible just warns ("Not waiting for response to prompt")
+# and continues, so the play barrels on into tasks that cannot succeed and dies
+# several tasks later on something unrelated-looking (e.g. `tailscale up`
+# reporting `No such file or directory: b'tailscale'`). Failing at the gate
+# reports the real blocker, and works the same interactively or headless.
 
 # brew's .pkg-based cask install shells out to `sudo` internally (no `-A`) to
 # expand root-owned payload; passwordless sudo (configured by bootstrap.sh) lets
@@ -29,35 +32,43 @@
 # `[activated enabled]` when the extension is on, or a different state
 # (`activated waiting for user`, `terminated waiting for user`, etc.) — or
 # omits the row entirely if Tailscale.app has never been launched.
-- name: Check whether Tailscale Network Extension is enabled
+#
+# We capture the matching rows rather than `grep -q`-ing them so the failure
+# message below can quote the state actually observed. `|| true` keeps a
+# no-match (grep rc 1) from failing the task under `set -o pipefail`.
+- name: Read the Tailscale Network Extension state
   ansible.builtin.shell: |
     set -o pipefail
-    systemextensionsctl list 2>/dev/null | grep -i tailscale | grep -q '\[activated enabled\]'
+    systemextensionsctl list 2>/dev/null | grep -i tailscale || true
   args:
     executable: /bin/bash
-  register: _tailscale_netext_check
-  failed_when: false
+  register: _tailscale_netext
   changed_when: false
-  check_mode: false # read-only probe; run in --check so the guard below has a real rc
+  check_mode: false # read-only probe; run in --check so the guard below sees real state
 
-- name: Prompt user to enable the Tailscale Network Extension
-  when: _tailscale_netext_check.rc != 0
+- name: Require the Tailscale Network Extension to be enabled
+  when: "'[activated enabled]' not in _tailscale_netext.stdout"
   block:
+    # Launching the app registers the extension, which is what makes the toggle
+    # appear in System Settings at all — without this the instructions below
+    # point at a row that isn't there yet.
     - name: Launch Tailscale.app so the extension registers and the toggle appears
       ansible.builtin.command:
         cmd: open -a Tailscale
       changed_when: false
 
-    - name: Wait for user to enable Tailscale in Network Extensions
-      ansible.builtin.pause:
-        prompt: |
+    - name: Fail with instructions for enabling the Network Extension
+      ansible.builtin.fail:
+        msg: |
 
           ================================================================
-          Manual step: enable Tailscale Network Extension
+          Manual step required: enable the Tailscale Network Extension
           ================================================================
 
-          The Tailscale Network Extension is not currently enabled, so
-          the tailnet tunnel can't activate. Enable it:
+          The Network Extension is not enabled, so the embedded tailscaled
+          never runs and the tailnet tunnel can't activate.
+
+          Tailscale.app has just been launched for you. Now:
 
             System Settings → General → Login Items & Extensions →
             Network Extensions → toggle Tailscale ON
@@ -65,7 +76,12 @@
           (If a "Tailscale would like to add VPN configurations" dialog
           also appears, click Allow.)
 
-          Press Enter once Tailscale is toggled ON.
+          Then re-run: ansible-playbook main.yml
+
+          State reported by `systemextensionsctl list`:
+            {{ _tailscale_netext.stdout | trim
+               | default('(no Tailscale row — the app has never been launched)', true) }}
+          ================================================================
 
 # Auto-connect to the tailnet when an auth key is provided.
 - name: Load Tailscale auth key from environment
@@ -76,6 +92,47 @@
 - name: Auto-connect to tailnet when auth key is provided
   when: tailscale_auth_key | length > 0
   block:
+    # The `tailscale` CLI is the other GUI-only step. The cask's .pkg installs
+    # ONLY the app bundle (verify with `pkgutil --files com.tailscale.ipn.macsys`)
+    # — it contains no CLI binary, and nothing creates /usr/local/bin/tailscale
+    # automatically. Per https://tailscale.com/kb/1080/cli the standalone build
+    # installs its launcher only when the user clicks Settings → CLI integration
+    # → Install Now and authenticates. Symlinking the app binary to
+    # /usr/local/bin/tailscale does NOT substitute for it (it stays in GUI mode
+    # and exits with `Tailscale.CLIError error 3`). Note also that /usr/local/bin
+    # may not exist at all on Apple Silicon, where Homebrew lives in
+    # /opt/homebrew. Only the tasks below need the CLI, so this gate lives inside
+    # the auth-key block — with no auth key the role still converges on the cask
+    # install alone.
+    - name: Check whether the tailscale CLI launcher is installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/tailscale
+      register: _tailscale_cli
+      check_mode: false # read-only probe; run in --check so the guard below is real
+
+    - name: Fail with instructions for installing the tailscale CLI launcher
+      ansible.builtin.fail:
+        msg: |
+
+          ================================================================
+          Manual step required: install the tailscale CLI launcher
+          ================================================================
+
+          TAILSCALE_AUTH_KEY is set, so this role needs the `tailscale`
+          CLI — but /usr/local/bin/tailscale does not exist. The
+          standalone Tailscale.app does not create it automatically.
+
+          Install it from the GUI (it asks for your admin password):
+
+            Tailscale menu bar icon → Settings → CLI integration →
+            "Show me how" → Install Now
+
+          Docs: https://tailscale.com/kb/1080/cli
+
+          Then re-run: ansible-playbook main.yml
+          ================================================================
+      when: not _tailscale_cli.stat.exists
+
     - name: Check current Tailscale state
       ansible.builtin.command: tailscale status --json
       register: _tailscale_status
