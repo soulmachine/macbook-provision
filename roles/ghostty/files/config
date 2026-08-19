@@ -9,6 +9,9 @@ theme = Catppuccin Mocha
 minimum-contrast = 4
 
 # --- Window and Appearance ---
+# Ghostty defaults to an 80x24 grid, which cramps 80-column tools (vim,
+# git diff, side-by-side splits). Start new windows filling the screen instead.
+maximize = true
 # window-save-state = always
 window-padding-x = 8
 window-padding-y = 4
