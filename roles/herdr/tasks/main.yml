@@ -4,11 +4,80 @@
 #
 # NOTE: a non-Homebrew herdr may already exist at ~/.local/bin/herdr, which
 # precedes /opt/homebrew/bin on PATH and would shadow this brew-installed copy.
+# The tasks after the install prune that shadow once it falls behind the formula.
 
 - name: Install herdr
   community.general.homebrew:
     name: herdr
     state: latest
+
+# Upstream's install script, `herdr update`, and the far side of `herdr --remote`
+# all write the binary to ~/.local/bin/herdr, and ~/.zprofile prepends that
+# directory ahead of the Homebrew prefix — so a self-installed copy silently
+# outranks the one installed above, and brew goes on upgrading a binary nobody
+# executes.
+#
+# What that costs is the pin, not the duplicate: the shadow stays frozen at
+# whatever version was written while brew moves on. A 0.5.9 from May 2026
+# outranked brew's 0.8.2 here until August, which is why double-click-to-copy —
+# an 0.8.x feature — read as missing rather than merely out of date.
+#
+# Only an older copy is pruned. `herdr --remote` installs a version-matched
+# binary on the target on purpose, so the remote server speaks the local client's
+# protocol, and a newer one is someone deliberately running ahead of the formula.
+# Deleting either would lose a race with the tool putting it straight back, and
+# the role would never converge; both settle on their own once brew ships past
+# them.
+- name: Get the Homebrew herdr version
+  ansible.builtin.command: brew list --versions herdr
+  register: herdr_brew_version
+  changed_when: false
+  # Prints nothing and exits 1 when the formula is not installed. Tolerating that
+  # is what stops a machine whose brew install has not landed from having its
+  # only herdr deleted below.
+  failed_when: false
+
+# shell rather than command so an absent shadow is empty stdout instead of a task
+# failure, which keeps the prune below down to plain version tests.
+- name: Get the version of any self-installed herdr in ~/.local/bin
+  ansible.builtin.shell: |
+    [ -x "$HOME/.local/bin/herdr" ] || exit 0
+    "$HOME/.local/bin/herdr" --version
+  register: herdr_local_version
+  changed_when: false
+
+# Both commands print "herdr <semver>"; match the number rather than splitting on
+# whitespace, so a future suffix such as a channel name cannot feed a non-version
+# into the comparison and abort the play.
+- name: Remove the self-installed herdr once it falls behind the Homebrew one
+  ansible.builtin.file:
+    path: "{{ lookup('env', 'HOME') }}/.local/bin/herdr"
+    state: absent
+  register: herdr_shadow_pruned
+  vars:
+    herdr_brew_semver: "{{ herdr_brew_version.stdout | regex_search('[0-9]+[.][0-9]+[.][0-9]+') | default('', true) }}"
+    herdr_local_semver: "{{ herdr_local_version.stdout | regex_search('[0-9]+[.][0-9]+[.][0-9]+') | default('', true) }}"
+  when:
+    - herdr_brew_semver | length > 0
+    - herdr_local_semver | length > 0
+    - herdr_local_semver is version(herdr_brew_semver, '<')
+
+# Removing the file leaves an already-running server on its open inode, so the
+# machine keeps serving the shadowed version until herdr restarts. Say so, rather
+# than letting a green playbook imply the upgrade has already taken effect.
+#
+# noqa no-handler: a handler is the idiom for "restart the thing", but it fires at
+# the end of the whole play — dozens of roles downstream of this one — and is
+# skipped outright if any of them fail. A notice about what just happened here
+# belongs here, so this stays a task gated on the prune.
+- name: Report that a running herdr still needs a restart # noqa: no-handler
+  ansible.builtin.debug:
+    msg: >-
+      Removed the shadowed ~/.local/bin/herdr ({{ herdr_local_version.stdout }});
+      `herdr` now resolves to the Homebrew build ({{ herdr_brew_version.stdout }}).
+      A herdr server that is already running stays on the old binary until it is
+      restarted — detach, then `pkill -f 'herdr server'` and relaunch.
+  when: herdr_shadow_pruned is changed
 
 # Multi-line, so blockinfile rather than the lineinfile used for one-line aliases
 # elsewhere. The named marker keeps this block from colliding with any other
