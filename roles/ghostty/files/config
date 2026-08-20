@@ -9,8 +9,15 @@ theme = Catppuccin Mocha
 minimum-contrast = 4
 
 # --- Window and Appearance ---
-# Ghostty defaults to an 80x24 grid, which cramps 80-column tools (vim,
-# git diff, side-by-side splits). Start new windows filling the screen instead.
+# window-width/window-height default to 0, which Ghostty renders as an 80x24
+# grid. Fill the screen instead (macOS zoom state, not fullscreen). Applies at
+# window creation only -- a config reload won't resize existing windows.
+# This governs Ghostty windows on the machine running Ghostty. It has no
+# bearing on an SSH session into a provisioned host -- there the size comes
+# from the pty, which the ssh client sets. Connect with plain `ssh`: wrappers
+# that don't hand ssh a real terminal (`lume ssh`) leave the pty at the 24x80
+# default and never forward a resize, which makes vim/less/htop look cramped
+# no matter what this file says.
 maximize = true
 # window-save-state = always
 window-padding-x = 8
