@@ -49,3 +49,34 @@
 **Justification:** Same single-owner reasoning as Q1. The request to put claude-swap in a Claude-Code-specific role reads as relocating it, not duplicating it — claude-swap is a Claude Code account switcher that merely happens to ship as a Python package, so `python_cli_tools` (generic language-runtime CLIs) was always the weaker home. Leaving both would have two roles converging the same `uv tool` state, and a future version pin or removal would have to be applied in two places. The literal ask (a claude-extras role that installs it) is satisfied either way, so this is a deviation only in what it removes.
 **Outcome:** applied
 **Ref:** 81955ec
+
+## Q6 — interactive/self-update-idempotency — deviation
+
+**Question:** Three self-update tasks (`claude update`, `codex update`, `npx skills update herdr`) reported `changed` on a converged machine. Each already had a `changed_when` that matched an "up to date" phrase in the tool's output. Harden the phrases, or stop reading output altogether?
+**Options considered:** widen each regex to cover the other no-op phrasings / match a positive "did update" sentinel instead of a negated one / drop output matching and diff observable state (version, checksum) measured before and after the call
+**Chosen:** Diff state. Record `claude --version` / `brew list --cask --versions codex` / an `ansible.builtin.find` checksum of `~/.agents/skills/herdr` before the updater, run the updater with `changed_when: false`, then re-measure and set `changed_when` on the difference.
+**Decided-by:** agent
+**Justification:** Phrase matching cannot be made correct here, because all three updaters exit 0 on every path — so a missing phrase is indistinguishable from success — and each has no-op branches that print no phrase at all. Read from the `skills` CLI bundle (`dist/cli.mjs`, the `update` flow): it stays silent about being current when a source is skipped, when there is nothing global to check, and when the check itself throws (`✗ Failed to check skills from …`). That last branch is routine, not exotic — the unauthenticated GitHub API allows 60 calls an hour and was measured at `remaining: 0` during this session, which is what pushed the run onto the git-clone fallback. Verified against on-disk evidence: at the reported run the codex cask (0.148.0, Aug 19 02:02) and the herdr `SKILL.md` (Aug 10) had not moved, so both were phantom changes, while `claude` genuinely installed 2.1.238 — the sentinel was right by luck, not by construction. After the change, two consecutive runs of all three roles report `changed=0`, and a synthetic test confirms the detectors still fire on a content edit, a new file, and a version bump. `agent-reach` is left alone: it has no version to compare, so its **positive**-sentinel match stays the right call.
+**Outcome:** applied
+**Ref:** 44a79ab
+
+## Q7 — interactive/self-update-idempotency — gate-resolution
+
+**Question:** While fixing the above, found that the herdr skill can never actually update: upstream moved the file to `skills/herdr/SKILL.md`, but `~/.agents/.skill-lock.json` still records `skillPath: "SKILL.md"`, so `skills update` looks at the repo root, finds nothing, and reports the skill "deleted upstream". The role's install task is guarded by `creates:`, so it never re-runs and never repairs the path. Fix it in this pass?
+**Options considered:** re-add the skill now so the lock records the new path / point the role at the new path and force a reinstall / leave the state alone and report it
+**Chosen:** Leave it. Report the finding and let the user decide.
+**Decided-by:** agent
+**Justification:** Out of the requested scope, which was idempotency, and repairing it means mutating `~/.agents/skills` — a tree that fans out by symlink to every installed agent runtime, per `~/.agents/AGENTS.md §Skills management`. Took the least-surprising, cheapest-to-reverse option. The idempotency fix is correct either way: the task now honestly reports no change instead of a phantom one. Note the skill content is frozen at its 2026-07-02 version until this is repaired. Both repo paths are live and resolve to the same HEAD (`ogulcancelik/herdr` was renamed to `herdrdev/herdr`), so the source is fine — only the recorded path is stale.
+**Outcome:** assumed
+**Ref:** 44a79ab
+
+## Q8 — interactive/self-update-idempotency — deviation
+
+**Question:** Q7 left the stale herdr skill path alone as out of scope. The user then asked for it to be fixed. Repair only this machine's lock, or also change the role so it can repair itself?
+**Options considered:** re-add the skill by hand and leave the role untouched / re-add and also drop the role's `creates:` guard so `add` runs every time / re-add and add a task that re-runs `add` only when the CLI reports the skill deleted upstream
+**Chosen:** Both — repaired the lock on this machine, and added a conditional re-add to the role gated on the `deleted upstream` warning.
+**Decided-by:** human
+**Justification:** A hand fix alone teaches the repo nothing and lives only in dotfiles; the machine would drift again with no record. Dropping the `creates:` guard would re-clone the repo on every run to converge something that almost never changes. The conditional keeps the cheap path cheap. Matching a phrase here is not the mistake Q6 removed: this is a positive sentinel on exactly one branch, and a miss leaves a stale skill rather than inventing a change — the same reasoning that keeps `agent-reach` on a positive match. Note the role was already correct for a fresh machine (`skills add` finds the new path unaided); the drift was historical, from a June install. Verified in both directions: with the lock re-staled the task fires and reports `changed`, and the lock comes back repaired; converged, it skips and the run is `changed=0`. All 52 agent symlinks still resolve and now serve the newer SKILL.md (10140 → 10553 bytes), and the lock still holds 141 skills, so no duplicate entry was created.
+**Outcome:** applied
+**Ref:** 44a79ab
+**Supersedes:** Q7 — user asked for the fix, so the assumption it recorded no longer holds.
