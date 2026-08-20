@@ -82,17 +82,23 @@ so it is regularly spent by the time a play runs. `bun upgrade` is the role that
 feels it hardest: it resolves the newest release from
 `api.github.com/repos/Jarred-Sumner/bun-releases-for-updater/releases/latest` and,
 on a 403, exits **non-zero** with `Bun upgrade failed with error: HTTPForbidden`
-even though the installed bun is current. The bun role therefore copies gh's
-stored credential into `GITHUB_TOKEN` (bun reads `GITHUB_TOKEN` /
-`GITHUB_ACCESS_TOKEN`, **not** `GH_TOKEN`), lifting the ceiling to 5000/hr.
+even though the installed bun is current. An authenticated call gets 5000/hr
+instead, so the bun role makes sure one is available.
+
+bun reads `GITHUB_TOKEN` / `GITHUB_ACCESS_TOKEN`, which is why `.env` names the
+PAT `GITHUB_TOKEN` — set there, it reaches bun through direnv with no plumbing at
+all. The role's `gh auth token` lookup is the **fallback**, for a machine whose
+`.env` carries no token; an ambient `GITHUB_TOKEN` wins over it.
 
 Two details that are easy to get wrong:
 
-- **Blank `GH_TOKEN` when shelling out to `gh auth token`.** `GH_TOKEN` outranks
-  the keyring inside gh, so a stale PAT in `.env` makes `gh auth token` hand back
-  that dead value — and the request then fails 401 instead of 403, which looks
-  like a different bug. `environment: {GH_TOKEN: ""}` on the lookup task forces
-  the keyring credential.
+- **Blank both `GH_TOKEN` and `GITHUB_TOKEN` when shelling out to
+  `gh auth token`.** gh resolves in the order `GH_TOKEN`, `GITHUB_TOKEN`,
+  keyring — it honours *both* env vars, not just its own — so leaving either set
+  makes the command echo back the very value the fallback exists to replace. With
+  a stale PAT the request then fails 401 instead of 403, which reads as an
+  unrelated bug. `environment: {GH_TOKEN: "", GITHUB_TOKEN: ""}` on the lookup
+  task forces the keyring credential.
 - **Use `failed_when: false`, not `ignore_errors: true`.** A spent rate limit is
   an expected outcome. `ignore_errors` still prints a full red `fatal:` block and
   counts the task under `ignored=`, which trains you to skim past red and makes a

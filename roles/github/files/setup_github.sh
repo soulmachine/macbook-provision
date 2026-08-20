@@ -12,20 +12,20 @@ if ! command -v gh &>/dev/null; then
     exit 1
 fi
 
-# ── Require GH_TOKEN ─────────────────────────────────────────────────────────
+# ── Require GITHUB_TOKEN ─────────────────────────────────────────────────────────
 
 REQUIRED_SCOPES=(admin:ssh_signing_key admin:public_key user:email read:user)
 ALL_SCOPES_CSV="admin:ssh_signing_key,admin:public_key,user:email,read:user"
 PAT_URL="https://github.com/settings/tokens/new?scopes=${ALL_SCOPES_CSV}&description=setup_github"
 
-if [[ -z "${GH_TOKEN:-}" ]]; then
-    echo "Error: GH_TOKEN is not set." >&2
+if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+    echo "Error: GITHUB_TOKEN is not set." >&2
     echo "" >&2
     echo "Create a Personal Access Token (PAT) with the required scopes:" >&2
     echo "  1. Open: $PAT_URL" >&2
     echo "  2. Set an expiration date, then click 'Generate token'" >&2
     echo "  3. Copy the token and re-run:" >&2
-    echo "     export GH_TOKEN=<token> && bash setup_github.sh" >&2
+    echo "     export GITHUB_TOKEN=<token> && bash setup_github.sh" >&2
     exit 1
 fi
 
@@ -38,7 +38,7 @@ for s in "${REQUIRED_SCOPES[@]}"; do
 done
 
 if [[ ${#MISSING_SCOPES[@]} -gt 0 ]]; then
-    echo "Error: GH_TOKEN is missing scopes: ${MISSING_SCOPES[*]}" >&2
+    echo "Error: GITHUB_TOKEN is missing scopes: ${MISSING_SCOPES[*]}" >&2
     echo "" >&2
     echo "Option A — update your existing token (token value stays the same):" >&2
     echo "  1. Open: https://github.com/settings/tokens" >&2
@@ -48,7 +48,7 @@ if [[ ${#MISSING_SCOPES[@]} -gt 0 ]]; then
     echo "Option B — create a new token with all scopes pre-filled:" >&2
     echo "  1. Open: $PAT_URL" >&2
     echo "  2. Set an expiration date, click 'Generate token', copy it" >&2
-    echo "  3. Re-run: export GH_TOKEN=<new-token> && bash setup_github.sh" >&2
+    echo "  3. Re-run: export GITHUB_TOKEN=<new-token> && bash setup_github.sh" >&2
     exit 1
 fi
 
