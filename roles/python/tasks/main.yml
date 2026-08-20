@@ -18,3 +18,21 @@
   changed_when: >-
     (python_uv_tool_install.stderr + python_uv_tool_install.stdout)
     is search('Installed [0-9]+ package')
+
+- name: Ensure architecture fact is gathered
+  ansible.builtin.setup:
+    gather_subset: architecture
+  when: ansible_facts['architecture'] is not defined
+
+# Skipped on Intel, where these have no resolvable wheel set at all — see
+# vars/main.yml. Skipping is deliberate: a failed resolve here would fail the
+# whole play, and there is nothing to pin our way out of.
+- name: Install Apple Silicon-only Python CLI tools with uv
+  ansible.builtin.command: >-
+    {{ lookup('env', 'HOME') }}/.local/bin/uv tool install {{ item }}@latest
+  loop: "{{ python_cli_tools_arm64 }}"
+  register: python_uv_tool_install_arm64
+  changed_when: >-
+    (python_uv_tool_install_arm64.stderr + python_uv_tool_install_arm64.stdout)
+    is search('Installed [0-9]+ package')
+  when: ansible_facts['architecture'] == "arm64"

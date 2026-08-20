@@ -10,5 +10,18 @@ python_cli_tools:
   - ruff
   - pre-commit
   - httpie
+
+# Apple Silicon only. Both of these pull native wheels that upstream no longer
+# builds for macOS x86_64, so on an Intel Mac they can't resolve at all against
+# uv's default interpreter (the newest CPython it knows, currently 3.14):
+#   - openai-whisper needs torch, whose last x86_64 macOS wheel is 2.2.2
+#     (cp38-cp312). uv backtracks to an ancient openai-whisper and dies
+#     building its sdist.
+#   - whisper-ctranslate2 needs onnxruntime via faster-whisper: <=1.23.2 has no
+#     cp314 ABI wheels, and >=1.24.1 ships arm64-only macOS wheels.
+# On arm64 both resolve on 3.14 unpinned (torch 2.11, onnxruntime 1.29 —
+# the latter needs macOS 14+, which its macosx_14_0_arm64 tag enforces), so the
+# gate is on architecture rather than on a pinned interpreter.
+python_cli_tools_arm64:
   - openai-whisper
   - whisper-ctranslate2
