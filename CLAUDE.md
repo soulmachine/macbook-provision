@@ -75,6 +75,30 @@ change on a converged machine. `agent-reach` (below) is the deliberate exception
 it has no version to compare, so it matches a **positive** sentinel — never a
 negated one, for exactly the reason above.
 
+#### Borrowing gh's token for GitHub-API rate limits
+
+That 60-calls-an-hour ceiling is per **IP**, shared across every tool on the box,
+so it is regularly spent by the time a play runs. `bun upgrade` is the role that
+feels it hardest: it resolves the newest release from
+`api.github.com/repos/Jarred-Sumner/bun-releases-for-updater/releases/latest` and,
+on a 403, exits **non-zero** with `Bun upgrade failed with error: HTTPForbidden`
+even though the installed bun is current. The bun role therefore copies gh's
+stored credential into `GITHUB_TOKEN` (bun reads `GITHUB_TOKEN` /
+`GITHUB_ACCESS_TOKEN`, **not** `GH_TOKEN`), lifting the ceiling to 5000/hr.
+
+Two details that are easy to get wrong:
+
+- **Blank `GH_TOKEN` when shelling out to `gh auth token`.** `GH_TOKEN` outranks
+  the keyring inside gh, so a stale PAT in `.env` makes `gh auth token` hand back
+  that dead value — and the request then fails 401 instead of 403, which looks
+  like a different bug. `environment: {GH_TOKEN: ""}` on the lookup task forces
+  the keyring credential.
+- **Use `failed_when: false`, not `ignore_errors: true`.** A spent rate limit is
+  an expected outcome. `ignore_errors` still prints a full red `fatal:` block and
+  counts the task under `ignored=`, which trains you to skim past red and makes a
+  genuine failure indistinguishable from routine noise. `failed_when: false` plus
+  a `when: rc != 0` debug task says the same thing without crying wolf.
+
 ### Adding a New Role
 
 1. Create `roles/<name>/tasks/main.yml`

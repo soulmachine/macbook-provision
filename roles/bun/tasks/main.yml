@@ -2,17 +2,62 @@
 - name: Install bun # noqa: command-instead-of-module risky-shell-pipe
   ansible.builtin.shell: curl -fsSL https://bun.com/install | bash
   args:
-    creates: "{{ lookup('env', 'HOME') }}/.bun/bin/bun"
+    creates: "{{ bun_bin }}"
 
-# `bun upgrade` replaces the binary at its own location, so the full path
-# matters: PATH may resolve a different bun (e.g. the one bundled with mise's
-# node). On the latest version it exits 0 with "Congrats! You're already on
-# the latest version of Bun" on stderr. ignore_errors: the version check hits
-# the GitHub API unauthenticated and gets rate-limited (HTTPForbidden) often
-# enough that a failed upgrade check must not abort the whole play — bun
-# itself is guaranteed present by the install task above.
+# `bun upgrade` resolves the newest release from
+# api.github.com/repos/Jarred-Sumner/bun-releases-for-updater/releases/latest.
+# Unauthenticated that endpoint allows 60 calls an hour *per IP*, shared with
+# every other tool on this machine (gh, skills update, claude-mem, herdr), so
+# the budget is routinely spent and GitHub answers 403 — which bun surfaces as
+# `Bun upgrade failed with error: HTTPForbidden` and a non-zero exit, even
+# though bun is already current. Handing it a token lifts the ceiling to 5000/hr.
+#
+# bun reads GITHUB_TOKEN / GITHUB_ACCESS_TOKEN (not GH_TOKEN), so gh's stored
+# credential has to be copied across. GH_TOKEN is blanked for the lookup because
+# it outranks the keyring inside gh: if .env carries a stale PAT, `gh auth token`
+# returns that dead value instead of the working keyring one.
+- name: Read the GitHub token stored by gh
+  ansible.builtin.command: gh auth token
+  environment:
+    GH_TOKEN: ""
+  register: bun_gh_token
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Record bun version before upgrade
+  ansible.builtin.command: "{{ bun_bin }} --version"
+  register: bun_version_before
+  changed_when: false
+
+# failed_when: false, not ignore_errors: true — a spent rate limit is an
+# expected outcome, not a failure worth printing a red `fatal:` block for on
+# every converged run. bun itself is guaranteed present by the install task.
+# no_log keeps the token out of the task args at high verbosity.
 - name: Upgrade bun
-  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/bun upgrade"
+  ansible.builtin.command: "{{ bun_bin }} upgrade"
+  environment:
+    GITHUB_TOKEN: "{{ bun_gh_token.stdout | trim if bun_gh_token.rc == 0 else '' }}"
   register: bun_upgrade
-  changed_when: "'already on the latest version' not in bun_upgrade.stderr + bun_upgrade.stdout"
-  ignore_errors: true
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+# Decide changed from the observable version, never from a phrase in stdout:
+# `bun upgrade` prints its "already on the latest version" sentinel only on the
+# success path, so matching on it reports a phantom change every time the
+# version check itself fails.
+- name: Record bun version after upgrade
+  ansible.builtin.command: "{{ bun_bin }} --version"
+  register: bun_version_after
+  changed_when: bun_version_after.stdout != bun_version_before.stdout
+
+- name: Warn that the bun version check could not reach GitHub
+  ansible.builtin.debug:
+    msg:
+      - "`bun upgrade` exited {{ bun_upgrade.rc }} — bun {{ bun_version_after.stdout }} is installed and working,"
+      - "but it could not confirm whether a newer release exists."
+      - "Most likely the unauthenticated GitHub API rate limit (60/hr per IP) is spent; check with `curl -s https://api.github.com/rate_limit`."
+      - "Diagnose: run `{{ bun_bin }} upgrade` by hand to see bun's own error."
+      - "If `gh auth status` reports the active token is invalid, fix that first — this role borrows gh's token to raise the limit to 5000/hr."
+  when: bun_upgrade.rc != 0
