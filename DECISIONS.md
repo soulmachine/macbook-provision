@@ -89,7 +89,7 @@
 **Decided-by:** human
 **Justification:** Surfaced the three options to the user, who picked this one. It adds no second secret to rotate and stays correct as long as gh is logged in, which the `github` role already requires. Two implementation details the option itself did not settle: bun reads `GITHUB_TOKEN` / `GITHUB_ACCESS_TOKEN` and never `GH_TOKEN` (confirmed against the binary's strings alongside `GITHUB_API_DOMAIN`), so the value must be copied across rather than reused in place; and `GH_TOKEN` outranks the keyring inside gh, so the lookup task sets `environment: {GH_TOKEN: ""}` — without it a stale PAT in `.env` is handed back and the request fails 401 instead of 403, presenting as an unrelated bug. Verified: with the dead `.env` PAT exported, the task still retrieves the 40-char keyring credential.
 **Outcome:** applied
-**Ref:** 9ad629f
+**Ref:** 7788e76
 
 ## Q10 — interactive/bun-upgrade-rate-limit — deviation
 
@@ -99,7 +99,7 @@
 **Decided-by:** agent
 **Justification:** A spent rate limit is an expected outcome, not a failure. `ignore_errors` still prints a full red `fatal:` block and counts the task under `ignored=`, so a converged machine looked broken on every rate-limited run and a genuine bun failure would have been indistinguishable from that noise. Letting it fail outright was rejected because authentication raises the ceiling but does not remove it — gh can be logged out, and the shared per-IP budget can still be exhausted. `changed_when` moved to a `bun --version` diff under the existing rule in `CLAUDE.md §Self-update tasks`, so this needed no separate decision; see Q6. Both branches proven on this machine: authenticated the play is `changed=0` with the warning skipped, and with the API domain pointed at an unreachable host it is still `changed=0 failed=0 ignored=0` with the warning emitted.
 **Outcome:** applied
-**Ref:** 9ad629f
+**Ref:** 7788e76
 
 ## Q11 — interactive/bun-upgrade-rate-limit — gate-resolution
 
