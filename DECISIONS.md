@@ -80,3 +80,33 @@
 **Outcome:** applied
 **Ref:** 44a79ab
 **Supersedes:** Q7 — user asked for the fix, so the assumption it recorded no longer holds.
+
+## Q9 — interactive/bun-upgrade-rate-limit — gate-resolution
+
+**Question:** `bun upgrade` fails with `HTTPForbidden` whenever the unauthenticated GitHub API budget (60/hr per IP) is spent. Where should the role get a token to raise that ceiling?
+**Options considered:** borrow gh's keyring credential at run time / mint a new PAT and add `GITHUB_TOKEN` to `.env` and `.env.example` / do not authenticate at all and only make the task tolerate the 403
+**Chosen:** Borrow gh's stored credential — a task runs `gh auth token` and feeds the result to `bun upgrade` as `GITHUB_TOKEN`.
+**Decided-by:** human
+**Justification:** Surfaced the three options to the user, who picked this one. It adds no second secret to rotate and stays correct as long as gh is logged in, which the `github` role already requires. Two implementation details the option itself did not settle: bun reads `GITHUB_TOKEN` / `GITHUB_ACCESS_TOKEN` and never `GH_TOKEN` (confirmed against the binary's strings alongside `GITHUB_API_DOMAIN`), so the value must be copied across rather than reused in place; and `GH_TOKEN` outranks the keyring inside gh, so the lookup task sets `environment: {GH_TOKEN: ""}` — without it a stale PAT in `.env` is handed back and the request fails 401 instead of 403, presenting as an unrelated bug. Verified: with the dead `.env` PAT exported, the task still retrieves the 40-char keyring credential.
+**Outcome:** applied
+**Ref:** 9ad629f
+
+## Q10 — interactive/bun-upgrade-rate-limit — deviation
+
+**Question:** The role masked the rate-limit failure with `ignore_errors: true`. Keep that, or change how the expected failure is reported?
+**Options considered:** keep `ignore_errors: true` / `failed_when: false` plus a conditional warn task / let the task fail the play now that authentication makes 403 rare
+**Chosen:** `failed_when: false` with a `when: rc != 0` debug task carrying the diagnosis.
+**Decided-by:** agent
+**Justification:** A spent rate limit is an expected outcome, not a failure. `ignore_errors` still prints a full red `fatal:` block and counts the task under `ignored=`, so a converged machine looked broken on every rate-limited run and a genuine bun failure would have been indistinguishable from that noise. Letting it fail outright was rejected because authentication raises the ceiling but does not remove it — gh can be logged out, and the shared per-IP budget can still be exhausted. `changed_when` moved to a `bun --version` diff under the existing rule in `CLAUDE.md §Self-update tasks`, so this needed no separate decision; see Q6. Both branches proven on this machine: authenticated the play is `changed=0` with the warning skipped, and with the API domain pointed at an unreachable host it is still `changed=0 failed=0 ignored=0` with the warning emitted.
+**Outcome:** applied
+**Ref:** 9ad629f
+
+## Q11 — interactive/bun-upgrade-rate-limit — gate-resolution
+
+**Question:** `GH_TOKEN` in `.env` is an expired classic PAT that 401s, and because it outranks the keyring it makes gh's working account inactive machine-wide and sends the `github` role into its `rescue:` branch. Repair it as part of this change?
+**Options considered:** remove the dead value from `.env` so gh falls back to the keyring / leave `.env` untouched and report only / mint a replacement PAT with the scopes the `github` role needs
+**Chosen:** — (minting a replacement, pending the user)
+**Decided-by:** human
+**Justification:** Offered the three options; the user asked to be walked through minting a replacement rather than have `.env` edited. Only a human can create the PAT, so the repo stays as-is until they paste the new value in. Unblocking is not required for the bun fix — Q9's `GH_TOKEN: ""` blanking makes the bun role immune to the stale value either way. Note the dead value is a `ghp_` classic PAT while `.env.example` documents the fine-grained `github_pat_` form; it should be revoked whichever way it is replaced.
+**Outcome:** escalated
+**Ref:** (pending)
