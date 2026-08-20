@@ -110,3 +110,34 @@
 **Justification:** Offered the three options; the user asked to be walked through minting a replacement rather than have `.env` edited. Only a human can create the PAT, so the repo stays as-is until they paste the new value in. Unblocking is not required for the bun fix — Q9's `GH_TOKEN: ""` blanking makes the bun role immune to the stale value either way. Note the dead value is a `ghp_` classic PAT while `.env.example` documents the fine-grained `github_pat_` form; it should be revoked whichever way it is replaced.
 **Outcome:** escalated
 **Ref:** (pending)
+
+## Q12 — interactive/bun-upgrade-rate-limit — deviation
+
+**Question:** The user asked to rename `GH_TOKEN` to `GITHUB_TOKEN` "in .env". Four other places read that name — rename only `.env`, or everywhere?
+**Options considered:** `.env` only / `.env` plus every consumer (`.env.example`, `roles/github/tasks/main.yml`, `setup_github.sh`) / keep `GH_TOKEN` and add `GITHUB_TOKEN` as a second copy
+**Chosen:** Renamed across every consumer.
+**Decided-by:** agent
+**Justification:** Renaming `.env` alone would have sent the `github` role down its "not set — skipping" path on the next run, silently disabling SSH key and git-signing setup — plainly not the intent. A second copy was rejected because it doubles the rotation burden on a value that had just gone stale. The rename is safe for the `github` role because gh resolves `GH_TOKEN`, then `GITHUB_TOKEN`, then the keyring, so the script authenticates unchanged; verified by running the role, which now converges (`rescued=0`) where it previously rescued. Also flipped the bun role so an ambient `GITHUB_TOKEN` outranks its `gh auth token` fallback, since the whole point of the new name is that bun reads it directly.
+**Outcome:** applied
+**Ref:** a935f63
+
+## Q13 — interactive/bun-upgrade-rate-limit — gate-resolution
+
+**Question:** After the rename, the bun role blanked only `GH_TOKEN` before calling `gh auth token`. Is that still enough to reach the keyring?
+**Options considered:** leave the blanking as-is / blank `GITHUB_TOKEN` as well / drop the gh fallback entirely and rely on `.env`
+**Chosen:** Blank both `GH_TOKEN` and `GITHUB_TOKEN` on the lookup task.
+**Decided-by:** agent
+**Justification:** Confirmed empirically that gh honours `GITHUB_TOKEN` as a second-priority source, not just its own `GH_TOKEN`: with `GH_TOKEN` cleared and `GITHUB_TOKEN` set to a bogus value, `gh auth status` reports "The token in GITHUB_TOKEN is invalid" and marks it the active account. So after the rename the old blanking would have made `gh auth token` hand back the very `.env` value the fallback exists to replace — reintroducing the Q9 bug under a new variable name. Dropping the fallback was rejected because it is what covers a machine with no `.env`.
+**Outcome:** applied
+**Ref:** a935f63
+
+## Q14 — interactive/bun-upgrade-rate-limit — gate-resolution
+
+**Question:** Q11 left the dead PAT unresolved pending a human. The user then minted a replacement and supplied it. Is it fit for purpose?
+**Options considered:** write it in unverified / verify status and scopes before relying on it
+**Chosen:** Wrote it to `.env` (mode 600 preserved) and verified before continuing.
+**Decided-by:** human
+**Justification:** `GET /user` returns HTTP 200 with `x-oauth-scopes: admin:public_key, admin:ssh_signing_key, read:user, user:email` — all four scopes `setup_github.sh` requires — and `x-ratelimit-limit: 5000`, which is the ceiling the bun fix was after. `gh auth status` now shows the account active and healthy rather than shadowed by a dead value. Confirmed read-only beforehand that both the signing and authentication keys were already on GitHub, so running the `github` role performed no writes to the account. The token was pasted into the session transcript, so it should be treated as exposed and rotated at the user's convenience.
+**Outcome:** applied
+**Ref:** a935f63
+**Supersedes:** Q11 — the human minted the PAT, so the escalation is resolved.
