@@ -57,6 +57,24 @@ Every role has `tasks/main.yml`. Some also have:
 - GUI apps: `community.general.homebrew_cask` with `state: present`
 - Complex setup (oh-my-zsh, direnv): shell commands, git clone, sed modifications
 
+#### Self-update tasks: diff state, don't grep output
+
+Roles that shell out to a tool's own updater (`claude update`, `codex update`,
+`npx skills update`) must decide `changed` from **observable state measured
+before and after the call**, not from a phrase in the tool's stdout. Record the
+version or checksum, run the updater with `changed_when: false`, then re-measure
+and set `changed_when` on the difference.
+
+Output-matching looks equivalent and isn't. These updaters exit 0 on every path,
+so a missing sentinel is indistinguishable from success, and each has no-op
+branches that never print the phrase — `skills update` alone stays silent about
+being current when a source is skipped, when there is nothing to check, and when
+the check itself fails, the last of which is routine because the unauthenticated
+GitHub API allows only 60 calls an hour. Every one of those reports a phantom
+change on a converged machine. `agent-reach` (below) is the deliberate exception:
+it has no version to compare, so it matches a **positive** sentinel — never a
+negated one, for exactly the reason above.
+
 ### Adding a New Role
 
 1. Create `roles/<name>/tasks/main.yml`

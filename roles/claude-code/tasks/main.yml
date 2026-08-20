@@ -4,10 +4,23 @@
   args:
     creates: "{{ lookup('env', 'HOME') }}/.local/bin/claude"
 
+# Don't infer the verdict from `claude update`'s wording: a check that fails or
+# gets rate-limited still exits 0 while printing neither the up-to-date sentinel
+# nor an error, which reports a phantom change on every converged run. The
+# resolved version is the real signal — it moves only when a new build landed.
+- name: Record the Claude Code version before updating
+  ansible.builtin.command: claude --version
+  register: claude_code_version_before
+  changed_when: false
+
 - name: Update Claude Code to the latest version
   ansible.builtin.command: claude update
-  register: claude_code_self_update
-  changed_when: "'Claude Code is up to date' not in claude_code_self_update.stdout"
+  changed_when: false
+
+- name: Check whether Claude Code was updated
+  ansible.builtin.command: claude --version
+  register: claude_code_version_after
+  changed_when: claude_code_version_after.stdout != claude_code_version_before.stdout
 
 - name: Remove the legacy ccd alias from .zshrc
   ansible.builtin.lineinfile:

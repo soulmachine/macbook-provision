@@ -8,13 +8,23 @@
 
 # `codex update` detects the brew install and delegates to
 # `brew upgrade --cask codex` itself, so the cask above only needs
-# `state: present`. When already current it still exits 0 ("Update ran
-# successfully!") while brew warns "Not upgrading codex, the latest version
-# is already installed" on stderr — that warning is the no-change sentinel.
+# `state: present`. It always exits 0 and always prints "Update ran
+# successfully!", so its own stdout says nothing about whether anything moved,
+# and the "already installed" warning it forwards from brew is absent on
+# several no-op paths. Diff the installed cask version around the call instead.
+- name: Record the Codex version before updating
+  ansible.builtin.command: brew list --cask --versions codex
+  register: codex_version_before
+  changed_when: false
+
 - name: Update Codex CLI
   ansible.builtin.command: codex update
-  register: codex_update
-  changed_when: "'already installed' not in codex_update.stderr + codex_update.stdout"
+  changed_when: false
+
+- name: Check whether Codex was updated
+  ansible.builtin.command: brew list --cask --versions codex
+  register: codex_version_after
+  changed_when: codex_version_after.stdout != codex_version_before.stdout
 
 - name: Add codex-yolo alias to .zshrc
   ansible.builtin.lineinfile:
