@@ -11,6 +11,67 @@
   changed_when: false
   failed_when: false
 
+# `brew update` — which the upgrade task below runs — hard-fails when a tapped
+# repo has vanished upstream. Git falls through to a credential prompt that brew
+# has already disabled, so the whole role dies on someone else's deleted repo:
+#
+#   fatal: could not read Username for 'https://github.com': terminal prompts disabled
+#   Error: alienator88/homebrew-cask does not exist! Run `brew untap alienator88/homebrew-cask` to remove it.
+#
+# Prune those first, but only on proof the remote is really gone — deleting a tap
+# destroys the only local copy of its formulae, so a tap that is merely
+# unreachable right now must survive. Neither probe alone can tell "deleted" from
+# "private": GitHub answers an anonymous request for a missing repo with the same
+# 401 credential challenge it uses for a private one, and answers an anonymous web
+# request for either with 404. So require both, in this order:
+#
+#   1. `git ls-remote` over the same transport and credential helpers brew itself
+#      uses. Anything that answers is alive — public, or private with credentials
+#      that work — and is kept, whatever the web probe would say.
+#   2. Only for what step 1 could not reach, an anonymous GET. A hard 404 means
+#      gone; a timeout, an offline machine, a 5xx, or the 301 of a renamed repo
+#      (not followed on purpose — git handles redirects fine) all keep the tap.
+#
+# That leaves one false positive: a private tap on a machine with no working
+# credentials for it. Such a tap already breaks every `brew update` identically,
+# so pruning it is what brew's own error message asks for. homebrew/* is skipped
+# outright — core and cask ship through the JSON API and must never be pruned.
+- name: Find tapped repos whose upstream is gone
+  ansible.builtin.shell: |
+    set -o pipefail
+    brew tap | while read -r tap; do
+      case "$tap" in homebrew/*) continue ;; esac
+      url=$(git -C "$(brew --repo "$tap")" remote get-url origin 2>/dev/null) || continue
+      case "$url" in https://*) ;; *) continue ;; esac
+      GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$url" HEAD >/dev/null 2>&1 && continue
+      code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${url%.git}" 2>/dev/null) || continue
+      if [ "$code" = "404" ]; then echo "$tap"; fi
+    done
+  args:
+    executable: /bin/bash
+  register: _homebrew_dead_taps
+  changed_when: false
+  check_mode: false
+
+# Loops over nothing on a healthy machine, so this stays idempotent.
+- name: Untap Homebrew taps whose upstream is gone
+  ansible.builtin.shell: |
+    set -euo pipefail
+    repo=$(brew --repo "$TAP")
+    case "$repo" in
+      */Library/Taps/*/*) ;;
+      *) echo "refusing to delete unexpected path for tap $TAP: $repo" >&2; exit 1 ;;
+    esac
+    # `brew untap` itself can raise `uninitialized constant Cask::CaskLoader` on
+    # cask taps, so fall back to deleting the clone — which is all untap does.
+    brew untap "$TAP" >/dev/null 2>&1 || rm -rf "$repo"
+    rmdir "$(dirname "$repo")" 2>/dev/null || true
+  args:
+    executable: /bin/bash
+  environment:
+    TAP: "{{ item }}"
+  loop: "{{ _homebrew_dead_taps.stdout_lines }}"
+
 # brew update && brew upgrade: refresh metadata first so the install tasks
 # below see current versions, then upgrade everything already installed —
 # plain `brew upgrade` (what upgrade_all runs) covers formulae and casks.
