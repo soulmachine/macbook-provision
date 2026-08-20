@@ -92,8 +92,6 @@ ansible-playbook main.yml --check
 | codex | OpenAI Codex CLI（依赖 nodejs） |
 | gemini | Google Gemini CLI（依赖 nodejs） |
 | openclaw | OpenClaw 及 ClawHub CLI（依赖 nodejs） |
-| beads | Beads 任务追踪工具（依赖 go、nodejs） |
-| ralph-tui | Ralph TUI 及技能（依赖 bun、claude-code） |
 | tailscale | 独立版 Tailscale.app（cask）；若 `.env` 中有 `TAILSCALE_AUTH_KEY` 则自动登录，可选通过 API token 关闭 key 过期 |
 
 ### 可选 Roles（未包含在 `main.yml` 中）
