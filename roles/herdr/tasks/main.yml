@@ -10,6 +10,23 @@
     name: herdr
     state: latest
 
+# Multi-line, so blockinfile rather than the lineinfile used for one-line aliases
+# elsewhere. The named marker keeps this block from colliding with any other
+# role's managed block in the same .zshrc.
+- name: Add the herdr terminal-title wrapper to .zshrc
+  ansible.builtin.blockinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: herdr"
+    state: present
+    block: |
+      # herdr: title the terminal "herdr <hostname>" instead of just "herdr".
+      # The bare "herdr" title comes from oh-my-zsh/ghostty preexec; herdr itself never
+      # sets a title, so retitling here after preexec sticks for the whole session.
+      herdr() {
+        printf '\e]0;herdr %s\a' "${HOST%%.*}"
+        command herdr "$@"
+      }
+
 # Two tasks keep this both idempotent and fresh: `add` installs once (guarded by
 # `creates`, so it no-ops once the skill exists), and `update` re-checks upstream
 # every run — reporting `changed` only when the SKILL.md actually moves. `skills
