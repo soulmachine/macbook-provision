@@ -141,3 +141,23 @@
 **Outcome:** applied
 **Ref:** a935f63
 **Supersedes:** Q11 — the human minted the PAT, so the escalation is resolved.
+
+## Q15 — interactive/nodejs-lts-drift — gate-resolution
+
+**Question:** `mise use --global node@lts` left the machine on a stale LTS (24.14.1) that openclaw refuses to run, breaking the gateway LaunchAgent. How should the role force the newest LTS?
+**Options considered:** pin an exact version in `config.toml` and bump it by hand / add `mise upgrade node` alongside the existing `mise use` / leave the role alone and repair drifted machines by hand
+**Chosen:** Add `mise upgrade node` as its own task after `mise use --global node@lts`.
+**Decided-by:** agent
+**Justification:** `mise use --global node@lts` only guarantees *an* LTS is installed — the request "lts" is satisfied by any already-installed LTS release, so a box that already has one never pulls a newer one. That is exactly how this machine ended up running openclaw off 24.14.1: `mise ls node` shows three builds (24.13.1, 24.14.1, 24.19.0), and openclaw's `engines.node` is `>=22.22.3 <23 || >=24.15.0 <25 || >=25.9.0` — 24.14.1 falls in the gap between the first and second clauses and satisfies none of them, so every openclaw call failed while the role reported converged. `mise upgrade` was chosen over an exact pin because it moves to the newest release *inside the configured range*, which lets `config.toml` keep the readable `node = "lts"` rather than an exact version that then needs its own hand-maintained bump — the pin would trade a silent drift bug for a silent staleness bug. Repairing machines by hand was rejected as the failure recurs on every host. Verified live: the role moved a stale 24.13.1 to 24.19.0 and reported `changed`, and a converged re-run reports `ok=4 changed=0`.
+**Outcome:** applied
+**Ref:** 5f23643
+
+## Q16 — interactive/nodejs-lts-drift — deviation
+
+**Question:** Codex flagged (P2) that `mise use --global` can rewrite `config.toml` while the role's `changed_when` — a resolved-version diff over `mise current node` — reports no change. Widen the diff to also cover the config value, or replace the probe?
+**Options considered:** keep `mise current node` and add a second probe over `mise config get tools.node` / replace the probe with `mise ls --current node --json`, which carries both dimensions in one payload / accept the gap as cosmetic
+**Chosen:** Replace the probe with `mise ls --current node --json` for both the before and the after read.
+**Decided-by:** agent
+**Justification:** The finding is real and not cosmetic: these tasks move two independent pieces of state, and `mise current` sees only one. On a machine whose `config.toml` carries a hand-pinned `node = "24.19.0"`, `mise use` rewrites that line to `node = "lts"` while the resolved version stays 24.19.0 — a real edit to a file the role manages, reported as unchanged. The JSON form settles it in one comparison because it emits `requested_version` (what `config.toml` asks for) beside `version` (what that resolves to); confirmed live, the payload reads `"version": "24.19.0", "requested_version": "lts"`. The two-probe option was rejected on a measured difference in the unconfigured case, which is the fresh-machine path: `mise ls --current node --json` prints `[]` and exits 0, whereas `mise config get tools.node` exits 1 with `Key not found: tools.node`, so it would need its own `failed_when` and a null-vs-missing distinction to avoid a spurious first-run change. Same shape as Q6 — diff observable state, and pick the probe that already covers every dimension rather than bolting on a second one. Verified against all three scenarios: converged reports `changed=0`, Codex's pinned-version case now reports `changed=1` with an immediately idempotent re-run, and a stale-pin case (`node = "24.13.1"`) reports `changed=1` with both config and resolved runtime advancing. `ansible-lint roles/nodejs/` passes clean at the production profile.
+**Outcome:** applied
+**Ref:** 5f23643
