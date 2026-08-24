@@ -1,14 +1,2 @@
-# This Mac mini (Franks-Mac-mini-M2) provisions itself over the local connection;
-# every other host is reached over ssh. Connection details mirror ~/.ssh/config —
-# set explicitly here so the inventory works even where that config is absent.
-#
-# MagicDNS short names resolve intra-tailnet only. mac-studio-m3, archs-mac-mini
-# and dev-server-frank-lume are shared in from other tailnets, so they must be
-# addressed by full FQDN (see the note in ~/.ssh/config).
-
 [all]
 127.0.0.1             ansible_connection=local                                          ansible_python_interpreter=auto_silent
-mac-mini-2018         ansible_host=franks-mac-mini-2018                                  ansible_user=frankdai   ansible_python_interpreter=auto_silent
-mac-studio-m3         ansible_host=franks-mac-studio.taila5a95b.ts.net                   ansible_user=developer  ansible_python_interpreter=auto_silent
-archs-mac-mini        ansible_host=archs-mac-mini.taila5a95b.ts.net                      ansible_user=archiebot  ansible_python_interpreter=auto_silent
-dev-server-frank-lume ansible_host=dev-server-frank-lume.taila7647e.ts.net               ansible_user=lume       ansible_python_interpreter=auto_silent
