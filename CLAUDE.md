@@ -12,11 +12,16 @@ Ansible-based macOS development environment provisioner. Uses Homebrew (via Ansi
 # First-time setup (installs Xcode CLI Tools, Homebrew, mise, Python, Ansible)
 ./bootstrap.sh
 
-# Run full provisioning
-ansible-playbook main.yml
+# Run full provisioning on THIS machine.
+# --limit 127.0.0.1 is mandatory; see "Runs per-host only" below.
+ansible-playbook main.yml --limit 127.0.0.1
 
 # Dry run
-ansible-playbook main.yml --check
+ansible-playbook main.yml --limit 127.0.0.1 --check
+
+# Provision another fleet host — over ssh, in a LOGIN shell so brew is on PATH
+ssh -o BatchMode=yes -o ConnectTimeout=15 <host> \
+  'zsh -lc "cd ~/github.com/soulmachine/macbook-provision && git pull && ansible-playbook main.yml --limit 127.0.0.1"'
 ```
 
 ## Architecture
@@ -24,8 +29,42 @@ ansible-playbook main.yml --check
 - **main.yml** — Main playbook that runs roles in order. Add new roles here.
 - **playbook.yml** — Legacy playbook (not actively used). Defines packages inline with Japanese comments.
 - **bootstrap.sh** — Bootstrap script. Prepares a fresh Mac for Ansible. Also configures **passwordless sudo** so the playbook's sudo subprocesses (Homebrew casks, `pkgutil`/`rm` cleanup, Ansible `become`) run unattended: it installs a `/etc/sudoers.d/<user>-nopasswd` drop-in (`<user> ALL=(ALL) NOPASSWD: ALL`, mode 0440), validated with `visudo -cf` and rolled back if validation fails. The first `sudo` call prompts once on a fresh Mac (to write the drop-in); every `sudo` after — both in the rest of bootstrap and in the playbook — is passwordless, so no `SUDO_ASKPASS` helper or `sudo -A -v` priming is needed anywhere (and `ansible.cfg` uses plain `become_flags = -H`). The script is idempotent — it skips the sudoers setup if the drop-in already exists (`[[ -f ... ]]`, no sudo required to check). It also runs a no-op `osascript` against System Events to trigger the macOS Automation (AppleEvents) consent dialog for the host terminal (e.g. Ghostty) on first run; later runs no longer prompt. This pre-authorizes the terminal so headless osascript calls (e.g. `brew uninstall --cask`'s `tell app to quit`) don't hang on a dialog nobody is around to click.
-- **`.env` / `.envrc`** — Optional. `.envrc` runs `dotenv_if_exists .env` so direnv loads `.env` into the shell. Currently only the `tailscale` role consumes this (reads `TAILSCALE_AUTH_KEY` to auto-run `tailscale up`, and optionally `TAILSCALE_API_ACCESS_TOKEN` to disable node-key expiry); new roles that need secrets should follow the same pattern — gate the task on `lookup('env', 'VAR') | length > 0` and document the var in `.env.example`.
+- **`.env` / `.envrc`** — Optional, gitignored, and **per-machine**. `.envrc` runs `dotenv_if_exists .env` so direnv loads `.env` into the shell. The `tailscale` role reads `TAILSCALE_AUTH_KEY` (to auto-run `tailscale up`) and optionally `TAILSCALE_API_ACCESS_TOKEN` (to disable node-key expiry); the `github` and `bun` roles read `GITHUB_TOKEN`, plus an optional `GITHUB_SSH_KEY` (unset across the fleet; see `.env.example`). Values legitimately differ across the fleet — a Tailscale auth key is tailnet-scoped, so hosts on different tailnets must carry different ones, and a host may deliberately carry no `GITHUB_TOKEN` at all. That divergence is correct, not drift to reconcile. New roles that need secrets should follow the same pattern — gate the task on `lookup('env', 'VAR') | length > 0` and document the var in `.env.example`.
+- **inventory** — Lists all five fleet hosts, but the playbook must only ever target the local one. See "Runs per-host only, never from a control node" below.
 - **roles/** — Each role provisions one tool or application.
+
+#### Runs per-host only, never from a control node
+
+`main.yml` targets `hosts: all` and `inventory` lists all five fleet machines, so **every
+invocation needs `--limit 127.0.0.1`** — each host provisions itself. The extra inventory
+entries are there for ad-hoc fan-out (`ansible all -m ping`) and as fleet documentation,
+NOT for the playbook to drive.
+
+The roles read `lookup('env', 'HOME')` in 79 places across 25 roles, with zero uses of
+`ansible_env.HOME`, and pull the `.env` secrets the same way. Ansible evaluates every
+`lookup()` on the **control node**, not the target. Drop the limit and one machine's
+`$HOME` and `.env` reach all of them: provisioning `mac-studio-m3` (home
+`/Users/developer`) would write into `/Users/frankdai/…` on that box, and every host
+would receive the control node's tailnet-scoped Tailscale auth key. This was tried on
+2026-08-23, failed on all five hosts, and was reverted on 2026-08-24.
+
+Making the playbook control-node-safe is a project, not a flag: convert all 79 lookups to
+`ansible_env.HOME`, move the `.env` secrets into `host_vars` under `ansible-vault`, and
+re-test every role against a remote target.
+
+#### Remote runs need a login shell
+
+Driving another host over ssh must go through `zsh -lc "..."`. Homebrew is put on PATH by
+`~/.zprofile`'s `brew shellenv`, which only a **login** shell sources; a plain
+`ssh host 'cmd'` gets a non-interactive shell that reads just `~/.zshenv`, where `brew`
+is absent — on every fleet Mac, including the one you are typing on. Without the login
+shell the homebrew role dies at its third task with `brew: command not found`. It also
+resolves the Intel/Apple-Silicon split (`/usr/local/bin/brew` on mac-mini-2018,
+`/opt/homebrew/bin/brew` elsewhere), since each host's own shellenv decides.
+
+`~/.local/bin` is a separate question and needs no login shell — it is on the
+non-interactive PATH via each host's `~/.zshenv`, so bare `ansible-playbook` resolves
+over plain ssh. Only Homebrew needs this.
 
 #### Tailscale role specifics
 
