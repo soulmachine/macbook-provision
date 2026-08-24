@@ -6,14 +6,31 @@
   args:
     creates: "{{ lookup('env', 'HOME') }}/.bun/bin/omp"
 
-# `omp update` checks and installs in one step. When already current it
-# exits 0 with "✔ Already up to date".
+# `omp update` checks and installs in one step, and exits 0 on every path — so
+# a check that fails or gets rate-limited prints neither the "✔ Already up to
+# date" sentinel nor an error, and the negated match this used to carry reported
+# a phantom change on every such run. Diff the version instead, per the
+# "diff state, don't grep output" rule in CLAUDE.md; `omp --version` prints a
+# bare `omp/18.0.4` that moves only when a new build actually landed.
+- name: Record the oh-my-pi version before updating
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/omp --version"
+  environment:
+    PATH: "{{ lookup('env', 'HOME') }}/.bun/bin:{{ lookup('env', 'PATH') }}"
+  register: omp_version_before
+  changed_when: false
+
 - name: Update oh-my-pi
   ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/omp update"
   environment:
     PATH: "{{ lookup('env', 'HOME') }}/.bun/bin:{{ lookup('env', 'PATH') }}"
-  register: omp_update
-  changed_when: "'Already up to date' not in omp_update.stdout + omp_update.stderr"
+  changed_when: false
+
+- name: Check whether oh-my-pi was updated
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/omp --version"
+  environment:
+    PATH: "{{ lookup('env', 'HOME') }}/.bun/bin:{{ lookup('env', 'PATH') }}"
+  register: omp_version_after
+  changed_when: omp_version_after.stdout != omp_version_before.stdout
 
 - name: Add omp-yolo alias to .zshrc
   ansible.builtin.lineinfile:
