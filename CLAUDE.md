@@ -13,7 +13,7 @@ Ansible-based macOS development environment provisioner. Uses Homebrew (via Ansi
 ./bootstrap.sh
 
 # Run full provisioning on THIS machine.
-# --limit 127.0.0.1 is mandatory; see "Runs per-host only" below.
+# --limit 127.0.0.1 is belt-and-braces; see "Runs per-host only" below.
 ansible-playbook main.yml --limit 127.0.0.1
 
 # Dry run
@@ -30,23 +30,30 @@ ssh -o BatchMode=yes -o ConnectTimeout=15 <host> \
 - **playbook.yml** — Legacy playbook (not actively used). Defines packages inline with Japanese comments.
 - **bootstrap.sh** — Bootstrap script. Prepares a fresh Mac for Ansible. Also configures **passwordless sudo** so the playbook's sudo subprocesses (Homebrew casks, `pkgutil`/`rm` cleanup, Ansible `become`) run unattended: it installs a `/etc/sudoers.d/<user>-nopasswd` drop-in (`<user> ALL=(ALL) NOPASSWD: ALL`, mode 0440), validated with `visudo -cf` and rolled back if validation fails. The first `sudo` call prompts once on a fresh Mac (to write the drop-in); every `sudo` after — both in the rest of bootstrap and in the playbook — is passwordless, so no `SUDO_ASKPASS` helper or `sudo -A -v` priming is needed anywhere (and `ansible.cfg` uses plain `become_flags = -H`). The script is idempotent — it skips the sudoers setup if the drop-in already exists (`[[ -f ... ]]`, no sudo required to check). It also runs a no-op `osascript` against System Events to trigger the macOS Automation (AppleEvents) consent dialog for the host terminal (e.g. Ghostty) on first run; later runs no longer prompt. This pre-authorizes the terminal so headless osascript calls (e.g. `brew uninstall --cask`'s `tell app to quit`) don't hang on a dialog nobody is around to click.
 - **`.env` / `.envrc`** — Optional, gitignored, and **per-machine**. `.envrc` runs `dotenv_if_exists .env` so direnv loads `.env` into the shell. The `tailscale` role reads `TAILSCALE_AUTH_KEY` (to auto-run `tailscale up`) and optionally `TAILSCALE_API_ACCESS_TOKEN` (to disable node-key expiry); the `github` and `bun` roles read `GITHUB_TOKEN`, plus an optional `GITHUB_SSH_KEY` (unset across the fleet; see `.env.example`). Values legitimately differ across the fleet — a Tailscale auth key is tailnet-scoped, so hosts on different tailnets must carry different ones, and a host may deliberately carry no `GITHUB_TOKEN` at all. That divergence is correct, not drift to reconcile. New roles that need secrets should follow the same pattern — gate the task on `lookup('env', 'VAR') | length > 0` and document the var in `.env.example`.
-- **inventory** — Lists all five fleet hosts, but the playbook must only ever target the local one. See "Runs per-host only, never from a control node" below.
+- **inventory** — Holds only `127.0.0.1 ansible_connection=local`, deliberately. Do NOT add remote hosts to it. See "Runs per-host only, never from a control node" below.
 - **roles/** — Each role provisions one tool or application.
 
 #### Runs per-host only, never from a control node
 
-`main.yml` targets `hosts: all` and `inventory` lists all five fleet machines, so **every
-invocation needs `--limit 127.0.0.1`** — each host provisions itself. The extra inventory
-entries are there for ad-hoc fan-out (`ansible all -m ping`) and as fleet documentation,
-NOT for the playbook to drive.
+`main.yml` targets `hosts: all`, and `inventory` deliberately holds only
+`127.0.0.1 ansible_connection=local` — so `hosts: all` resolves to whichever machine you
+are on, and each host provisions itself. **Do not add remote hosts to the inventory, and
+do not fan this playbook out.** The `--limit 127.0.0.1` above is belt-and-braces: against
+the current inventory it changes nothing, and it keeps the rule true if an entry is ever
+added back.
 
 The roles read `lookup('env', 'HOME')` in 79 places across 25 roles, with zero uses of
 `ansible_env.HOME`, and pull the `.env` secrets the same way. Ansible evaluates every
-`lookup()` on the **control node**, not the target. Drop the limit and one machine's
+`lookup()` on the **control node**, not the target. Fan this out and one machine's
 `$HOME` and `.env` reach all of them: provisioning `mac-studio-m3` (home
 `/Users/developer`) would write into `/Users/frankdai/…` on that box, and every host
 would receive the control node's tailnet-scoped Tailscale auth key. This was tried on
-2026-08-23, failed on all five hosts, and was reverted on 2026-08-24.
+2026-08-23 — the inventory briefly listed all five fleet hosts — it failed on all five,
+and both the inventory and the nightly sweep were reverted on 2026-08-24.
+
+Ad-hoc fleet fan-out (`ansible all -m ping`) is therefore not available from this
+inventory, by design. Reach other hosts over ssh instead, or keep a separate inventory
+file outside this repo.
 
 Making the playbook control-node-safe is a project, not a flag: convert all 79 lookups to
 `ansible_env.HOME`, move the `.env` secrets into `host_vars` under `ansible-vault`, and
