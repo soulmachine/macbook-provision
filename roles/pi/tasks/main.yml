@@ -9,12 +9,37 @@
     creates: "{{ lookup('env', 'HOME') }}/.bun/bin/pi"
 
 # Bare `pi update` updates pi itself only (extensions are skipped; the CLI
-# says so and points at `pi update --extensions`). When already current it
-# exits 0 with "pi is already up to date (vX.Y.Z)".
+# says so and points at `pi update --extensions`).
+#
+# Don't read the verdict from its wording. `pi update` exits 0 on every path,
+# so a check that failed or got rate-limited prints neither the "pi is already
+# up to date" sentinel nor an error — and the negated match this used to carry
+# called every one of those a change. Diff `pi --version` (a bare `0.84.3`)
+# instead, per the "diff state, don't grep output" rule in CLAUDE.md.
+#
+# The PATH below is not decoration: `pi update` shells out to `bun` to do the
+# install, so without it the task dies on `Error: spawn bun ENOENT` — but only
+# on a run that has an update to apply, since a current pi exits early without
+# spawning anything. That is why it stayed hidden until a drift test.
+- name: Record the pi version before updating
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/pi --version"
+  environment:
+    PATH: "{{ lookup('env', 'HOME') }}/.bun/bin:{{ lookup('env', 'PATH') }}"
+  register: pi_version_before
+  changed_when: false
+
 - name: Update pi coding agent
   ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/pi update"
-  register: pi_update
-  changed_when: "'already up to date' not in pi_update.stdout + pi_update.stderr"
+  environment:
+    PATH: "{{ lookup('env', 'HOME') }}/.bun/bin:{{ lookup('env', 'PATH') }}"
+  changed_when: false
+
+- name: Check whether pi was updated
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/pi --version"
+  environment:
+    PATH: "{{ lookup('env', 'HOME') }}/.bun/bin:{{ lookup('env', 'PATH') }}"
+  register: pi_version_after
+  changed_when: pi_version_after.stdout != pi_version_before.stdout
 
 # Mirrors https://github.com/kunchenguid/dotfiles/tree/main/home/.pi/agent,
 # minus the `calm` extension. The author's rationale for each setting is at
