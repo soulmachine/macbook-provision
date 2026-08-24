@@ -10,6 +10,8 @@
 # exits 0 with "✔ Already up to date".
 - name: Update oh-my-pi
   ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/omp update"
+  environment:
+    PATH: "{{ lookup('env', 'HOME') }}/.bun/bin:{{ lookup('env', 'PATH') }}"
   register: omp_update
   changed_when: "'Already up to date' not in omp_update.stdout + omp_update.stderr"
 
