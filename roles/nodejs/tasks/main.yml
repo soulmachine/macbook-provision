@@ -2,10 +2,12 @@
 # `mise use --global node@lts` only guarantees *an* LTS is installed: the request
 # "lts" is satisfied by any already-installed LTS release, so on a box that
 # already has one it never pulls a newer one. That drift is not cosmetic —
-# openclaw pins `>=24.15.0 <25`, and a machine left on 24.14.1 fails every
-# openclaw call (including the gateway LaunchAgent). `mise upgrade` moves to the
-# newest release inside the configured range, so config.toml keeps the readable
-# `node = "lts"` instead of a pinned exact version.
+# openclaw's engines.node is `>=22.22.3 <23 || >=24.15.0 <25 || >=25.9.0`, and
+# 24.14.1 sits in the gap between the first two clauses, satisfying none of
+# them, so a machine left there fails every openclaw call (including the
+# gateway LaunchAgent). `mise upgrade` moves to the newest release inside the
+# configured range, so config.toml keeps the readable `node = "lts"` instead of
+# a pinned exact version.
 #
 # changed_when compares state before and after, per the "diff state, don't grep
 # output" rule in CLAUDE.md: `mise use` prints its tool line on every run whether
