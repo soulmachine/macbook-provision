@@ -6,7 +6,7 @@
 
 - name: Install mattpocock skills for all agents
   ansible.builtin.command:
-    cmd: npx skills add https://github.com/mattpocock/skills -all -g -y
+    cmd: npx skills@latest add mattpocock/skills -g -y --all
     creates: "{{ lookup('env', 'HOME') }}/.agents/skills/grill-me"
 
 - name: Install soulmachine skills for all agents
