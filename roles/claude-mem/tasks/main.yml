@@ -73,16 +73,27 @@
 # loading the Node types. If upstream ever drops that `npx tsc` line the
 # substitution is a harmless no-op and the build reverts to today's failure, so this
 # cannot break silently. Remove once upstream fixes its tsconfig. https://aka.ms/ts6
-- name: Check whether the claude-mem OpenClaw plugin is installed
-  ansible.builtin.stat:
-    path: "{{ claude_mem_openclaw_marker }}"
-  register: claude_mem_openclaw_plugin
+#
+# Gated on the same `mac_is_always_on` fact as the `openclaw` role itself, set by
+# the `host-facts` role this one depends on. These
+# two tasks install a plugin *into* the OpenClaw gateway, so on a host where
+# that role installs nothing there is no gateway to extend, and the script would
+# spend a clone-and-tsc build producing a plugin nothing will ever load. The
+# rest of claude-mem (the per-IDE installs above) is wanted everywhere and stays
+# ungated.
+- name: Wire claude-mem into the OpenClaw gateway
+  when: mac_is_always_on | bool
+  block:
+    - name: Check whether the claude-mem OpenClaw plugin is installed
+      ansible.builtin.stat:
+        path: "{{ claude_mem_openclaw_marker }}"
+      register: claude_mem_openclaw_plugin
 
-- name: Install the claude-mem OpenClaw plugin (non-interactive, tsc deprecation patched)
-  ansible.builtin.shell: |
-    set -o pipefail
-    curl -fsSL https://install.cmem.ai/openclaw.sh | perl -pe 's/npx tsc 2>&1/npx tsc --ignoreDeprecations 6.0 --types node 2>&1/' | bash -s -- --non-interactive
-  args:
-    executable: /bin/bash
-  when: not claude_mem_openclaw_plugin.stat.exists
-  changed_when: true
+    - name: Install the claude-mem OpenClaw plugin (non-interactive, tsc deprecation patched)
+      ansible.builtin.shell: |
+        set -o pipefail
+        curl -fsSL https://install.cmem.ai/openclaw.sh | perl -pe 's/npx tsc 2>&1/npx tsc --ignoreDeprecations 6.0 --types node 2>&1/' | bash -s -- --non-interactive
+      args:
+        executable: /bin/bash
+      when: not claude_mem_openclaw_plugin.stat.exists
+      changed_when: true

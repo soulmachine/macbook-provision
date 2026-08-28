@@ -1,0 +1,115 @@
+---
+# Classify this Mac so the always-on-only roles can gate on it. This role
+# installs nothing — it exists only to set four facts, which makes it the one
+# role in the repo with no install step. Every task is a read-only probe or a
+# set_fact, so it reports 0 changed and stays clean under the idempotency check.
+#
+# It is wired two ways, both deliberate:
+#   - as a `meta/main.yml` dependency of openclaw, hermes and claude-mem, so a
+#     standalone `ansible localhost -m include_role -a name=openclaw`
+#     classifies the machine itself and needs no `-e mac_is_always_on=...`;
+#   - listed first in main.yml's `roles:`, so the full play classifies before
+#     any role runs, however that list is later reordered.
+# Ansible de-duplicates a parameterless role, so it runs exactly ONCE per play
+# either way. Do not give either wiring a `vars:` block — that breaks dedup and
+# the probes run twice.
+#
+# These are `command`/`shell` TASKS, not `lookup('pipe', ...)` vars, on purpose.
+# Ansible evaluates every lookup on the CONTROL node, so a lookup here would let
+# the control node's hardware decide what a target installs — a worse bug than
+# the `lookup('env', 'HOME')` debt CLAUDE.md already tracks, and one with no
+# `ansible_*` equivalent to migrate to. See "Runs per-host only, never from a
+# control node".
+#
+# `set_fact` rather than `vars/main.yml` is also load-bearing: role vars are
+# scoped to the role, host facts are global — which is what lets openclaw read
+# these from a dependency. Do not "simplify" it into vars/main.yml later.
+#
+# This role carries no tags. A `--tags`-limited play that reached a gated role
+# would abort on the undefined gate. No tag reaches one today
+# (`agent-multiplexer` is paseo/moshi, `terminal-multiplexer` is
+# zellij/tmux/herdr); if a gated role ever gains a tag, add `tags: always` here.
+
+# Classify the machine before any role runs, so always-on-only roles can gate
+# on it. The roles that stand up a long-lived local service (openclaw's
+# gateway, hermes) are worth installing only on a Mac that is actually up.
+#
+# The gate is ioreg's AppleSmartBattery `BatteryInstalled` field, and it is
+# deliberately fail-closed: install ONLY where that field exists and reads
+# `No`. Three states, all measured live on this fleet:
+#   No       — Apple Silicon desktop (Mac mini M2, Mac Studio). Install.
+#   Yes      — portable (MacBook Air M4). Skip: a laptop sleeps, roams
+#              networks, and is not run 24x7.
+#   (absent) — no AppleSmartBattery node at all, so `ioreg -c AppleSmartBattery`
+#              matches nothing and awk prints an empty string. Skip.
+#              Intel Macs are here: franks-mac-mini-2018 has no
+#              `BatteryInstalled` anywhere in its ioreg tree and no
+#              `AppleSmartBattery*` class either. Skipping it is intended.
+#
+# Requiring an affirmative `No` rather than "anything that isn't Yes" is the
+# point: a host earns the always-on roles only when its hardware positively
+# says it has no battery. A probe that returns nothing — an OS change, a VM, a
+# future machine that drops the node — withholds them instead of installing a
+# gateway somewhere nobody vetted.
+#
+# Gating on the battery rather than a Mac mini / Mac Studio model whitelist is
+# deliberate too: it answers the real question directly and needs no
+# maintenance, where a whitelist silently skips whatever nobody remembered to
+# add. (`sysctl -n hw.model` is no help — every Apple Silicon Mac reports the
+# family-less `MacN,M` form: the Mac mini M2 is `Mac14,3`, the MacBook Air M4
+# `Mac16,12`.)
+#
+# Override a host that should defy its hardware with `-e mac_is_always_on=true`
+# (or `=false`); extra vars outrank set_fact. Every gate casts with `| bool`
+# because `-e` delivers a bare string — and `not "false"` is False, so an
+# uncast gate would do the opposite of what the override asked.
+#
+# check_mode: false on both probes — command modules skip under `--check`,
+# which would leave the registers undefined and break the set_fact below. Both
+# are read-only, so running them during a dry run is safe and is what makes
+# the gates meaningful there.
+
+- name: Read hardware overview
+  ansible.builtin.command: system_profiler -json SPHardwareDataType
+  register: mac_hw
+  changed_when: false
+  check_mode: false
+
+# `ioreg` exits 0 whether or not the class matches, so the absent case
+# arrives as empty stdout rather than an error.
+- name: Read whether a battery is installed
+  ansible.builtin.shell:
+    cmd: ioreg -c AppleSmartBattery -r -d 1 | awk -F'= ' '/"BatteryInstalled"/ {print $2; exit}'
+  register: mac_batt
+  changed_when: false
+  check_mode: false
+
+# `mac_family` is the marketing name — "Mac mini", "Mac Studio",
+# "MacBook Air", "Apple Virtual Machine 1"; `mac_battery_installed` is the
+# raw verdict, normalised to "absent" when the field is missing. Both feed
+# the verdict below and the skip message that explains it.
+#
+# `mac_is_vm` re-parses the JSON rather than reading `mac_family` because a
+# `set_fact` CANNOT reference a key defined in the same task — Ansible fails
+# the play with "Error while resolving value ... is undefined". That is also
+# why the verdict lives in a second task rather than a fourth key here.
+- name: Classify this Mac
+  ansible.builtin.set_fact:
+    mac_family: "{{ (mac_hw.stdout | from_json).SPHardwareDataType[0].machine_name }}"
+    mac_battery_installed: "{{ mac_batt.stdout | trim | default('absent', true) }}"
+    mac_is_vm: "{{ 'Virtual' in (mac_hw.stdout | from_json).SPHardwareDataType[0].machine_name }}"
+
+# Two ways to qualify as always-on, and the second is an exception to the
+# fail-closed rule above, taken deliberately:
+#   BatteryInstalled == No  — hardware positively reports having no battery.
+#   a virtual machine       — publishes no AppleSmartBattery node at all, so
+#                             it can never produce that affirmative `No`, yet
+#                             a VM is by nature always-on and hosts a real
+#                             gateway (dev-server-frank-lume is provisioned
+#                             from this repo and already runs both roles).
+# Physical Intel Macs also publish no node, and they stay excluded — the VM
+# is readmitted by an explicit positive test on the model name, not by
+# relaxing the battery rule for everything that fails it.
+- name: Decide whether this Mac is always-on
+  ansible.builtin.set_fact:
+    mac_is_always_on: "{{ mac_battery_installed == 'No' or mac_is_vm }}"

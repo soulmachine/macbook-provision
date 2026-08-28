@@ -1,5 +1,11 @@
 ---
 dependencies:
+  # Sets `mac_is_always_on`, the fact this role's gate reads, plus the
+  # `mac_family` / `mac_battery_installed` its skip message names. Declared here
+  # so a standalone `ansible localhost -m include_role -a name=<this role>`
+  # classifies the machine itself instead of aborting on an undefined variable —
+  # no `-e` needed.
+  - host-facts
   # npx runs claude-mem; bun + uv are its plugin runtimes (claude-mem verifies
   # them during install).
   - nodejs

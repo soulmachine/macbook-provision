@@ -6,4 +6,3 @@ dependencies:
   # classifies the machine itself instead of aborting on an undefined variable —
   # no `-e` needed.
   - host-facts
-  - nodejs

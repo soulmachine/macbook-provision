@@ -1,0 +1,65 @@
+# Hermes — Nous Research's personal AI agent. https://github.com/NousResearch/hermes-agent
+#
+# The official installer clones the repo to ~/.hermes/hermes-agent, builds a
+# uv-managed venv beside it, installs Playwright/Chromium and Node deps, then
+# writes `hermes` / `hermes-acp` launchers into ~/.local/bin — appending that
+# dir to .zshrc itself (grep-guarded), so no PATH task is needed here.
+#
+# `--skip-setup` is required for unattended runs: the setup wizard reads from
+# /dev/tty rather than stdin, so under ansible-playbook it renders its prompts
+# into Ansible's captured stdout and then blocks the play forever waiting on
+# input nobody can see. Run `hermes setup` interactively once afterwards to
+# configure the model provider and any messaging gateways.
+#
+# `--no-skills` keeps ~/.hermes/skills/ a blank slate. That directory is already
+# a symlink farm into ~/.agents/skills maintained by the `skills` role; without
+# this flag the installer seeds ~13 bundled skill *directories* alongside those
+# symlinks and re-injects them on every `hermes update`.
+- name: Install hermes # noqa: command-instead-of-module risky-shell-pipe
+  ansible.builtin.shell: >-
+    curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-setup --no-skills
+  args:
+    creates: "{{ lookup('env', 'HOME') }}/.local/bin/hermes"
+
+# `--no-skills` above only takes effect on a fresh install, and the `creates:`
+# guard means the installer never runs again on a host provisioned before the
+# flag was added — so converge the opt-out separately. All the flag really does
+# is write ~/.hermes/.no-bundled-skills, the marker that skills_sync.py and
+# `hermes update` both honor; `hermes skills opt-out` writes exactly that and
+# touches nothing already on disk.
+#
+# Bundled skills seeded by an earlier flag-less run stay put. Clear them by
+# hand with `hermes skills opt-out --remove` — it deletes only pristine,
+# manifest-tracked bundled skills, never user-edited ones and never the
+# `skills`-role symlinks — deliberately left out of the role so provisioning
+# never deletes skills on its own.
+- name: Opt out of hermes bundled-skill seeding
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.local/bin/hermes skills opt-out"
+  args:
+    creates: "{{ lookup('env', 'HOME') }}/.hermes/.no-bundled-skills"
+
+# Two tasks keep this both idempotent and fresh: `creates:` above installs once,
+# and `hermes update` re-checks upstream every run. Use `update --check` for the
+# probe, not `hermes version` — the latter's update status is cached for 6 hours
+# in ~/.hermes/.update_check, while `--check` does a live `git fetch`.
+#
+# Gate on the POSITIVE sentinel. `update --check` prints "⚕ Update available…"
+# only when the checkout is actually behind; it prints "✓ Already up to date."
+# when converged, and exits 1 with a "✗ …" line on every failure branch
+# (network error, auth failure, failed fetch, branch not found). A negated
+# "not up to date" test would fire on all of those and burn a full reinstall on
+# every converged run, so `failed_when: false` swallows the transient ones and
+# the apply task simply doesn't trigger.
+- name: Check whether a hermes update is available
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.local/bin/hermes update --check"
+  register: hermes_update_check
+  changed_when: false
+  failed_when: false
+
+# `hermes update` is safe unattended: its two prompts (restore stashed local
+# changes, add an 'upstream' remote for forks) read stdin — not /dev/tty — and
+# both catch EOFError, so under Ansible they fall through to their safe default.
+- name: Update hermes to the latest version
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.local/bin/hermes update"
+  when: "'Update available' in hermes_update_check.stdout"
+  changed_when: true

@@ -34,6 +34,10 @@ ansible-playbook main.yml
 ansible localhost -m include_role -a name=openclaw
 ```
 
+`openclaw` 和 `hermes` 只装在常年开机的桌面机上（详见下文"仅限常驻开机的机器"）。
+判定所需的 fact 由 `host-facts` role 提供，而它是这两个 role 的 meta 依赖，
+所以上面这条单 role 命令**不需要任何额外参数**就能正常工作。
+
 ### 3. 试运行（不修改系统）
 
 ```bash
@@ -76,6 +80,7 @@ ansible-playbook main.yml --check
 
 | Role | 说明 |
 |------|------|
+| host-facts | 机器判定（`mac_family` / `mac_battery_installed` / `mac_is_vm` / `mac_is_always_on`）；不装任何软件 |
 | oh-my-zsh | Zsh 框架及插件管理 |
 | direnv | 目录级环境变量管理 |
 | go | Go 语言（通过 mise 安装） |
@@ -91,8 +96,49 @@ ansible-playbook main.yml --check
 | claude-code | Claude Code CLI 及插件（依赖 nodejs） |
 | codex | OpenAI Codex CLI（依赖 nodejs） |
 | gemini | Google Gemini CLI（依赖 nodejs） |
-| openclaw | OpenClaw 及 ClawHub CLI（依赖 nodejs） |
+| openclaw | OpenClaw 及 ClawHub CLI（依赖 nodejs）；**仅限常驻开机的机器** |
+| hermes | Hermes 个人 agent（Nous Research）；**仅限常驻开机的机器** |
 | tailscale | 独立版 Tailscale.app（cask）；若 `.env` 中有 `TAILSCALE_AUTH_KEY` 则自动登录，可选通过 API token 关闭 key 过期 |
+
+### 仅限常驻开机的机器
+
+`openclaw` 和 `hermes` 都会常驻一个长期运行的本地服务（OpenClaw 的 gateway
+LaunchAgent、Hermes 的 agent 进程），只有 24x7 开机的机器才用得上。因此这两个 role
+以及 `claude-mem` 里安装 OpenClaw 插件的那一步，都以 `mac_is_always_on` 为开关。
+
+这个 fact 由 `host-facts` role 设置。它同时是这三个 role 的 meta 依赖，并且被列在
+`main.yml` 的 `roles:` 第一位——前者让单独运行某个 role 时也能自行判定（无需
+`-e`），后者保证整套 playbook 在任何 role 之前先完成判定。Ansible 对无参数 role 会
+去重，所以无论多少 role 依赖它，每次 play 只执行一次。
+
+判断依据是**有没有内置电池**，取自 ioreg 的 AppleSmartBattery `BatteryInstalled`
+字段，而不是机型白名单。规则是**保守的**：该字段**存在且等于 `No`** 才安装，另外对
+虚拟机开一个显式例外（见下）。（`sysctl -n hw.model` 在这里没用——所有 Apple Silicon
+机型都只报 `MacN,M`，看不出机型家族。）
+
+全 fleet 实测结果（下表每一行都是实测，没有推断）：
+
+| 机器 | 机型 | `mac_family` | `BatteryInstalled` | 判定 |
+|------|------|--------------|--------------------|------|
+| franks-mac-mini-m2 | `Mac14,3`（M2） | Mac mini | `No` | **安装** |
+| archs-mac-mini | `Mac16,10`（M4） | Mac mini | `No` | **安装** |
+| franks-mac-studio | `Mac15,14`（M3） | Mac Studio | `No` | **安装** |
+| dev-server-frank-lume | `VirtualMac2,1` | Apple Virtual Machine 1 | 不存在 | **安装**（虚拟机例外） |
+| franks-macbook-air | `Mac16,12`（M4） | MacBook Air | `Yes` | 跳过（便携机） |
+| franks-mac-mini-2018 | `Macmini8,1`（Intel） | Mac mini | 不存在 | 跳过 |
+
+Intel 机器和虚拟机都压根没有 AppleSmartBattery 节点，整棵 ioreg 树里都找不到
+`BatteryInstalled`。**跳过这台 2018 Intel Mac mini 是预期行为**：要求硬件明确报告
+"没有电池"才安装，探测不到就不装，比"只要不是 `Yes` 就装"更安全。
+
+**虚拟机是唯一的例外**，由 `mac_is_vm`（`'Virtual' in mac_family`）放行：虚拟机没有
+电池硬件，永远给不出那个肯定的 `No`，但它本身就是常驻开机的，而且
+`dev-server-frank-lume` 本来就由本仓库负责 provision，且已装有这两个 role。注意例外的写法
+是**对机型名做正向判断**，而不是放宽电池规则，所以物理 Intel 机器依旧被挡在外面。
+
+需要**覆盖**硬件判定时用 `-e mac_is_always_on=true`（或 `=false`），extra vars
+优先级最高——但这只是覆盖手段，日常使用不需要传。
+
 
 ### 可选 Roles（未包含在 `main.yml` 中）
 
