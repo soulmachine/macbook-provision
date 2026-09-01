@@ -10,11 +10,17 @@
 # already current it prints "Checked 3 packages" and only the unconditional
 # "Installed 1 executable: <name>" line — which the "package" in the pattern
 # deliberately excludes.
+#
+# failed_when: false defers every failure to "Fail on any other uv tool install
+# error" at the bottom, so the squatted-executable case can be healed first.
+# Nothing is swallowed — anything that is not that one case still fails the
+# play.
 - name: Install Python CLI tools with uv
   ansible.builtin.command: >-
     {{ lookup('env', 'HOME') }}/.local/bin/uv tool install {{ item }}@latest
   loop: "{{ python_cli_tools }}"
   register: python_uv_tool_install
+  failed_when: false
   changed_when: >-
     (python_uv_tool_install.stderr + python_uv_tool_install.stdout)
     is search('Installed [0-9]+ package')
@@ -32,7 +38,58 @@
     {{ lookup('env', 'HOME') }}/.local/bin/uv tool install {{ item }}@latest
   loop: "{{ python_cli_tools_arm64 }}"
   register: python_uv_tool_install_arm64
+  failed_when: false
   changed_when: >-
     (python_uv_tool_install_arm64.stderr + python_uv_tool_install_arm64.stdout)
     is search('Installed [0-9]+ package')
   when: ansible_facts['architecture'] == "arm64"
+
+# `.results` is absent entirely when a looped task was skipped outright (the
+# arm64 list on Intel), hence the defaults. Under --check the key is present but
+# every entry inside it is skipped, which the `item is not skipped` guards below
+# take care of.
+- name: Collect the uv tool install results
+  ansible.builtin.set_fact:
+    python_uv_results: >-
+      {{ python_uv_tool_install.results | default([])
+      + (python_uv_tool_install_arm64.results | default([])) }}
+
+# uv refuses to link over an executable it does not own, exiting 2 with
+# "Executable already exists: yamllint (use `--force` to overwrite)" — or
+# "Executables already exist: http, httpie, https" for a package shipping
+# several. This repo's own history produces exactly that state: the role
+# installed these tools with `pip3 --user` until ee1db7a, and on a host where
+# `pip3` resolved to mise's Python rather than the system one, that install
+# really did land console scripts in ~/.local/bin. They outlive the migration
+# and block uv on every run.
+#
+# `--force` is scoped to that one error rather than applied unconditionally
+# because it rebuilds the environment on every call and always reprints
+# "Installed N packages" — the install task above would then report changed on
+# every run, forever. Healing only on the error is self-limiting: uv owns the
+# executables afterwards, so the plain install no-ops from the next run on.
+- name: Re-install tools whose executables predate uv
+  ansible.builtin.command: >-
+    {{ lookup('env', 'HOME') }}/.local/bin/uv tool install --force
+    {{ item.item }}@latest
+  loop: "{{ python_uv_results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when:
+    - item is not skipped
+    - item.rc != 0
+    - item.stderr is search('Executables? already exists?')
+  changed_when: true
+
+- name: Fail on any other uv tool install error
+  ansible.builtin.fail:
+    msg: >-
+      uv tool install {{ item.item }}@latest failed with rc={{ item.rc }}:
+      {{ item.stderr }}
+  loop: "{{ python_uv_results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when:
+    - item is not skipped
+    - item.rc != 0
+    - item.stderr is not search('Executables? already exists?')
