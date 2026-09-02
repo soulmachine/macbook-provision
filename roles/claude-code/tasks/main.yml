@@ -45,28 +45,11 @@
   ansible.builtin.set_fact:
     claude_code_plugins_content: "{{ claude_code_plugins_raw.content | default('') | b64decode }}"
 
-# Read claude code settings
 - name: Ensure ~/.claude directory exists
   ansible.builtin.file:
     path: "{{ lookup('env', 'HOME') }}/.claude"
     state: directory
     mode: "0755"
-
-# `failed_when: false` on the slurps above forces `failed: false`, so
-# `... is succeeded` is true even when the file is missing and no `content` key
-# was ever set — hence the guards below test `content` itself, not task status.
-- name: Read existing Claude Code settings
-  ansible.builtin.slurp:
-    src: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
-  register: claude_code_settings_raw
-  failed_when: false
-
-- name: Parse existing Claude Code settings
-  ansible.builtin.set_fact:
-    claude_code_settings: >-
-      {{ (claude_code_settings_raw.content | b64decode | from_json)
-         if (claude_code_settings_raw.content | default('') | b64decode | trim | length > 0)
-         else {} }}
 
 - name: Add plugin marketplaces
   ansible.builtin.command: claude plugin marketplace add {{ item }}
@@ -109,39 +92,68 @@
     - "'already' not in claude_code_update.stdout"
     - "'refreshed from source' not in claude_code_update.stdout"
 
-- name: Disable Co-Authored-By in commits
-  ansible.builtin.copy:
-    dest: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
-    content: "{{ claude_code_settings | combine({'attribution': {'commit': ''}}) | to_nice_json }}\n"
-    mode: "0644"
-  when: (claude_code_settings.attribution.commit | default(none)) != ''
-
-- name: Re-read Claude Code settings
+# Read the file right before writing it, below every `claude plugin` step. The
+# CLI writes this same file too — `enable` adds to `enabledPlugins`, and the
+# `extraKnownMarketplaces` map on this host carries CLI-appended entries — so a
+# snapshot taken above those steps would write the older file back.
+#
+# `failed_when: false` on the slurp forces `failed: false`, so `... is succeeded`
+# is true even when the file is missing and no `content` key was ever set —
+# hence the parse guards on `content` itself, not on task status.
+- name: Read existing Claude Code settings
   ansible.builtin.slurp:
     src: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
   register: claude_code_settings_raw
   failed_when: false
 
-- name: Re-parse Claude Code settings
+- name: Parse existing Claude Code settings
   ansible.builtin.set_fact:
     claude_code_settings: >-
       {{ (claude_code_settings_raw.content | b64decode | from_json)
          if (claude_code_settings_raw.content | default('') | b64decode | trim | length > 0)
          else {} }}
 
-- name: Enable Remote Control for all sessions
+# The settings this role owns, merged over whatever else the file holds — hooks,
+# permissions, enabledPlugins and the rest pass through untouched. They go in
+# one write: each `copy` merges into the snapshot read above, so a second write
+# would need its own re-read first or it puts the first one back. `recursive`
+# so a nested map such as `attribution` gains keys instead of being replaced.
+- name: Merge the managed Claude Code settings into the existing ones
+  ansible.builtin.set_fact:
+    claude_code_settings_merged: >-
+      {{ claude_code_settings | combine(claude_code_settings_managed, recursive=true) }}
+  vars:
+    claude_code_settings_managed:
+      # No Co-Authored-By trailer on commits. `attribution` is the current
+      # setting; `includeCoAuthoredBy` is the older name it replaced, kept so a
+      # host still on an earlier Claude Code honours it too.
+      attribution:
+        commit: ""
+      includeCoAuthoredBy: false
+      remoteControlAtStartup: true
+      # Auto-compact once the context reaches 200k tokens rather than near the
+      # model's full window: a long context degrades answers well before it
+      # fills. The setting behind `/autocompact 200k`; the tip is from
+      # https://x.com/dotey/status/2094972456607862977
+      autoCompactWindow: 200000
+
+# Gate on the merge changing something, not on `copy`'s content diff:
+# `to_nice_json` emits 4-space, key-sorted JSON while Claude Code rewrites the
+# file in its own 2-space order whenever it saves a setting, so a bare `copy`
+# would flip the file between the two formats on every run.
+- name: Apply the managed Claude Code settings
   ansible.builtin.copy:
     dest: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
-    content: "{{ claude_code_settings | combine({'remoteControlAtStartup': true}) | to_nice_json }}\n"
+    content: "{{ claude_code_settings_merged | to_nice_json }}\n"
     mode: "0644"
-  when: (claude_code_settings.remoteControlAtStartup | default(false)) != true
+  when: claude_code_settings_merged != claude_code_settings
 
 # `claude plugin install` adds a plugin to ~/.claude/plugins/installed_plugins.json
 # but does NOT add it to `enabledPlugins` in ~/.claude/settings.json, and only
 # enabled plugins appear in `/plugin`. So we explicitly enable each one. Gate on
 # key absence (not value), so a user's manual `/plugin` disable is respected on
-# re-runs. Runs last so the earlier shallow-merge writes can't clobber the
-# enabledPlugins map.
+# re-runs. Runs after the settings write above so that write can't clobber the
+# enabledPlugins map this adds to.
 - name: Enable plugins
   ansible.builtin.command: claude plugin enable {{ item }}
   loop:
