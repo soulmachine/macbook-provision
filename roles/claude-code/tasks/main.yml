@@ -131,11 +131,11 @@
         commit: ""
       includeCoAuthoredBy: false
       remoteControlAtStartup: true
-      # Auto-compact once the context reaches 200k tokens rather than near the
+      # Auto-compact once the context reaches 400k tokens rather than near the
       # model's full window: a long context degrades answers well before it
-      # fills. The setting behind `/autocompact 200k`; the tip is from
+      # fills. The setting behind `/autocompact 400k`; the tip is from
       # https://x.com/dotey/status/2094972456607862977
-      autoCompactWindow: 200000
+      autoCompactWindow: 400000
 
 # Gate on the merge changing something, not on `copy`'s content diff:
 # `to_nice_json` emits 4-space, key-sorted JSON while Claude Code rewrites the
