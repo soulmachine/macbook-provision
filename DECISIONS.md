@@ -335,7 +335,7 @@
 **Decided-by:** agent
 **Justification:** `.env` is per-machine and gitignored (`CLAUDE.md` §`.env`/`.envrc`), so a hard swap could not land atomically across the fleet — and the failure would have been silent, not loud: the block is gated on the credential being non-empty, so an unmigrated host would simply *skip* key-expiry disable and drift back to expiring node keys with no error. The fallback keeps those hosts converging. The warning is a `debug` rather than a `fail` because the old token works right up until it doesn't: this host's token (`kcwQmpwyMx11CNTRL`, scopes `all`/`all:read`) is valid through 2026-11-18, so failing today would break a working machine over a future problem. Creating the OAuth client stays a human step — the admin console is the only route, as `GET /api/v2/tailnet/-/oauth-clients` and `.../oauth_clients` both return 404 — which matches how this role already treats its other console-only steps.
 **Outcome:** assumed
-**Ref:** (pending)
+**Ref:** 5ac6f7c
 
 ## Q34 — interactive/tailscale-api-credential — deviation
 
@@ -345,4 +345,4 @@
 **Decided-by:** agent
 **Justification:** Scope expansion, taken because the role was already being restructured around the same request and the repo's `ansible-idempotency-check` skill exercises exactly this path. `changed_when: false` was rejected as the inverse error — it would hide a real change rather than detect one. The read is what the repo's "diff state, don't grep output" rule prescribes: the POST returns 200 whether or not it altered anything, so its response cannot distinguish the two. Verified live on this host — the POST now reports `skipping` and the role runs `changed=0`, where before it was CHANGED every run. `?fields=all` is load-bearing; the default field set omits `keyExpiryDisabled`. Cheap to reverse: one `when:` and one task.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 5ac6f7c
