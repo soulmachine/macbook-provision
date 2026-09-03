@@ -67,7 +67,8 @@ ansible-playbook main.yml --check
 | 变量 | 作用 | 必填 |
 |------|------|------|
 | `TAILSCALE_AUTH_KEY` | 自动执行 `sudo tailscale up --accept-dns --operator=$USER --auth-key=...` 把本机加入 tailnet。在 https://login.tailscale.com/admin/settings/keys 创建一个 **Reusable** key 即可。 | 否（不设则需手工 `tailscale up`） |
-| `TAILSCALE_API_ACCESS_TOKEN` | 通过 Tailscale REST API 关闭本机 node-key 过期（避免节点定期下线）。token 需要 `devices` 写权限。 | 否 |
+| `TAILSCALE_OAUTH_CLIENT_ID` + `TAILSCALE_OAUTH_CLIENT_SECRET` | **推荐**：通过 Tailscale REST API 关闭本机 node-key 过期（避免节点定期下线）。在 https://login.tailscale.com/admin/settings/oauth 创建 OAuth client，勾选 `devices:core` 写权限即可——该 scope 的 endpoint 列表正好包含 `POST /api/v2/device/{id}/key`。client secret **不过期**，归属于 tailnet 而非个人，使用记录会进入 configuration audit log。 | 否 |
+| `TAILSCALE_API_ACCESS_TOKEN` | 同上，但用的是个人 API access token。仍然兼容，但它是 **fully-permitted（没有 scope）** 且 **90 天后过期**，到期后这一步会静默地开始返回 401。建议迁移到上面的 OAuth client，并到 https://login.tailscale.com/admin/settings/keys 吊销旧 token。 | 否 |
 
 `tailscale up` flag 说明：
 

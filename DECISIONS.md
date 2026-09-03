@@ -326,3 +326,23 @@
 **Justification:** Matching the pattern would have meant five writes and four re-reads of one file, twenty lines of boilerplate per key, and every future key paying the same. The `when:` gate is kept rather than trusting `copy`'s content diff because `to_nice_json` (4-space, key-sorted — checked against the installed filter) never matches Claude Code's own 2-space output, so a bare `copy` would flip the file between formats on every run. `recursive=true` is what makes the `!=` gate correct for the nested `attribution` map: a shallow merge replaces the map, which reads as a change forever once the file carries a second key under it. Moving the read closes an ordering gap the chain had: the file was read *before* the `claude plugin` steps, and the CLI writes this same file — `plugin enable` adds to `enabledPlugins`, and on this host both `enabledPlugins` and `extraKnownMarketplaces` end in an entry appended unsorted after the role's last sorted write. Claude Code's docs and the installed binary describe `marketplace add` as recording into `known_marketplaces.json`, so which CLI step wrote that entry is not established; reading immediately before writing is correct whichever it was. A `--check --diff` dry run against this host's 203-line file showed the write adding exactly the two new lines, with every existing key and value intact. Cheap to reverse: one file, one commit.
 **Outcome:** assumed
 **Ref:** 25c6958
+
+## Q33 — interactive/tailscale-api-credential — tradeoff
+
+**Question:** Swapping the tailscale role's key-expiry call from a personal API access token to a `devices:core`-scoped OAuth client: make it a hard swap (only the OAuth pair is read), or keep `TAILSCALE_API_ACCESS_TOKEN` working alongside it?
+**Options considered:** hard swap, drop the old var / accept both, prefer OAuth, warn on fallback / accept both silently with no signal
+**Chosen:** Accept both. OAuth wins when `TAILSCALE_OAUTH_CLIENT_ID` and `TAILSCALE_OAUTH_CLIENT_SECRET` are both present; otherwise the legacy token is used and a `debug` task prints the migration steps. Half an OAuth pair is a misconfiguration and does not fall back.
+**Decided-by:** agent
+**Justification:** `.env` is per-machine and gitignored (`CLAUDE.md` §`.env`/`.envrc`), so a hard swap could not land atomically across the fleet — and the failure would have been silent, not loud: the block is gated on the credential being non-empty, so an unmigrated host would simply *skip* key-expiry disable and drift back to expiring node keys with no error. The fallback keeps those hosts converging. The warning is a `debug` rather than a `fail` because the old token works right up until it doesn't: this host's token (`kcwQmpwyMx11CNTRL`, scopes `all`/`all:read`) is valid through 2026-11-18, so failing today would break a working machine over a future problem. Creating the OAuth client stays a human step — the admin console is the only route, as `GET /api/v2/tailnet/-/oauth-clients` and `.../oauth_clients` both return 404 — which matches how this role already treats its other console-only steps.
+**Outcome:** assumed
+**Ref:** (pending)
+
+## Q34 — interactive/tailscale-api-credential — deviation
+
+**Question:** The ask was a credential swap only. The key-expiry `POST` was unconditional, so it reported CHANGED on every converged run. Fix that in the same change, or leave it?
+**Options considered:** leave it, credential-only as asked / gate the POST on a `GET .../device/{id}?fields=all` read of `keyExpiryDisabled` / set `changed_when: false` to silence it
+**Chosen:** Gate the POST on the read.
+**Decided-by:** agent
+**Justification:** Scope expansion, taken because the role was already being restructured around the same request and the repo's `ansible-idempotency-check` skill exercises exactly this path. `changed_when: false` was rejected as the inverse error — it would hide a real change rather than detect one. The read is what the repo's "diff state, don't grep output" rule prescribes: the POST returns 200 whether or not it altered anything, so its response cannot distinguish the two. Verified live on this host — the POST now reports `skipping` and the role runs `changed=0`, where before it was CHANGED every run. `?fields=all` is load-bearing; the default field set omits `keyExpiryDisabled`. Cheap to reverse: one `when:` and one task.
+**Outcome:** applied
+**Ref:** (pending)
