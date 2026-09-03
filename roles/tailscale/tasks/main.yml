@@ -175,78 +175,95 @@
 # command, so we POST directly. The device identifier is this node's stable ID
 # from `tailscale status --json` (Self.ID, which the API accepts as its nodeId).
 #
-# Two credentials are accepted, and an OAuth client is strongly preferred:
+# The only credential is an OAuth client ("trust credential") created at
+# https://login.tailscale.com/admin/settings/trust-credentials and scoped to
+# `devices:core`, whose documented endpoint list covers exactly the two calls
+# below. Its secret does not expire, it belongs to the tailnet rather than to a
+# person, its use lands in the configuration audit log, and it can be revoked
+# on its own.
 #
-#   - TAILSCALE_OAUTH_CLIENT_ID + TAILSCALE_OAUTH_CLIENT_SECRET — a "trust
-#     credential" created at https://login.tailscale.com/admin/settings/oauth
-#     and scoped to `devices:core`, whose endpoint list includes exactly the
-#     POST /api/v2/device/{id}/key used below. The client secret does NOT
-#     expire, it belongs to the tailnet rather than to a person, its use lands
-#     in the configuration audit log, and it can be revoked without touching
-#     anything else.
-#   - TAILSCALE_API_ACCESS_TOKEN — a personal access token. Still honoured so a
-#     fleet host whose .env has not been migrated keeps converging, but these
-#     are FULLY-PERMITTED (no scopes at all) and **expire after 90 days**, at
-#     which point this task starts failing 401 on a schedule nobody is watching.
-#     A debug task below says so on every run that falls back to one.
+# Personal API access tokens (TAILSCALE_API_ACCESS_TOKEN) are NOT accepted.
+# They carry no scopes at all — fully permitted — and expire 90 days after
+# minting, which turned this task into a 401 on a timer nobody was watching.
 #
-# An OAuth client secret cannot be used as a bearer token directly — it must be
-# exchanged for an access token first, which is what the task below does. (The
-# secret *can* be passed straight to `tailscale up --auth-key=`, but that needs
-# the `auth_keys` scope and forces tag ownership onto the node, so this role
-# keeps TAILSCALE_AUTH_KEY separate.)
-- name: Load Tailscale API credentials from environment
+# An OAuth client secret cannot be used as a bearer token directly, hence the
+# exchange below. (It *can* be passed straight to `tailscale up --auth-key=`,
+# but that needs the `auth_keys` scope and forces tag ownership onto the node,
+# so TAILSCALE_AUTH_KEY stays a separate credential.)
+- name: Load Tailscale OAuth client credentials from environment
   ansible.builtin.set_fact:
     tailscale_oauth_client_id: "{{ lookup('env', 'TAILSCALE_OAUTH_CLIENT_ID') }}"
     tailscale_oauth_client_secret: "{{ lookup('env', 'TAILSCALE_OAUTH_CLIENT_SECRET') }}"
-    tailscale_api_access_token: "{{ lookup('env', 'TAILSCALE_API_ACCESS_TOKEN') }}"
   no_log: true
 
 # Split from the task above because a set_fact cannot reference a key defined in
-# the same task — Ansible fails with "Error while resolving value for 'x': 'y' is
-# undefined". Both halves of the OAuth pair are required; half a pair is a
-# misconfiguration, not a reason to silently fall back.
-- name: Decide which Tailscale API credential to use
+# the same task — Ansible fails with "Error while resolving value for 'x': 'y'
+# is undefined".
+- name: Decide whether an OAuth client is configured
   ansible.builtin.set_fact:
-    tailscale_use_oauth: >-
+    tailscale_oauth_configured: >-
       {{ (tailscale_oauth_client_id | length > 0)
          and (tailscale_oauth_client_secret | length > 0) }}
 
-- name: (Optional) Disable key expiry when an API credential is provided
+# Half a pair cannot authenticate, and silently skipping would let node keys
+# quietly go back to expiring — the failure this whole block exists to prevent.
+- name: Require both halves of the OAuth client pair
+  ansible.builtin.fail:
+    msg: >-
+      Only one of TAILSCALE_OAUTH_CLIENT_ID / TAILSCALE_OAUTH_CLIENT_SECRET is
+      set in .env. Set both, or neither to skip the key-expiry step entirely.
+  when:
+    - not (tailscale_oauth_configured | bool)
+    - (tailscale_oauth_client_id | length > 0) or (tailscale_oauth_client_secret | length > 0)
+
+# MIGRATION TRIPWIRE — delete this task once every fleet host has moved to an
+# OAuth client. Without it a host whose .env still carries only the removed
+# variable would skip the block below in silence and drift back to expiring
+# node keys, with no error to notice. It is the loud version of that drift, not
+# a fallback: the token is never read as a credential.
+- name: Fail on a host still carrying the removed TAILSCALE_API_ACCESS_TOKEN
+  ansible.builtin.fail:
+    msg: |
+
+      ================================================================
+      TAILSCALE_API_ACCESS_TOKEN is no longer supported
+      ================================================================
+
+      This machine's .env still sets TAILSCALE_API_ACCESS_TOKEN and no
+      OAuth client, so node-key expiry would silently stop being
+      disabled and this node would eventually drop off the tailnet.
+
+      Personal access tokens are fully permitted (no scopes) and expire
+      90 days after minting. Replace it with an OAuth client:
+
+        1. https://login.tailscale.com/admin/settings/trust-credentials
+           -> Credential, tick the `devices:core` write scope
+        2. put the pair in this repo's .env:
+             TAILSCALE_OAUTH_CLIENT_ID=...
+             TAILSCALE_OAUTH_CLIENT_SECRET=tskey-client-...
+        3. delete the TAILSCALE_API_ACCESS_TOKEN line, then revoke the
+           token at https://login.tailscale.com/admin/settings/keys
+      ================================================================
+  when:
+    - not (tailscale_oauth_configured | bool)
+    - lookup('env', 'TAILSCALE_API_ACCESS_TOKEN') | length > 0
+
+- name: (Optional) Disable key expiry when an OAuth client is configured
   when:
     - tailscale_auth_key | length > 0
-    - (tailscale_use_oauth | bool) or (tailscale_api_access_token | length > 0)
+    - tailscale_oauth_configured | bool
   block:
-    # Not a failure — a personal token works fine today. It is a countdown, and
-    # the whole point of the swap is that nothing else in this repo will tell
-    # you when it runs out.
-    - name: Note that a personal API token is in use instead of an OAuth client
-      ansible.builtin.debug:
-        msg: |
-
-          TAILSCALE_API_ACCESS_TOKEN is a personal access token: fully
-          permitted, and it expires 90 days after it was minted. Prefer an
-          OAuth client scoped to `devices:core`, whose secret does not expire:
-
-            1. https://login.tailscale.com/admin/settings/oauth -> Generate
-               OAuth client, tick the `devices:core` write scope
-            2. put the pair in this repo's .env:
-                 TAILSCALE_OAUTH_CLIENT_ID=...
-                 TAILSCALE_OAUTH_CLIENT_SECRET=tskey-client-...
-            3. delete TAILSCALE_API_ACCESS_TOKEN from .env and revoke it at
-               https://login.tailscale.com/admin/settings/keys
-      when: not (tailscale_use_oauth | bool)
-
-    # Documented flow: POST client_id + client_secret form-encoded, no
+    # Documented flow: POST client_id + client_secret form-encoded, with no
     # grant_type parameter (Tailscale's own curl example omits it). The token
     # that comes back lives one hour, which is not configurable — fine here,
-    # since it is used once and discarded rather than written anywhere.
+    # since it is used twice and discarded rather than written anywhere.
     #
     # check_mode: false because ansible.builtin.uri declares no check-mode
     # support and is therefore SKIPPED under --check, which would leave
     # _tailscale_oauth undefined and break the set_fact below. Minting a
-    # short-lived token changes no durable state, so running it during a dry run
-    # is safe — and it is what makes the dry run exercise the real credential.
+    # short-lived token changes no durable state, so running it during a dry
+    # run is safe — and it is what makes the dry run exercise the real
+    # credential.
     - name: Exchange OAuth client credentials for a short-lived API access token
       ansible.builtin.uri:
         url: https://api.tailscale.com/api/v2/oauth/token
@@ -260,14 +277,10 @@
       changed_when: false
       check_mode: false
       no_log: true
-      when: tailscale_use_oauth | bool
 
-    - name: Select the bearer token for the Tailscale API
+    - name: Keep the bearer token for the two API calls below
       ansible.builtin.set_fact:
-        tailscale_api_token: >-
-          {{ _tailscale_oauth.json.access_token
-             if (tailscale_use_oauth | bool)
-             else tailscale_api_access_token }}
+        tailscale_api_token: "{{ _tailscale_oauth.json.access_token }}"
       no_log: true
 
     - name: Read Tailscale status to get this node's stable ID
