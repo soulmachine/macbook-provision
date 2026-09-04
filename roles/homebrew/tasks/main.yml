@@ -103,6 +103,10 @@
   community.general.homebrew_cask:
     name:
       - claude
+      # MacPaw's Gemini 2 duplicate-file cleaner — NOT Google's Gemini. Google's
+      # CLI had its own role until 2026-09-04, when upstream deprecated the
+      # `gemini-cli` formula in favour of the `antigravity-cli` cask and the role
+      # was dropped. This cask is unrelated and stays.
       - gemini
       - pearcleaner
       - pycharm

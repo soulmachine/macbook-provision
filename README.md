@@ -97,7 +97,6 @@ ansible-playbook main.yml --check
 | intellij-idea | IntelliJ IDEA（依赖 jdk） |
 | claude-code | Claude Code CLI 及插件（依赖 nodejs） |
 | codex | OpenAI Codex CLI（依赖 nodejs） |
-| gemini | Google Gemini CLI（依赖 nodejs） |
 | openclaw | OpenClaw 及 ClawHub CLI（依赖 nodejs）；**仅限常驻开机的机器** |
 | hermes | Hermes 个人 agent（Nous Research）；**仅限常驻开机的机器** |
 | tailscale | 独立版 Tailscale.app（cask）；若 `.env` 中有 `TAILSCALE_AUTH_KEY` 则自动登录，可选通过 API token 关闭 key 过期 |
