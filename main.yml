@@ -29,6 +29,8 @@
     - codex
     - opencode
     - kimi-code
+    - omp
+    - pi
     - skills
     - agent-reach
     - playwright
@@ -38,8 +40,6 @@
     - openclaw
     - claude-mem
     - cc-switch
-    - omp
-    - pi
     - hermes
     - role: paseo
       tags: [agent-multiplexer]
