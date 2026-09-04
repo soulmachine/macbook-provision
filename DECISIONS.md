@@ -366,7 +366,7 @@
 **Decided-by:** human (removal); agent (no replacement in this change)
 **Justification:** The premise checks out against Homebrew directly — `brew info --formula gemini-cli` reads "Deprecated because it is not supported upstream! It will be disabled on 2026-12-18." and names `brew install --cask antigravity-cli` as the replacement; `brew search antigravity` returns `antigravity`, `antigravity-cli` and `antigravity-ide`, three plausible targets. Which of the three the fleet wants, and whether the successor earns a role at all, is the user's call, not a default worth assuming — and picking one silently would be the expensive mistake, since a role is what fans a package out to every host. The four dependency edges are safe to drop rather than re-point: none of those roles' tasks mention gemini, they listed it only as "provision this CLI before configuring it", and `claude-mem` had already stopped wiring it up — `roles/claude-mem/vars/main.yml` records that upstream dropped `gemini-cli` from its supported-IDE list while adding `antigravity`, so that edge was already dead weight.
 **Outcome:** assumed
-**Ref:** (pending)
+**Ref:** bbb3f7d
 
 ## Q37 — interactive/gemini-role-removal — tradeoff
 
@@ -376,7 +376,7 @@
 **Decided-by:** agent
 **Justification:** The cask is a name collision, not a leftover — `brew info --cask gemini` resolves to MacPaw's Gemini 2 duplicate-file cleaner (macpaw.com/gemini), unrelated to Google. It is one `- gemini` line in a cask list, immediately after this change deleted a role of the same name, so the next reader doing cleanup is well placed to delete a working disk utility off every host; the comment is the cheapest available guard and matches how this repo already annotates deliberate-looking-like-a-gap decisions. Uninstalling the binary was rejected as out of scope and asymmetric in risk: removing the role stops managing the package, which is what was asked, and the installed `gemini-cli` keeps working until Homebrew disables the formula on 2026-12-18 — months of warning. A `state: absent` task would delete a working tool from every host on my judgment, and this repo runs per-host with no fleet inventory (`CLAUDE.md` §"Runs per-host only"), so it would land unevenly as each machine next provisions. Flagged for the user instead.
 **Outcome:** assumed
-**Ref:** (pending)
+**Ref:** bbb3f7d
 
 ## Q38 — interactive/gemini-role-removal — irreversible-action
 
@@ -387,4 +387,4 @@
 **Justification:** `brew uninstall gemini-cli` did more than name suggests — Homebrew auto-removed the formula's dependency tree (`ada-url`, `libffi`, `libuv`, `simdutf`, `fmt`, and others) while *keeping* the `node` keg those libs served, leaving `brew missing` reporting `node: fmt ada-url c-ares hdrhistogram_c libffi libuv llhttp simdutf merve nbytes simdjson sqlite uvwasi`. That inconsistent state was created by the requested action, so resolving it is part of the same job rather than new scope. Removing rather than repairing node is right because that node was never wanted: `brew info --formula node` read "Installed (as dependency)", `brew uses --installed node` was empty, `/opt/homebrew/bin/node` did not exist (unlinked), and this repo provisions Node through mise (`roles/nodejs`, README "Node.js（通过 mise 安装）") — so it existed solely because `gemini-cli` pulled it in. Reinstalling it would have restored 89MB and 13 libraries to service a formula nothing uses. Verified after: `brew missing` empty, `node --version` still v24.20.0 from the mise install, `command -v gemini` empty. Reversible at the cost of a re-download (`brew install node`), and `gemini-cli` itself remains installable until Homebrew disables the formula on 2026-12-18.
 **Outcome:** applied
 **Supersedes:** Q37 — its "leave the binary" half is reversed by user instruction. The cask half of Q37 still stands: MacPaw's `gemini` cask is untouched.
-**Ref:** (pending)
+**Ref:** bbb3f7d
