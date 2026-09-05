@@ -114,10 +114,12 @@
          else {} }}
 
 # The settings this role owns, merged over whatever else the file holds — hooks,
-# permissions, enabledPlugins and the rest pass through untouched. They go in
-# one write: each `copy` merges into the snapshot read above, so a second write
-# would need its own re-read first or it puts the first one back. `recursive`
-# so a nested map such as `attribution` gains keys instead of being replaced.
+# enabledPlugins and the rest pass through untouched. They go in one write: each
+# `copy` merges into the snapshot read above, so a second write would need its
+# own re-read first or it puts the first one back. `recursive` so a nested map
+# gains keys instead of being replaced — that is what lets `attribution` and
+# `permissions` be managed key-by-key, leaving the user's own
+# `permissions.allow` / `permissions.deny` lists in place.
 - name: Merge the managed Claude Code settings into the existing ones
   ansible.builtin.set_fact:
     claude_code_settings_merged: >-
@@ -136,6 +138,11 @@
       # fills. The setting behind `/autocompact 400k`; the tip is from
       # https://x.com/dotey/status/2094972456607862977
       autoCompactWindow: 400000
+      # Every session starts in bypass mode — no per-tool permission prompts,
+      # the same posture as launching with `--dangerously-skip-permissions`.
+      # Only `defaultMode` is managed; `allow`/`deny` are left to the user.
+      permissions:
+        defaultMode: bypassPermissions
 
 # Gate on the merge changing something, not on `copy`'s content diff:
 # `to_nice_json` emits 4-space, key-sorted JSON while Claude Code rewrites the
