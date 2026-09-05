@@ -388,3 +388,13 @@
 **Outcome:** applied
 **Supersedes:** Q37 — its "leave the binary" half is reversed by user instruction. The cask half of Q37 still stands: MacPaw's `gemini` cask is untouched.
 **Ref:** bbb3f7d
+
+## Q39 — interactive/tailscale-api-credential — deviation
+
+**Question:** The key-expiry block was gated on `tailscale_auth_key` as well as the OAuth client, so blanking a spent auth key silently disabled key-expiry maintenance. Decouple it — but the coupling existed because the key-expiry tasks reached the CLI-launcher check by nesting inside the auth-key block. Drop the gate alone, or restructure so both credentials can drive that check?
+**Options considered:** drop the auth-key condition only, leaving the CLI check unreachable for an OAuth-only host / hoist the CLI check to top level unconditionally / load both credentials up front and gate the CLI check on either one
+**Chosen:** Load both credentials up front, before either is used, and wrap the CLI check in a block gated on `(auth key set) or (OAuth configured)`. Key-expiry then gates on the OAuth client alone. Added a device-ID read before the token exchange, with a `debug` no-op when the node is not enrolled.
+**Decided-by:** human (the decoupling); agent (the restructure and the unenrolled-node handling)
+**Justification:** Dropping the condition alone would let an OAuth-only host reach `tailscale status` with no CLI present and die on a raw command failure instead of the role's install-the-launcher message. Hoisting unconditionally would break the documented property that a host with no credentials converges on the cask install alone. Loading both up front keeps that property and makes the gate express what it actually depends on. The unenrolled-node path is new exposure created by the decoupling — previously an auth key implied `tailscale up` had already run — so the block reads the device ID first and no-ops; `debug` not `fail` because a mid-setup machine is a legitimate state, not drift. Verified six credential/enrolment combinations plus `--check`; the OAuth-only path is the one that changed behaviour, and it now maintains key expiry where it previously skipped.
+**Outcome:** applied
+**Ref:** ddea2b1
