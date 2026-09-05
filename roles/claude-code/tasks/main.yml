@@ -128,9 +128,28 @@
     claude_code_settings_managed:
       # No Co-Authored-By trailer on commits. `attribution` is the current
       # setting; `includeCoAuthoredBy` is the older name it replaced, kept so a
-      # host still on an earlier Claude Code honours it too.
+      # host still on an earlier Claude Code honours it too. On a current
+      # Claude Code it is inert: `attribution` wins outright the moment
+      # `commit` or `pr` is set, and `includeCoAuthoredBy` is never read.
+      #
+      # `commit: ""` blanks the attribution *text* and nothing else. The
+      # `Claude-Session: https://claude.ai/code/session_...` trailer is appended
+      # afterwards, by a separate gate, and an empty commit string does not stop
+      # it — the combiner reads `commit ? commit + "\n\nClaude-Session: ..."
+      # : "Claude-Session: ..."`, so blanking the text just leaves the session
+      # line standing alone. `sessionUrl: false` is the only setting that
+      # suppresses it (the env var CLAUDE_CODE_SUPPRESS_SESSION_ATTRIBUTION does
+      # the same per-shell), and it is checked with `=== false`, so it must be a
+      # real boolean. It is needed here precisely because
+      # `remoteControlAtStartup: true` below puts every session on the surface
+      # that emits the trailer in the first place.
+      #
+      # `pr` is deliberately left unset: `sessionUrl: false` drops the session
+      # link from PR bodies, and the plain "Generated with Claude Code" footer
+      # stays. Set `pr: ""` here to drop that too.
       attribution:
         commit: ""
+        sessionUrl: false
       includeCoAuthoredBy: false
       remoteControlAtStartup: true
       # Auto-compact once the context reaches 400k tokens rather than near the
