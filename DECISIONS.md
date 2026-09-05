@@ -398,3 +398,23 @@
 **Justification:** Dropping the condition alone would let an OAuth-only host reach `tailscale status` with no CLI present and die on a raw command failure instead of the role's install-the-launcher message. Hoisting unconditionally would break the documented property that a host with no credentials converges on the cask install alone. Loading both up front keeps that property and makes the gate express what it actually depends on. The unenrolled-node path is new exposure created by the decoupling — previously an auth key implied `tailscale up` had already run — so the block reads the device ID first and no-ops; `debug` not `fail` because a mid-setup machine is a legitimate state, not drift. Verified six credential/enrolment combinations plus `--check`; the OAuth-only path is the one that changed behaviour, and it now maintains key expiry where it previously skipped.
 **Outcome:** applied
 **Ref:** ddea2b1
+
+## Q40 — interactive/claude-code-bypass-permissions — tradeoff
+
+**Question:** The ask gave a literal JSON block — `{"permissions": {"defaultMode": "bypassPermissions"}}` — to add to `~/.claude/settings.json`. Written verbatim into the role's managed map, would that own the whole `permissions` object or only `defaultMode`?
+**Options considered:** manage the whole `permissions` map as given / manage `defaultMode` only, letting `allow` / `deny` pass through / write `defaultMode` with a separate non-recursive merge step
+**Chosen:** Manage `defaultMode` alone. The nested key rides the role's existing `combine(recursive=true)`, so a host's own `permissions.allow` and `permissions.deny` survive.
+**Decided-by:** agent
+**Justification:** The role's managed-settings block already merges recursively, precisely so a nested map such as `attribution` gains keys rather than replacing the file's. `permissions` is the first managed key that a host also writes to itself — this machine's file carried `allow: ["mcp__claude-in-chrome__navigate"]` and `deny: []` before the change — so taking the JSON literally would have silently dropped per-host allowlists on every fleet machine at its next provision, an invisible loss with no error to notice. Managing the single key the ask actually named is both the least-surprising reading and the cheapest to reverse. Verified: the write flipped `defaultMode` from `auto` to `bypassPermissions` with the `allow` entry intact, and a second role run reported changed=0.
+**Outcome:** applied
+**Ref:** 866864d
+
+## Q41 — interactive/claude-code-bypass-permissions — deviation
+
+**Question:** This makes every Claude Code session on every fleet host skip per-tool permission prompts by default. Apply it fleet-wide as asked, or narrow it (opt-in per host via `.env`, or leave it to the existing `claude-yolo` alias)?
+**Options considered:** apply fleet-wide as asked / gate on an env var so each host opts in / decline and point at the existing `claude-yolo` alias
+**Chosen:** Applied fleet-wide, unconditionally, as asked.
+**Decided-by:** human (the posture); agent (recording it here)
+**Justification:** The user named the setting and the file explicitly, so the posture is theirs, not an inference. The change is also less of a departure than it reads: the role already installs a `claude-yolo` alias carrying `--dangerously-skip-permissions`, and the host file already held `skipDangerousModePermissionPrompt: true` and `skipAutoPermissionPrompt: true` — this makes the standing default match what the surrounding config was already reaching for. Logged rather than passed over because the security posture is what changed, it lands on every host at its next provision, and a reader hitting a fleet where nothing prompts should find the reason here. Fully reversible: delete the two managed lines and the next run rewrites the key.
+**Outcome:** applied
+**Ref:** 866864d
