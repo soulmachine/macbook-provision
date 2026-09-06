@@ -8,7 +8,7 @@
 **Decided-by:** agent
 **Justification:** The request ("move enable uv plugin … to the oh-my-zsh role") reads as consolidating ownership; keeping the duplicate would leave two roles converging the same .zshrc line. Least-surprising single-owner layout.
 **Outcome:** assumed
-**Ref:** f4ae085
+**Ref:** (pending)
 
 ## Q2 — interactive/omz-role-move — gate-resolution
 
@@ -18,7 +18,7 @@
 **Decided-by:** agent
 **Justification:** With the omz installer now running from the playbook (after bootstrap), a fresh machine's installer replaces ~/.zshrc and drops bootstrap's appends, so the role must restore the line — same reason the role already re-ensures the ~/.local/bin PATH line. The regexp form is required: live-machine testing showed hand-maintained full-path mise lines, and an exact-line lineinfile appended a duplicate after the atuin line, breaking the atuin-last invariant.
 **Outcome:** assumed
-**Ref:** f4ae085
+**Ref:** (pending)
 
 ## Q3 — interactive/omz-role-move — gate-resolution
 
@@ -109,7 +109,7 @@
 **Decided-by:** human
 **Justification:** Offered the three options; the user asked to be walked through minting a replacement rather than have `.env` edited. Only a human can create the PAT, so the repo stays as-is until they paste the new value in. Unblocking is not required for the bun fix — Q9's `GH_TOKEN: ""` blanking makes the bun role immune to the stale value either way. Note the dead value is a `ghp_` classic PAT while `.env.example` documents the fine-grained `github_pat_` form; it should be revoked whichever way it is replaced.
 **Outcome:** escalated
-**Ref:** f4ae085
+**Ref:** (pending)
 
 ## Q12 — interactive/bun-upgrade-rate-limit — deviation
 
@@ -305,7 +305,7 @@
 **Decided-by:** agent
 **Justification:** Preferred the choice cheapest to reverse: removal is one command whenever wanted, while restoring content upstream no longer ships requires digging through upstream git history. The `skills` CLI itself skips this deletion in non-interactive mode, so keeping matches the tool's own safe default. The four may also be in active use — the user's global AGENTS.md documents an Obsidian-based knowledge base, which `obsidian-vault` plausibly serves.
 **Outcome:** assumed
-**Ref:** f4ae085
+**Ref:** (pending)
 
 ## Q31 — interactive/update-mattpocock-skills — irreversible-action
 
