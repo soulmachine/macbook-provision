@@ -8,7 +8,7 @@
 **Decided-by:** agent
 **Justification:** The request ("move enable uv plugin … to the oh-my-zsh role") reads as consolidating ownership; keeping the duplicate would leave two roles converging the same .zshrc line. Least-surprising single-owner layout.
 **Outcome:** assumed
-**Ref:** (pending)
+**Ref:** f4ae085
 
 ## Q2 — interactive/omz-role-move — gate-resolution
 
@@ -18,7 +18,7 @@
 **Decided-by:** agent
 **Justification:** With the omz installer now running from the playbook (after bootstrap), a fresh machine's installer replaces ~/.zshrc and drops bootstrap's appends, so the role must restore the line — same reason the role already re-ensures the ~/.local/bin PATH line. The regexp form is required: live-machine testing showed hand-maintained full-path mise lines, and an exact-line lineinfile appended a duplicate after the atuin line, breaking the atuin-last invariant.
 **Outcome:** assumed
-**Ref:** (pending)
+**Ref:** f4ae085
 
 ## Q3 — interactive/omz-role-move — gate-resolution
 
@@ -109,7 +109,7 @@
 **Decided-by:** human
 **Justification:** Offered the three options; the user asked to be walked through minting a replacement rather than have `.env` edited. Only a human can create the PAT, so the repo stays as-is until they paste the new value in. Unblocking is not required for the bun fix — Q9's `GH_TOKEN: ""` blanking makes the bun role immune to the stale value either way. Note the dead value is a `ghp_` classic PAT while `.env.example` documents the fine-grained `github_pat_` form; it should be revoked whichever way it is replaced.
 **Outcome:** escalated
-**Ref:** (pending)
+**Ref:** f4ae085
 
 ## Q12 — interactive/bun-upgrade-rate-limit — deviation
 
@@ -305,7 +305,7 @@
 **Decided-by:** agent
 **Justification:** Preferred the choice cheapest to reverse: removal is one command whenever wanted, while restoring content upstream no longer ships requires digging through upstream git history. The `skills` CLI itself skips this deletion in non-interactive mode, so keeping matches the tool's own safe default. The four may also be in active use — the user's global AGENTS.md documents an Obsidian-based knowledge base, which `obsidian-vault` plausibly serves.
 **Outcome:** assumed
-**Ref:** (pending)
+**Ref:** f4ae085
 
 ## Q31 — interactive/update-mattpocock-skills — irreversible-action
 
@@ -428,3 +428,13 @@
 **Justification:** Read the settings schema out of the installed Claude Code binary (2.1.261) rather than guessing: `attribution` is `{commit?: string, pr?: string, sessionUrl?: boolean}`, and the session link has its own gate — `if (settings().attribution?.sessionUrl === false) return null` — checked before the attribution text is consulted at all. The combiner then appends the trailer whether or not the text is empty (`commit ? commit + "\n\nClaude-Session: …" : "Claude-Session: …"`), which is exactly why blanking `commit` left the session line standing alone. So the old settings were never broken, they addressed a different trailer. The env var works too but is per-shell and invisible to the fleet, whereas the role already owns this file. Two further findings recorded in the role's comments: `includeCoAuthoredBy` is now dead on a current Claude Code (`attribution` wins outright once `commit` or `pr` is set), and `sessionUrl` is compared with `=== false`, so it must be a real boolean — a string `"false"` would be ignored. Verified live: the running session's injected attribution instruction dropped the commit trailer immediately after the write, and a second role run reported changed=0 with the host's `permissions.allow` intact.
 **Outcome:** applied
 **Ref:** fe032da
+
+## Q43 — interactive/playwright-cli-skill-refresh — tradeoff
+
+**Question:** The ask was to `rm -rf ~/.claude/skills/playwright-cli` before `playwright-cli install --skills --global`. Taken literally the role recreates that directory on every run, so how should it decide `changed`, and what becomes of the `creates:` guard that used to skip the install once the skill existed?
+**Options considered:** let the removal and the reinstall each report changed on every run / keep `creates:` and remove the directory only when the npm task reports a CLI update / checksum the tree before and after and report the replace once from that comparison
+**Chosen:** Checksum before and after. The removal and the install both carry `changed_when: false`, the `creates:` guard is gone, and the final comparison is the one task that reports the replace. The path moved into `vars/main.yml` since it is now used three times.
+**Decided-by:** human (the unconditional removal); agent (how it is reported)
+**Justification:** `creates:` cannot fire once the directory is removed on every run, and the CLI prints the same "Skill installed" line whether or not anything differed, so CLAUDE.md "Self-update tasks: diff state, don't grep output" applies: the skill tree is the observable state. Reporting the removal itself would make every converged host show two changes and fail the repo's `ansible-idempotency-check`. Tying the refresh to the npm task would inherit that task's stdout grep, which carries no signal here: npm printed "changed 3 packages" on all three real runs while the installed CLI stayed at 0.1.19, so the current `added`/`updated` match never fires and a match on `changed` would fire every run. The removal is read as unconditional because the CLI copies with a recursive `fs.cp` that overwrites but never deletes, so only a wipe purges files upstream has dropped; the role comment records the observed example. Verified four runs: fresh host (one change, from the final compare), converged (none), a planted stale reference file (one change, file gone), and `--check` (no failures, none changed). Cost accepted: one `playwright-cli` process and a re-copy of a ten-file tree per run.
+**Outcome:** applied
+**Ref:** f4ae085
