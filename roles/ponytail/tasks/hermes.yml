@@ -9,11 +9,16 @@
 # role gates on key absence.
 #
 # Hermes scans the plugin tree before installing (`plugins.scan_on_install`,
-# on by default). As of 2026-09-08 (ponytail 4.9.0) that scan returns a
-# `dangerous` verdict — 83 findings, 41 of them CRITICAL "persistence" hits
-# that are README sentences such as "Injects the ruleset every turn", in three
-# languages, plus `npm install` strings in its tests — and `--force` cannot
-# override a dangerous verdict; only `plugins.scan_on_install: false` in
+# on by default). As of 2026-09-08 (ponytail 4.9.0, Hermes 0.21.1) that scan
+# returns a `dangerous` verdict — 93 findings, but only two of them carry the
+# verdict: the literal `/etc/passwd` in two benchmark files
+# (benchmarks/agentic/README.md and tasks.py describe a path-traversal task),
+# which trips the scanner's CRITICAL `system_passwd_access` pattern. The other
+# 91 are MEDIUM/LOW — `npm install` strings in examples, workflows and tests,
+# subprocess calls in the benchmark runner, README prose — and would read
+# `safe` on their own. Upstream tracks the block as ponytail #781/#783 and
+# hermes-agent #93927 (a duplicate of #89610). `--force` cannot override a
+# dangerous verdict; only `plugins.scan_on_install: false` in
 # ~/.hermes/config.yaml can, which is a security posture choice this role will
 # not make. A scanner block is therefore an EXPECTED outcome: reported below
 # with the remedy, not a play-stopping failure (the same `failed_when` +

@@ -77,17 +77,28 @@
         ponytail_codex_updated: "{{ ponytail_codex_rev_before != ponytail_codex_rev_after }}"
       changed_when: ponytail_codex_updated
 
-# The plugin ships two lifecycle hooks (hooks/claude-codex-hooks.json). Codex
-# runs plugin hooks only after they are reviewed and trusted in the TUI
-# (`/hooks`) — there is no CLI or config.toml path for that; the only related
-# key, `bypass_hook_trust`, is a blanket bypass, not a trust — and only with
-# `[features] hooks = true`, which this role does not manage. Without the
-# trust the skills still work; only the always-on activation stays quiet.
+# The plugin ships three lifecycle hooks (hooks/claude-codex-hooks.json:
+# SessionStart, UserPromptSubmit, SubagentStart). Codex runs plugin hooks only
+# after each one is reviewed and trusted, and only with `[features] hooks =
+# true`, which this role does not manage. Trust is per hook content: a
+# `trusted_hash` under `[hooks.state."<plugin>@<marketplace>:<hooks file>:
+# <event>:<group>:<handler>"]` in ~/.codex/config.toml, which the `/hooks`
+# screen writes through the app-server's `config/batchWrite`. `hooks/list`
+# over a stdio `codex app-server` reports each hook's `currentHash` and
+# `trustStatus`, so the review can be done headlessly (verified 2026-09-08);
+# the hash covers the unsubstituted command, so it is the same on every host
+# running the same ponytail version. The role still does not write it: an
+# unpinned write would trust whatever upstream ships next, which is what the
+# review exists to catch, and pinned hashes go stale on every ponytail
+# release. `bypass_hook_trust` is a policy-level blanket bypass, not a trust.
+# Without the trust the skills still work; only the always-on activation
+# stays quiet.
 # noqa no-handler: a handler would print this at the end of a forty-role play,
 # far from the install it explains; a debug beside the task keeps them together.
 - name: Remind about the one-time Codex hook trust # noqa: no-handler
   ansible.builtin.debug:
     msg: >-
       ponytail was just installed into Codex. Run `codex`, open `/hooks`,
-      review and trust ponytail's two lifecycle hooks, then start a new thread.
+      review and trust ponytail's three lifecycle hooks (SessionStart,
+      UserPromptSubmit, SubagentStart), then start a new thread.
   when: ponytail_codex_install is changed

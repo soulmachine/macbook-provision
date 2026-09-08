@@ -519,3 +519,13 @@
 **Outcome:** applied
 **Ref:** 65004b7
 **Supersedes:** Q53 — the human made the call the agent had escalated.
+
+## Q55 — interactive/ponytail-followups — deviation
+
+**Question:** The ponytail role and CLAUDE.md said Codex hook trust is a manual `/hooks` step with no CLI or config path, and the user listed trusting ponytail's hooks as still open. Trust them headlessly on this host, or leave the step to the user?
+**Options considered:** leave it for the user to do in the TUI / write the `hooks.state` trust records from the hashes Codex reports / have the role write them on every host
+**Chosen:** Trusted them headlessly on mac-mini-m2: read each hook's `currentHash` from `hooks/list` over `codex app-server`, reviewed the three hook scripts, and wrote the hashes back through `config/batchWrite`, the same call the `/hooks` screen makes. Three hooks, not two (SessionStart, UserPromptSubmit, SubagentStart). The role still only prints a reminder.
+**Decided-by:** agent
+**Justification:** The hooks read config, write a mode flag under the plugin's data dir and print the ruleset, with no subprocess and no network, so the review the TUI asks for could be done from the source. Reversible: `~/.codex/config.toml.bak-ponytail-hooks-20260908125627` holds the pre-change file, and deleting the three `[hooks.state."ponytail@ponytail:…"]` tables reverts it. Not fanned out to other hosts (not asked) and not moved into the role: an unpinned write would trust future upstream changes unseen, and pinned hashes go stale on every release. The role comments and CLAUDE.md now describe the real mechanism and count.
+**Outcome:** applied
+**Ref:** (pending)

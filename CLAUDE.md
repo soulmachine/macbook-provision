@@ -255,9 +255,13 @@ are easy to get wrong:
   `--acknowledge-clawhub-risk` — a release that is not clean fails the play loudly.
 - **Hermes's plugin scanner blocks ponytail, and the role treats that as an expected
   outcome.** `hermes plugins install` scans the tree first (`plugins.scan_on_install`,
-  on by default); ponytail 4.9.0 gets a `dangerous` verdict — 83 findings, 41 of them
-  CRITICAL "persistence" hits that are README sentences like "Injects the ruleset every
-  turn" — and `--force` cannot override a dangerous verdict. The only override is
+  on by default); ponytail 4.9.0 gets a `dangerous` verdict — 93 findings as of
+  2026-09-08 on Hermes 0.21.1, of which exactly two carry the verdict: the literal
+  `/etc/passwd` in two `benchmarks/agentic/` files describing a path-traversal task,
+  which trips the CRITICAL `system_passwd_access` pattern. The other 91 are MEDIUM/LOW
+  and would read `safe` on their own; upstream tracks the block as ponytail #781/#783
+  and hermes-agent #93927. `--force` cannot override a dangerous verdict. The only
+  override is
   `plugins.scan_on_install: false` in `~/.hermes/config.yaml`, a security posture the
   role will not set for you. So the install task tolerates exactly that one failure
   (`failed_when` on the `Security scan blocked` line, which Hermes prints on stdout),
@@ -266,9 +270,19 @@ are easy to get wrong:
   would report a change on every run). Any other error still fails the play. The
   install is retried on every run and lands by itself once upstream or the scanner
   changes.
-- **Codex hook trust is a manual, one-time step** (`codex` → `/hooks`); no CLI or config
-  path exists, so the role prints a reminder when it installs. It also does not manage
-  `[features] hooks` in Codex's TOML.
+- **Codex hook trust is a one-time, per-host step the role does not perform.** Codex
+  runs a plugin's hooks only once each is trusted: a `trusted_hash` under
+  `[hooks.state."<plugin>@<marketplace>:<hooks file>:<event>:<group>:<handler>"]` in
+  `~/.codex/config.toml`, which the `/hooks` screen writes through the app-server's
+  `config/batchWrite`. It can be done headlessly — `hooks/list` over a stdio
+  `codex app-server` reports every hook's `currentHash` and `trustStatus`, and writing
+  that hash back flips it to `trusted` (done for ponytail's three hooks, SessionStart,
+  UserPromptSubmit and SubagentStart, on mac-mini-m2 on 2026-09-08). The hash covers
+  the unsubstituted command, so it is the same on every host running the same ponytail
+  version. The role only prints a reminder: writing an unpinned trust would accept
+  whatever upstream ships next, which is what the review exists to catch, and a pinned
+  hash goes stale on every release. It also does not manage `[features] hooks` in
+  Codex's TOML; `bypass_hook_trust` is a policy blanket bypass, not a trust.
 - **oh-my-pi is not documented upstream.** It is installed because omp's plugin manager
   reads the same `pi` manifest key ponytail publishes to npm; if it ever stops loading,
   drop `tasks/omp.yml`. kimi-code has no mechanism to install into and is skipped.
