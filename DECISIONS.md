@@ -517,7 +517,7 @@
 **Decided-by:** human (switch openclaw off for now); agent (the reading, the mechanism, the scope)
 **Justification:** Read as the role rather than the service because the ask followed the report that the full play fails at the openclaw role (Q50). Commenting the role out of `main.yml` would not disable it: claude-mem and ponytail pull it in as a meta dependency, and their gateway steps would then call a CLI the role never provisioned. A role var reaches those dependents through the dependency chain — verified by running both with their real dependencies: each skipped with the switch's message instead of erroring on an undefined variable. Fleet-wide because the break is in the role, not this host: `state: latest` moves every always-on host to 2026.9.2 at its next play, and the role's own `tools.exec.timeoutSec` key is one that build rejects, so the other three always-on hosts would break the same way. The crash-looping LaunchAgent is left alone: a live-service change the ask did not name, and one launchctl command away if wanted. Marked TEMPORARY in the vars file, both gates and CLAUDE.md so the fix removes all of it.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 40b87e3
 
 ## Q52 — interactive/openclaw-uninstall — deviation
 
@@ -527,7 +527,7 @@
 **Decided-by:** human (uninstall, and the six hosts); agent (what "uninstall" covers, the mechanism, the dependents)
 **Justification:** Probing the six hosts showed OpenClaw installed a different way on nearly each — npm under mise's node on the Mac Studio, under Homebrew's node on the lume VM, only the cask on the three laptops/Intel mini, all three LaunchAgents only here — so a hand-run script would have been six different scripts, while a role that enumerates npm prefixes and LaunchAgents converges on all of them and on any host that missed the sweep. Keeping the role (as a tombstone) rather than deleting it is what makes the next play of an unreached host finish the job; CLAUDE.md says to delete it once every host has run it. The `state: latest` root cause (Q50) is moot once nothing installs OpenClaw. Software only: the data directories are Q53.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 40b87e3
 **Supersedes:** Q51 — the temporary switch never shipped; the same session replaced it with the uninstall.
 
 ## Q53 — interactive/openclaw-uninstall — irreversible-action
@@ -538,4 +538,4 @@
 **Decided-by:** agent (to escalate)
 **Justification:** "Uninstall" for an npm package or a cask does not remove user data, and deleting gigabytes of sessions, memory and credentials on six machines is unrecoverable — the hard floor in `/log-decisions`, so it is not done unattended even though the ask could be read to include it. The role reports the paths it left on every run; the purge is one `rm -rf` per host once a human confirms. Note `~/.openclaw/skills` is one of `agentstow`'s fan-out targets, so the purge should be followed by `agentstow sync`.
 **Outcome:** escalated
-**Ref:** (pending)
+**Ref:** 40b87e3
