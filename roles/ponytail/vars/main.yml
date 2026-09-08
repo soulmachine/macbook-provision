@@ -23,17 +23,6 @@ ponytail_npm_package: "@dietrichgebert/ponytail"
 ponytail_pi_source: "git:github.com/DietrichGebert/ponytail"
 ponytail_pi_dir: "{{ ponytail_home }}/.pi/agent/git/github.com/DietrichGebert/ponytail"
 
-# OpenClaw: the six ClawHub skills ponytail publishes, all under the author's
-# @dietrichgebert namespace, tracked in the workspace's ClawHub lock file.
-ponytail_openclaw_skill_slugs:
-  - ponytail
-  - ponytail-review
-  - ponytail-audit
-  - ponytail-debt
-  - ponytail-gain
-  - ponytail-help
-ponytail_openclaw_lock: "{{ ponytail_home }}/.openclaw/workspace/.clawhub/lock.json"
-
 # Hermes: plugin name from the repo's plugin.yaml, and where hermes clones it.
 ponytail_hermes_plugin: ponytail
 ponytail_hermes_dir: "{{ ponytail_home }}/.hermes/plugins/ponytail"

@@ -22,28 +22,24 @@
 - name: Install ponytail into oh-my-pi
   ansible.builtin.include_tasks: omp.yml
 
-# OpenClaw and Hermes are installed only on always-on machines (see their
-# roles), so elsewhere there is nothing to install ponytail into. Same gate,
-# same fact, same `| bool` cast; `host-facts` is a meta dependency of this role
-# for the standalone-run reason documented in roles/openclaw/tasks/main.yml.
-- name: Install ponytail into OpenClaw
-  ansible.builtin.include_tasks: openclaw.yml
-  when: mac_is_always_on | bool
-
+# Hermes is installed only on always-on machines (see its role), so elsewhere
+# there is nothing to install ponytail into. Same gate, same fact, same
+# `| bool` cast; `host-facts` is a meta dependency of this role for the
+# standalone-run reason documented in roles/hermes/tasks/main.yml.
 - name: Install ponytail into Hermes
   ansible.builtin.include_tasks: hermes.yml
   when: mac_is_always_on | bool
 
-# Defaulted as belt-and-braces, like the openclaw role's message: the
+# Defaulted as belt-and-braces, like the hermes role's message: the
 # `host-facts` dependency always defines these two, so the defaults only cover
 # a play that reaches this task without that role. Safe for a display string,
-# never for the gates above.
-- name: Report that the OpenClaw and Hermes halves were skipped
+# never for the gate above.
+- name: Report that the Hermes half was skipped
   ansible.builtin.debug:
     msg: >-
-      Skipping ponytail's OpenClaw and Hermes halves on this
+      Skipping ponytail's Hermes half on this
       {{ mac_family | default('machine') }} —
-      BatteryInstalled={{ mac_battery_installed | default('unknown') }}; those
-      agents are installed only where ioreg affirmatively reports No, or on a
-      virtual machine.
+      BatteryInstalled={{ mac_battery_installed | default('unknown') }}; Hermes
+      is installed only where ioreg affirmatively reports No, or on a virtual
+      machine.
   when: not (mac_is_always_on | bool)

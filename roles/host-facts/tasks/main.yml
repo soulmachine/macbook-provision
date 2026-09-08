@@ -5,8 +5,8 @@
 # set_fact, so it reports 0 changed and stays clean under the idempotency check.
 #
 # It is wired two ways, both deliberate:
-#   - as a `meta/main.yml` dependency of openclaw, hermes and claude-mem, so a
-#     standalone `ansible localhost -m include_role -a name=openclaw`
+#   - as a `meta/main.yml` dependency of hermes and ponytail, so a
+#     standalone `ansible localhost -m include_role -a name=hermes`
 #     classifies the machine itself and needs no `-e mac_is_always_on=...`;
 #   - listed first in main.yml's `roles:`, so the full play classifies before
 #     any role runs, however that list is later reordered.
@@ -22,7 +22,7 @@
 # control node".
 #
 # `set_fact` rather than `vars/main.yml` is also load-bearing: role vars are
-# scoped to the role, host facts are global — which is what lets openclaw read
+# scoped to the role, host facts are global — which is what lets hermes read
 # these from a dependency. Do not "simplify" it into vars/main.yml later.
 #
 # This role carries no tags. A `--tags`-limited play that reached a gated role
@@ -31,8 +31,9 @@
 # zellij/tmux/herdr); if a gated role ever gains a tag, add `tags: always` here.
 
 # Classify the machine before any role runs, so always-on-only roles can gate
-# on it. The roles that stand up a long-lived local service (openclaw's
-# gateway, hermes) are worth installing only on a Mac that is actually up.
+# on it. A role that stands up a long-lived local service (hermes; openclaw's
+# gateway until its fleet-wide removal on 2026-09-08) is worth installing only
+# on a Mac that is actually up.
 #
 # The gate is ioreg's AppleSmartBattery `BatteryInstalled` field, and it is
 # deliberately fail-closed: install ONLY where that field exists and reads

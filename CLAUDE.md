@@ -78,13 +78,24 @@ over plain ssh. Only Homebrew needs this.
 
 #### Always-on-only roles
 
-`openclaw` and `hermes` each stand up a long-lived local service — OpenClaw's gateway
-LaunchAgent holding a port open and brokering sessions for other machines, Hermes's
-agent process with its own checkout, Chromium, and messaging gateways. Those only earn
-their keep on a Mac that is actually up, so both roles are gated on `mac_is_always_on`,
-and so are the one step in `claude-mem` that installs a plugin *into* the OpenClaw
-gateway and the two halves of `ponytail` that install into OpenClaw and Hermes (the
-rest of both roles is wanted everywhere and stays ungated).
+`hermes` stands up a long-lived local service — its agent process with its own
+checkout, Chromium, and messaging gateways. That only earns its keep on a Mac that is
+actually up, so the role is gated on `mac_is_always_on`, and so is the half of
+`ponytail` that installs into Hermes (the rest of `ponytail` is wanted everywhere and
+stays ungated).
+
+**`openclaw` used to be the other always-on role and is now a removal role.** OpenClaw
+was uninstalled from the whole fleet on 2026-09-08 (DECISIONS Q52): its `state: latest`
+had moved it to 2026.9.2, which rejects the managed `openclaw.json` — one of the
+rejected keys was the role's own `tools.exec.timeoutSec` — so every `openclaw` command
+exited 1 on any host it upgraded. `roles/openclaw` now ensures OpenClaw is **absent**,
+ungated, on every host: the `openclaw` and `clawhub` npm packages from every npm prefix
+on the machine (the fleet had them under mise's node, Homebrew's node and hermes's
+bundled node, a different one per host), the `openclaw` cask that carried
+OpenClaw.app, and the `ai.openclaw.*` LaunchAgents. It leaves `~/.openclaw` and the
+app's Library files alone and lists them; purging data is a human's call (Q53). The
+claude-mem gateway-plugin step and ponytail's OpenClaw half were deleted with it.
+Delete the role once every host has run it.
 
 **The gate is the battery, not a model whitelist**, and it is **fail-closed**: the
 `host-facts` role reads ioreg's AppleSmartBattery `BatteryInstalled` field and sets
@@ -145,14 +156,14 @@ Three details that are easy to get wrong:
   result`), so an uncast bare `when:` fails the play rather than misbehaving quietly —
   but only on one branch, which is how this was found at all.
 - **The gate lives inside each role, not as a `when:` on the role in `main.yml`.** It
-  has to hold for the single-role run the README documents and for `claude-mem`, which
-  depends on `openclaw`. Each role's `tasks/main.yml` is now just the gate plus an
+  has to hold for the single-role run the README documents and for `ponytail`, which
+  depends on `hermes`. The role's `tasks/main.yml` is just the gate plus an
   `include_tasks: install.yml` carrying the real work — dynamic on purpose, so a
   skipped host logs one line instead of a dozen. A role-level `when:` would also be
-  inherited by dependencies, which would take `nodejs` down with `openclaw`; `nodejs`
-  is wanted on laptops too.
+  inherited by dependencies, which would take `host-facts` down with `hermes`; the
+  same shape took `nodejs` down with `openclaw` while that role still installed.
 - **The facts come from the `host-facts` role, not from `pre_tasks`, and that is what
-  makes a bare `ansible localhost -m include_role -a name=openclaw` work.** `pre_tasks`
+  makes a bare `ansible localhost -m include_role -a name=hermes` work.** `pre_tasks`
   only run in a full play, so a single-role run used to abort with
   `'mac_is_always_on' is undefined` — which broke the repo's own
   `ansible-idempotency-check` skill, since it invokes exactly that command form.
@@ -167,7 +178,7 @@ A single-role run needs no extra vars — the `host-facts` dependency classifies
 machine itself:
 
 ```bash
-ansible localhost -m include_role -a name=openclaw
+ansible localhost -m include_role -a name=hermes
 ```
 
 `-e mac_is_always_on=true` (or `=false`) still works as an **override**; it is simply
@@ -209,9 +220,11 @@ no longer required.
 
 #### Ponytail role specifics
 
-`ponytail` installs one upstream plugin into seven agents, each through that agent's
-own installer — one task file per host under `roles/ponytail/tasks/`. The facts that
-are easy to get wrong:
+`ponytail` installs one upstream plugin into six agents, each through that agent's
+own installer — one task file per host under `roles/ponytail/tasks/`. (An OpenClaw
+half — six owner-qualified ClawHub skills — existed for one commit and went with the
+fleet-wide OpenClaw removal; DECISIONS Q45 and Q52.) The facts that are easy to get
+wrong:
 
 - **Every refresh diffs state, never stdout**: Claude Code's `gitCommitSha` in
   `installed_plugins.json`; the `revision` Codex records in
@@ -219,9 +232,9 @@ are easy to get wrong:
   ledger, not the snapshot's git HEAD: `codex plugin marketplace upgrade` compares
   upstream against that record, so a snapshot rewound one commit still reads "already
   up to date" while a record pointing at an older commit triggers a real upgrade (both
-  verified); the pi and Hermes checkouts' HEADs; the six versions in OpenClaw's
-  workspace `.clawhub/lock.json`. OpenCode needs no refresh — a bare npm name in
-  `opencode.json` resolves as `@latest` at startup. Each refresh block is gated on a
+  verified); the pi and Hermes checkouts' HEADs. OpenCode needs no refresh — a bare
+  npm name in `opencode.json` resolves as `@latest` at startup. Each refresh block is
+  gated on a
   `stat` of the record or checkout it diffs, so `--check` on a fresh host passes
   instead of failing on a read of a file that does not exist yet.
 - **A `debug` task's `changed_when` is invisible to ad-hoc output.** The `minimal`
@@ -241,18 +254,13 @@ are easy to get wrong:
   manual `omp plugin disable` on every play.
 - **Idempotency markers are the hosts' own records**: `[marketplaces.ponytail]` and
   `[plugins."ponytail@ponytail"]` in `~/.codex/config.toml`, `installed_plugins.json`
-  and `enabledPlugins` for Claude Code, `openclaw skills list --json` names, the pi
-  checkout directory (`creates:`), the Hermes plugin directory (a `stat` gate — see
-  below for why not `creates:`).
+  and `enabledPlugins` for Claude Code, the pi checkout directory (`creates:`), the
+  Hermes plugin directory (a `stat` gate — see below for why not `creates:`).
 - **The pi package entry lives in `roles/pi/files/agent/settings.json`.** The pi role
   copies that file over `~/.pi/agent/settings.json` every run; `pi install` records the
   source string verbatim, so listing the same bare `git:github.com/DietrichGebert/ponytail`
   there is what stops the copy from stripping it. Unpinned on purpose so the refresh
   tracks upstream.
-- **ClawHub refs must be owner-qualified** (`@dietrichgebert/ponytail`): two publishers
-  own a `ponytail` slug, and a bare slug errors "Found multiple skills". All six skills
-  (the ruleset plus the five command skills) are installed, without
-  `--acknowledge-clawhub-risk` — a release that is not clean fails the play loudly.
 - **Hermes's plugin scanner blocks ponytail, and the role treats that as an expected
   outcome.** `hermes plugins install` scans the tree first (`plugins.scan_on_install`,
   on by default); ponytail 4.9.0 gets a `dangerous` verdict — 83 findings, 41 of them

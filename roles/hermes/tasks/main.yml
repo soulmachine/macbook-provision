@@ -1,7 +1,7 @@
 ---
 # Hermes is a long-running personal agent — it installs a uv-managed checkout, a
 # Chromium for Playwright, and messaging gateways that are only useful while the
-# machine is reachable. Like `openclaw`, it is gated on `mac_is_always_on`, set by
+# machine is reachable. It is gated on `mac_is_always_on`, set by
 # the `host-facts` role (a meta dependency of this one) only when ioreg's
 # AppleSmartBattery `BatteryInstalled` field exists and reads `No`. `Yes` (a
 # MacBook) and a missing field (an Intel Mac, which publishes no
@@ -14,8 +14,8 @@
   ansible.builtin.include_tasks: install.yml
   when: mac_is_always_on | bool
 
-# Defaulted as belt-and-braces, for the same reason as the openclaw role's
-# message: the `host-facts` dependency always defines these two now, so the
+# Defaulted as belt-and-braces: the `host-facts` dependency always defines
+# these two now, so the
 # defaults only cover a play that reaches this task without that role.
 # Safe for a display string, never for the gate above.
 - name: Report that hermes was skipped

@@ -508,3 +508,34 @@
 **Justification:** The gateway is a live service other machines route sessions through, and the durable fix changes another role's managed config keys — both outside the ask, and the first is not something to do unattended. What was done: the OpenClaw half's parse gate now fails with the CLI's own error quoted instead of crashing inside a template, so the state is loud rather than confusing. Until the host is repaired the full play fails at the openclaw role on this machine regardless of ponytail.
 **Outcome:** escalated
 **Ref:** f8d9f3a
+
+## Q51 — interactive/openclaw-temporary-disable — deviation
+
+**Question:** The ask was "disable openclaw temporarily". Disable what — the role in the playbook or the gateway service on this host — by what mechanism, and on this host only or fleet-wide?
+**Options considered:** comment `openclaw` out of `main.yml` / unload the crash-looping gateway LaunchAgent on this host / a kill-switch variable in the openclaw role that its two dependents also read
+**Chosen:** The kill switch: `openclaw_enabled: false` in `roles/openclaw/vars/main.yml`, read by the openclaw role's gate, claude-mem's gateway-plugin block and ponytail's OpenClaw half. Fleet-wide, overridable with `-e openclaw_enabled=true`. The LaunchAgent is untouched.
+**Decided-by:** human (switch openclaw off for now); agent (the reading, the mechanism, the scope)
+**Justification:** Read as the role rather than the service because the ask followed the report that the full play fails at the openclaw role (Q50). Commenting the role out of `main.yml` would not disable it: claude-mem and ponytail pull it in as a meta dependency, and their gateway steps would then call a CLI the role never provisioned. A role var reaches those dependents through the dependency chain — verified by running both with their real dependencies: each skipped with the switch's message instead of erroring on an undefined variable. Fleet-wide because the break is in the role, not this host: `state: latest` moves every always-on host to 2026.9.2 at its next play, and the role's own `tools.exec.timeoutSec` key is one that build rejects, so the other three always-on hosts would break the same way. The crash-looping LaunchAgent is left alone: a live-service change the ask did not name, and one launchctl command away if wanted. Marked TEMPORARY in the vars file, both gates and CLAUDE.md so the fix removes all of it.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q52 — interactive/openclaw-uninstall — deviation
+
+**Question:** The ask moved from "disable openclaw temporarily" to "uninstall openclaw from all hosts" (mac-mini-2018, macbook-air, mac-mini-m2, mac-studio-m3, macbook-pro-nickel, dev-server-frank-lume). What does "uninstall" cover, how is it carried out on each host, and what happens to the provisioning role and its dependents?
+**Options considered:** ssh to each host and run uninstall commands by hand, leaving the repo's install role switched off / delete the role from the repo and uninstall by hand / turn the role into an ungated removal role, run it on each host now, and strip OpenClaw from the roles that installed into it
+**Chosen:** The removal role. `roles/openclaw` now ensures absence on every host: the `openclaw` and `clawhub` npm packages from every npm prefix found on the machine, the `openclaw` Homebrew cask (OpenClaw.app), and the `ai.openclaw.*` LaunchAgents; it fails loudly if a launcher survives. claude-mem's gateway-plugin step and ponytail's OpenClaw half are deleted, along with the kill switch of Q51. Each host runs the role once over ssh (single-role, login shell, per CLAUDE.md), except macbook-pro-nickel, which has no ansible and gets the same three removals by hand.
+**Decided-by:** human (uninstall, and the six hosts); agent (what "uninstall" covers, the mechanism, the dependents)
+**Justification:** Probing the six hosts showed OpenClaw installed a different way on nearly each — npm under mise's node on the Mac Studio, under Homebrew's node on the lume VM, only the cask on the three laptops/Intel mini, all three LaunchAgents only here — so a hand-run script would have been six different scripts, while a role that enumerates npm prefixes and LaunchAgents converges on all of them and on any host that missed the sweep. Keeping the role (as a tombstone) rather than deleting it is what makes the next play of an unreached host finish the job; CLAUDE.md says to delete it once every host has run it. The `state: latest` root cause (Q50) is moot once nothing installs OpenClaw. Software only: the data directories are Q53.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q51 — the temporary switch never shipped; the same session replaced it with the uninstall.
+
+## Q53 — interactive/openclaw-uninstall — irreversible-action
+
+**Question:** Should the uninstall also delete OpenClaw's data — `~/.openclaw` (3.4 GB here, 3.3 GB on the Mac Studio, 2.0 GB on the lume VM, 1.4 GB on macbook-pro-nickel: sessions, memory, credentials, workspace skills, the weixin/qqbot integrations) and the app's Library preferences, caches and logs?
+**Options considered:** delete them as part of "uninstall" / leave them and list them / leave `~/.openclaw` but clear the app's caches and preferences
+**Chosen:** —
+**Decided-by:** agent (to escalate)
+**Justification:** "Uninstall" for an npm package or a cask does not remove user data, and deleting gigabytes of sessions, memory and credentials on six machines is unrecoverable — the hard floor in `/log-decisions`, so it is not done unattended even though the ask could be read to include it. The role reports the paths it left on every run; the purge is one `rm -rf` per host once a human confirms. Note `~/.openclaw/skills` is one of `agentstow`'s fan-out targets, so the purge should be followed by `agentstow sync`.
+**Outcome:** escalated
+**Ref:** (pending)
