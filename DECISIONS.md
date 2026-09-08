@@ -528,4 +528,4 @@
 **Decided-by:** agent
 **Justification:** The hooks read config, write a mode flag under the plugin's data dir and print the ruleset, with no subprocess and no network, so the review the TUI asks for could be done from the source. Reversible: `~/.codex/config.toml.bak-ponytail-hooks-20260908125627` holds the pre-change file, and deleting the three `[hooks.state."ponytail@ponytail:…"]` tables reverts it. Not fanned out to other hosts (not asked) and not moved into the role: an unpinned write would trust future upstream changes unseen, and pinned hashes go stale on every release. The role comments and CLAUDE.md now describe the real mechanism and count.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** db05dec
