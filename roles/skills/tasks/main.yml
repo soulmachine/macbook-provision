@@ -18,3 +18,8 @@
   ansible.builtin.command:
     cmd: npx skills add mvanhorn/last30days-skill -g -y --all
     creates: "{{ lookup('env', 'HOME') }}/.agents/skills/last30days"
+
+- name: Install archify skill for all agents
+  ansible.builtin.command:
+    cmd: npx skills add tt-a1i/archify -g -y --all
+    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/archify"
