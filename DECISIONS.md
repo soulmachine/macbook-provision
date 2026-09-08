@@ -517,5 +517,5 @@
 **Decided-by:** human (the deletion, the paths, the hosts); agent (nullglob, not widening the list)
 **Justification:** The deletion is the user's explicit, specific instruction, which resolves Q53's escalation. `nullglob` is load-bearing: zsh aborts a command whose glob matches nothing, and only mac-mini-m2 had the preference plists, so the literal command would have deleted nothing on the other five hosts while looking like it ran. The list was not widened because the user named the paths; the two leftover directories are kilobytes of the removed app's WebKit and HTTP storage, harmless and listed for a follow-up.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 65004b7
 **Supersedes:** Q53 — the human made the call the agent had escalated.
