@@ -1,34 +1,194 @@
 ---
-# OpenClaw is a gateway: `openclaw` installs a LaunchAgent that holds a local
-# port open and brokers sessions for other machines. That only earns its keep on
-# a Mac that is actually up — so this role is gated on `mac_is_always_on`, set by
-# the `host-facts` role (a meta dependency of this one) only when ioreg's
-# AppleSmartBattery `BatteryInstalled` field exists and reads `No`. `Yes` (a
-# MacBook) and a missing field (an Intel Mac, which publishes no
-# AppleSmartBattery node at all) both skip; a VM is readmitted separately. Today
-# that installs on the Apple Silicon desktops and the lume VM.
-#
-# The gate lives here rather than as a `when:` on the role in main.yml so it
-# holds for every entry point: the full play, a single-role
-# `ansible localhost -m include_role -a name=openclaw`, and `claude-mem`, which
-# depends on this role. The meta dependency is what makes the standalone run
-# work with no extra vars — do not remove it.
-- name: Install and configure OpenClaw
-  ansible.builtin.include_tasks: install.yml
-  when: mac_is_always_on | bool
+# REMOVAL role. OpenClaw was uninstalled from the whole fleet on 2026-09-08
+# (DECISIONS Q52): the role's `state: latest` had moved it to 2026.9.2, which
+# rejects the managed openclaw.json and takes every `openclaw` command down with
+# it. This role now ensures OpenClaw is ABSENT — everywhere, no always-on gate —
+# so a host that missed the sweep converges on its next play. It removes the
+# software only: the two npm packages from every npm prefix on the machine, the
+# Homebrew cask that carried OpenClaw.app, and the `ai.openclaw.*` LaunchAgents
+# (gateway, node, and the app's login item). ~/.openclaw and the app's
+# Library files are left in place and listed at the end; purging them is a
+# human's call. Delete this role once every host has run it.
 
-# `mac_family` / `mac_battery_installed` are defaulted as belt-and-braces. The
-# `host-facts` dependency now always defines them, so these defaults no longer
-# carry the standalone run — they only cover a play that somehow reaches this
-# task without that role (a future `--tags`-limited run, say), where the message
-# would otherwise abort with "Error while resolving value for 'msg'".
-# Defaulting stays safe here and stays WRONG on the gate above: these two shape
-# only the wording, where a defaulted gate would silently change what installs.
-- name: Report that OpenClaw was skipped
+- name: Read the uid for launchctl's gui domain
+  ansible.builtin.command: id -u
+  register: openclaw_uid
+  changed_when: false
+  check_mode: false
+
+# LaunchAgents. Labels come out of the plists (`plutil -extract Label`) rather
+# than the filenames, so a plist named one thing and labelled another is still
+# unloaded. `launchctl print` exits 0 only for a loaded service (113 otherwise,
+# measured), which is the state the bootout is gated on — a bootout of an
+# unloaded label errors, and a blind one would need its error grepped.
+- name: Find OpenClaw LaunchAgents
+  ansible.builtin.find:
+    paths: "{{ openclaw_home }}/Library/LaunchAgents"
+    patterns: "ai.openclaw.*.plist"
+  register: openclaw_launchagents
+
+- name: Read the OpenClaw LaunchAgent labels
+  ansible.builtin.command: plutil -extract Label raw -o - {{ item.path }}
+  loop: "{{ openclaw_launchagents.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  register: openclaw_launchagent_labels
+  changed_when: false
+  check_mode: false
+
+- name: Check which OpenClaw LaunchAgents are loaded
+  ansible.builtin.command: launchctl print gui/{{ openclaw_uid.stdout }}/{{ item.stdout }}
+  loop: "{{ openclaw_launchagent_labels.results }}"
+  loop_control:
+    label: "{{ item.stdout }}"
+  register: openclaw_launchagents_loaded
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Unload OpenClaw LaunchAgents
+  ansible.builtin.command: launchctl bootout gui/{{ openclaw_uid.stdout }}/{{ item.item.stdout }}
+  loop: "{{ openclaw_launchagents_loaded.results }}"
+  loop_control:
+    label: "{{ item.item.stdout }}"
+  when: item.rc == 0
+  changed_when: true
+
+- name: Remove OpenClaw LaunchAgent plists
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ openclaw_launchagents.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+
+# npm packages. The fleet has grown several npms per machine — the one on PATH,
+# Homebrew's node formula (/opt/homebrew or /usr/local), mise's node installs,
+# hermes's bundled node behind ~/.local/bin/npm on the Mac Studio — and the
+# packages were found under a different one on each host (mise on the Studio,
+# Homebrew's on the lume VM). So every npm is asked for its global prefix,
+# prefixes are de-duplicated (mise's `24`, `lts`, `latest` aliases all resolve
+# to one install), and each prefix whose node_modules holds either package gets
+# its own `npm uninstall -g`. The probe prints `<npm>\t<prefix>\t<packages>`
+# lines, one per prefix that has something to remove, and nothing when clean.
+- name: Find npm prefixes that hold the OpenClaw packages
+  ansible.builtin.shell: |
+    set -o pipefail
+    for n in "$(command -v npm 2>/dev/null)" /opt/homebrew/bin/npm /usr/local/bin/npm \
+             "$HOME/.local/bin/npm" "$HOME"/.local/share/mise/installs/node/*/bin/npm; do
+      [ -n "$n" ] && [ -x "$n" ] || continue
+      prefix=$("$n" prefix -g 2>/dev/null) || continue
+      prefix=$(cd "$prefix" 2>/dev/null && pwd -P) || continue
+      found=""
+      for pkg in {{ openclaw_npm_packages | join(' ') }}; do
+        [ -e "$prefix/lib/node_modules/$pkg" ] && found="$found $pkg"
+      done
+      [ -n "$found" ] && printf '%s\t%s\t%s\n' "$n" "$prefix" "${found# }"
+    done | sort -u -t "$(printf '\t')" -k2,2
+    # The loop status is that of its last [ -n ] test, which fails on a clean
+    # machine and would surface through pipefail as a failed probe. An empty
+    # list is the converged answer, not an error. (No apostrophes in here:
+    # Ansible splits a free-form shell string on quotes before bash sees it.)
+    exit 0
+  args:
+    executable: /bin/bash
+  register: openclaw_npm_prefixes
+  changed_when: false
+  check_mode: false
+
+- name: Uninstall the OpenClaw npm packages from each prefix
+  community.general.npm:
+    name: "{{ item.1 }}"
+    global: true
+    state: absent
+    executable: "{{ item.0.split('\t')[0] }}"
+  loop: "{{ openclaw_npm_prefixes.stdout_lines | product(openclaw_npm_packages) | list }}"
+  loop_control:
+    label: "{{ item.0.split('\t')[1] }}: {{ item.1 }}"
+
+# Orphans: whatever an npm pass cannot reach. Homebrew's node formula was
+# removed from this host under DECISIONS Q38, leaving
+# /opt/homebrew/lib/node_modules/openclaw and its bin/ launchers behind with no
+# npm to uninstall them — shadowed on PATH by mise's copy until that one went,
+# which is how the leftover check below first caught it. Anything still under a
+# known prefix after the npm pass is unmanaged by definition, so it goes as
+# files: the package directories, then every openclaw/clawhub/clawdhub launcher
+# whose link points into one of those packages (or dangles).
+- name: Find OpenClaw packages and launchers no npm removed
+  ansible.builtin.shell: |
+    for prefix in /opt/homebrew /usr/local "$HOME/.local" "$HOME"/.local/share/mise/installs/node/*; do
+      [ -d "$prefix" ] || continue
+      prefix=$(cd "$prefix" && pwd -P)
+      for pkg in {{ openclaw_npm_packages | join(' ') }}; do
+        [ -e "$prefix/lib/node_modules/$pkg" ] && printf '%s\n' "$prefix/lib/node_modules/$pkg"
+      done
+      for b in {{ openclaw_npm_packages | join(' ') }} clawdhub; do
+        [ -L "$prefix/bin/$b" ] || continue
+        target=$(readlink "$prefix/bin/$b")
+        case "$target" in
+          *node_modules/openclaw/*|*node_modules/clawhub/*) printf '%s\n' "$prefix/bin/$b" ;;
+        esac
+      done
+    done | sort -u
+    exit 0
+  args:
+    executable: /bin/bash
+  register: openclaw_orphans
+  changed_when: false
+  check_mode: false
+
+- name: Remove the orphaned OpenClaw packages and launchers
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ openclaw_orphans.stdout_lines }}"
+
+# The cask carried OpenClaw.app, the desktop companion; its login item is the
+# `ai.openclaw.mac` LaunchAgent handled above. On this fleet the app was mostly
+# already gone while the cask record remained, which `brew uninstall` tidies.
+- name: Uninstall the OpenClaw cask
+  community.general.homebrew_cask:
+    name: "{{ openclaw_cask }}"
+    state: absent
+
+# Loud if anything survived: a package under an npm this role did not think of,
+# or a stray launcher. A leftover means the uninstall is incomplete, and a human
+# should see where it lives rather than have the play call it done.
+- name: Check for OpenClaw leftovers on PATH
+  ansible.builtin.shell: |
+    for b in {{ openclaw_npm_packages | join(' ') }} clawdhub; do
+      p=$(command -v "$b" 2>/dev/null) && printf '%s -> %s\n' "$p" "$(readlink -f "$p" 2>/dev/null || echo '?')"
+    done
+    ls -d /Applications/OpenClaw.app "$HOME/Applications/OpenClaw.app" 2>/dev/null
+    exit 0
+  args:
+    executable: /bin/bash
+  register: openclaw_leftovers
+  changed_when: false
+  check_mode: false
+
+- name: Fail if OpenClaw is still present
+  ansible.builtin.fail:
+    msg: >-
+      OpenClaw is still on this machine after the uninstall:
+      {{ openclaw_leftovers.stdout_lines | join('; ') }}. Remove it by hand and
+      add whatever installed it to roles/openclaw/tasks/main.yml.
+  when:
+    - not ansible_check_mode
+    - openclaw_leftovers.stdout | trim | length > 0
+
+- name: Check which OpenClaw data directories remain
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ openclaw_data_dirs }}"
+  register: openclaw_data_present
+
+- name: Report the OpenClaw data left in place
   ansible.builtin.debug:
     msg: >-
-      Skipping OpenClaw on this {{ mac_family | default('machine') }} —
-      BatteryInstalled={{ mac_battery_installed | default('unknown') }}; the
-      always-on gateway is installed only where ioreg affirmatively reports No,
-      or on a virtual machine.
-  when: not (mac_is_always_on | bool)
+      OpenClaw is uninstalled. Its data was left untouched — purge by hand if
+      you are sure: {{ openclaw_data_left | join(' ') }}
+  vars:
+    openclaw_data_left: >-
+      {{ openclaw_data_present.results | selectattr('stat.exists') | map(attribute='item') | list }}
+  when: openclaw_data_left | length > 0
