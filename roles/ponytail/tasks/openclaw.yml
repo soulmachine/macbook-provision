@@ -1,0 +1,84 @@
+---
+# OpenClaw: ponytail is published on ClawHub as six skills (the ruleset plus
+# the five command skills), installed with the same `openclaw skills install`
+# the openclaw role uses for its own list, into ~/.openclaw/workspace/skills.
+# The ref MUST be owner-qualified: ClawHub carries two `ponytail` slugs
+# (@dietrichgebert — the author — and @paudyyin), and a bare slug errors with
+# "Found multiple skills". No `--acknowledge-clawhub-risk`: OpenClaw installs a
+# `clean` release silently and a `review-recommended` one with a warning, and
+# cancels a pending / review-required one when nobody is there to confirm —
+# that cancellation fails the play, which is the intended posture (the openclaw
+# role does not pass the flag either).
+- name: Check installed OpenClaw skills
+  ansible.builtin.shell:
+    # Redirect through a temp file: openclaw truncates stdout to 64 KiB when piped
+    # (exits before draining process.stdout), so a direct `... | sed` loses the tail.
+    cmd: |
+      tmp=$(mktemp)
+      trap 'rm -f "$tmp"' EXIT
+      openclaw skills list --json >"$tmp" 2>/dev/null
+      sed -n '/^{/,$p' "$tmp"
+  register: ponytail_openclaw_skills_json
+  changed_when: false
+  check_mode: false
+
+# An openclaw that refuses to run (say, an openclaw.json a newer build rejects)
+# prints a JSON *error* object, which also starts with `{`; the second condition
+# keeps that from blowing up inside the parse so the fail task below can quote
+# it instead.
+- name: Parse OpenClaw skills list
+  ansible.builtin.set_fact:
+    ponytail_openclaw_installed: "{{ (ponytail_openclaw_skills_json.stdout | from_json).skills | map(attribute='name') | list }}"
+  when:
+    - ponytail_openclaw_skills_json.stdout | default('') is match('^\\s*\\{')
+    - (ponytail_openclaw_skills_json.stdout | from_json).skills is defined
+
+- name: Fail if OpenClaw skills list was not parseable
+  ansible.builtin.fail:
+    msg: "openclaw skills list --json returned unparseable output: {{ ponytail_openclaw_skills_json.stdout | default('(empty)') }}"
+  when: ponytail_openclaw_installed is not defined
+
+- name: Install the ponytail OpenClaw skills
+  ansible.builtin.command: openclaw skills install @dietrichgebert/{{ item }}
+  loop: "{{ ponytail_openclaw_skill_slugs }}"
+  when: item not in ponytail_openclaw_installed
+  changed_when: true
+
+# Refresh: `openclaw skills update <ref>` re-installs a tracked ClawHub skill
+# when the registry has a newer release and records the version in the
+# workspace lock file. Its stdout says nothing reliable, so diff the six
+# recorded versions instead. `e30=` is an empty `{}`, for the fresh-host
+# `--check` case where no lock file exists yet.
+- name: Read the ClawHub lock before updating
+  ansible.builtin.slurp:
+    src: "{{ ponytail_openclaw_lock }}"
+  register: ponytail_openclaw_lock_before
+  failed_when: false
+
+- name: Update the ponytail OpenClaw skills
+  ansible.builtin.command: openclaw skills update @dietrichgebert/{{ item }}
+  loop: "{{ ponytail_openclaw_skill_slugs }}"
+  changed_when: false
+
+- name: Read the ClawHub lock after updating
+  ansible.builtin.slurp:
+    src: "{{ ponytail_openclaw_lock }}"
+  register: ponytail_openclaw_lock_after
+  failed_when: false
+
+- name: Check whether the ponytail OpenClaw skills were updated
+  ansible.builtin.debug:
+    msg: >-
+      ponytail OpenClaw skills
+      {{ 'updated' if ponytail_openclaw_updated else 'already up to date' }}
+  vars:
+    ponytail_openclaw_versions_before: >-
+      {{ (ponytail_openclaw_lock_before.content | default('e30=') | b64decode | from_json).skills | default({})
+         | dict2items | selectattr('key', 'in', ponytail_openclaw_skill_slugs)
+         | map(attribute='value.version') | list }}
+    ponytail_openclaw_versions_after: >-
+      {{ (ponytail_openclaw_lock_after.content | default('e30=') | b64decode | from_json).skills | default({})
+         | dict2items | selectattr('key', 'in', ponytail_openclaw_skill_slugs)
+         | map(attribute='value.version') | list }}
+    ponytail_openclaw_updated: "{{ ponytail_openclaw_versions_before != ponytail_openclaw_versions_after }}"
+  changed_when: ponytail_openclaw_updated

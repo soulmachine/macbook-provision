@@ -53,6 +53,12 @@
 # the sibling ~/.pi/agent/skills tree (populated by the `skills` role) and
 # pi's own runtime state are left alone. It does overwrite settings.json on
 # every run, so tweaks made in-app via `/settings` belong in files/ to survive.
+#
+# That overwrite is also why settings.json's `packages` list carries the
+# `git:github.com/DietrichGebert/ponytail` entry: the `ponytail` role installs
+# that package with `pi install`, which appends exactly this string, and
+# without it here every run of this copy would strip the entry again and pi
+# would stop loading a checkout still on disk (roles/ponytail/tasks/pi.yml).
 - name: Install pi agent configuration
   ansible.builtin.copy:
     src: agent/

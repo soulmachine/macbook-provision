@@ -1,0 +1,49 @@
+---
+# ponytail — https://github.com/DietrichGebert/ponytail — a "lazy senior dev"
+# ruleset plus the /ponytail* commands, shipped as a plugin for many agent
+# hosts. This role installs it into every agent this repo provisions, through
+# that agent's own installer (never a shared skills-dir copy), one task file
+# per host. Each file converges the install behind an idempotent gate and then
+# refreshes it by diffing observable state around the host's own updater —
+# CLAUDE.md "Self-update tasks: diff state, don't grep output". kimi-code is
+# absent because neither it nor ponytail offers a mechanism to install into.
+- name: Install ponytail into Claude Code
+  ansible.builtin.include_tasks: claude-code.yml
+
+- name: Install ponytail into Codex
+  ansible.builtin.include_tasks: codex.yml
+
+- name: Install ponytail into OpenCode
+  ansible.builtin.include_tasks: opencode.yml
+
+- name: Install ponytail into pi
+  ansible.builtin.include_tasks: pi.yml
+
+- name: Install ponytail into oh-my-pi
+  ansible.builtin.include_tasks: omp.yml
+
+# OpenClaw and Hermes are installed only on always-on machines (see their
+# roles), so elsewhere there is nothing to install ponytail into. Same gate,
+# same fact, same `| bool` cast; `host-facts` is a meta dependency of this role
+# for the standalone-run reason documented in roles/openclaw/tasks/main.yml.
+- name: Install ponytail into OpenClaw
+  ansible.builtin.include_tasks: openclaw.yml
+  when: mac_is_always_on | bool
+
+- name: Install ponytail into Hermes
+  ansible.builtin.include_tasks: hermes.yml
+  when: mac_is_always_on | bool
+
+# Defaulted as belt-and-braces, like the openclaw role's message: the
+# `host-facts` dependency always defines these two, so the defaults only cover
+# a play that reaches this task without that role. Safe for a display string,
+# never for the gates above.
+- name: Report that the OpenClaw and Hermes halves were skipped
+  ansible.builtin.debug:
+    msg: >-
+      Skipping ponytail's OpenClaw and Hermes halves on this
+      {{ mac_family | default('machine') }} —
+      BatteryInstalled={{ mac_battery_installed | default('unknown') }}; those
+      agents are installed only where ioreg affirmatively reports No, or on a
+      virtual machine.
+  when: not (mac_is_always_on | bool)

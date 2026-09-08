@@ -1,0 +1,20 @@
+---
+dependencies:
+  # Sets `mac_is_always_on`, the fact the OpenClaw and Hermes halves of this
+  # role gate on, plus the `mac_family` / `mac_battery_installed` the skip
+  # message names. Declared here so a standalone
+  # `ansible localhost -m include_role -a name=ponytail` classifies the machine
+  # itself instead of aborting on an undefined variable — no `-e` needed.
+  - host-facts
+  # The Claude Code and Codex plugins run two Node lifecycle hooks.
+  - nodejs
+  # ponytail is installed *into* each of these, through that agent's own
+  # installer, so the agent must be provisioned first. `openclaw` and `hermes`
+  # self-gate on `mac_is_always_on`, so listing them is harmless on a laptop.
+  - claude-code
+  - codex
+  - opencode
+  - pi
+  - omp
+  - openclaw
+  - hermes

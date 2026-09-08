@@ -438,3 +438,73 @@
 **Justification:** `creates:` cannot fire once the directory is removed on every run, and the CLI prints the same "Skill installed" line whether or not anything differed, so CLAUDE.md "Self-update tasks: diff state, don't grep output" applies: the skill tree is the observable state. Reporting the removal itself would make every converged host show two changes and fail the repo's `ansible-idempotency-check`. Tying the refresh to the npm task would inherit that task's stdout grep, which carries no signal here: npm printed "changed 3 packages" on all three real runs while the installed CLI stayed at 0.1.19, so the current `added`/`updated` match never fires and a match on `changed` would fire every run. The removal is read as unconditional because the CLI copies with a recursive `fs.cp` that overwrites but never deletes, so only a wipe purges files upstream has dropped; the role comment records the observed example. Verified four runs: fresh host (one change, from the final compare), converged (none), a planted stale reference file (one change, file gone), and `--check` (no failures, none changed). Cost accepted: one `playwright-cli` process and a re-copy of a ten-file tree per run.
 **Outcome:** applied
 **Ref:** f4ae085
+
+## Q44 — interactive/ponytail-role — gate-resolution
+
+**Question:** `pi install` appends its source string to `~/.pi/agent/settings.json`, but the pi role copies `roles/pi/files/agent/settings.json` over that file on every run. Where should the ponytail entry live, and pinned to a commit or not?
+**Options considered:** re-add the entry from the ponytail role after every pi run / list it in the pi role's settings file / stop the pi role overwriting the file and merge instead
+**Chosen:** The same bare `git:github.com/DietrichGebert/ponytail` string, listed in the pi role's file, unpinned.
+**Decided-by:** agent
+**Justification:** pi 0.84.3 stores a non-local source verbatim and its `addSourceToSettings` no-ops on an identical string, so a matching entry makes the copy and the CLI agree without touching the pi role's single-file model — the cheapest fix and the one that matches the existing pattern. Unpinned because the role's refresh (`pi update --extension`) hard-resets the checkout to upstream HEAD, which a pinned entry would fight; the neighbouring algal entry stays pinned exactly as the user wrote it. Verified: the pi role run twice after the change reported changed=0 both times with the entry retained.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q45 — interactive/ponytail-role — tradeoff
+
+**Question:** How to install ponytail into OpenClaw: which command, which reference, how many of its six ClawHub skills, and whether to pass `--acknowledge-clawhub-risk`?
+**Options considered:** the README's cwd-relative `clawhub install ponytail` / `openclaw skills install` with the bare slug / `openclaw skills install @dietrichgebert/<slug>`; the ruleset only / all six skills; with or without the risk acknowledgement
+**Chosen:** `openclaw skills install @dietrichgebert/<slug>` for all six skills, without the risk flag.
+**Decided-by:** human (all six skills, answering the plan's question); agent (the command, the owner-qualified reference, no risk acknowledgement)
+**Justification:** ClawHub carries two `ponytail` slugs — the author's and `@paudyyin`'s — and a bare slug fails with "Found multiple skills". `openclaw skills install` is what the openclaw role already uses and lands in the same workspace directory. The openclaw role does not pass the risk flag either: a pending or review-required release cancels non-interactively and fails the play, which is the intended posture. The half could not be exercised on this host; see Q50.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q46 — interactive/ponytail-role — gate-resolution
+
+**Question:** ponytail's README documents no oh-my-pi install. Include omp at all, and if so, how does the role refresh an npm-installed plugin when `omp plugin upgrade` accepts only `name@marketplace` IDs?
+**Options considered:** skip omp / install once with no refresh / re-run `omp plugin install` on every play / re-run it only when the registry has a newer version
+**Chosen:** Include omp; refresh by re-running `omp plugin install @dietrichgebert/ponytail` only when `npm view … version` differs from the version `omp plugin list --json` reports.
+**Decided-by:** human (inclusion, answering the plan's question); agent (the refresh path)
+**Justification:** omp's plugin manager reads `pkg.omp || pkg.pi` (its `manager.ts`) and ponytail's npm package declares `pi.extensions` and `pi.skills`, so the install is supported in practice; the installed plugin lists and loads. `omp plugin upgrade` rejects an npm spec outright (observed: `Invalid plugin ID … Expected "name@marketplace"`), and the pin in `~/.omp/plugins/package.json` is `^4.9.0`, so only a re-install — a `bun install <spec>` in that directory — can move it. That install also rewrites the plugin's runtime entry to `enabled: true` with default features, so an unconditional re-run would undo a manual `omp plugin disable` on every play; the version gate, in the claude-mem role's `npm view` shape, is what prevents that. Accepted cost: one registry call per run, and a re-enable whenever a release lands.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q47 — interactive/ponytail-role — tradeoff
+
+**Question:** Codex runs a plugin's hooks only after a one-time trust step in its TUI (`/hooks`). Automate that step?
+**Options considered:** leave it manual and print a reminder when the plugin is installed / set Codex's `bypass_hook_trust` / write `hooks.state` `trusted_hash` entries into `~/.codex/config.toml`
+**Chosen:** Manual, with a debug reminder that prints only on the run that installs the plugin.
+**Decided-by:** agent
+**Justification:** codex 0.153.4 exposes no CLI or config path that *trusts* a hook; `bypass_hook_trust` is a bypass rather than a trust, and pre-writing the hash entries would forge the review the step exists for — a person reading what a plugin's hooks execute. The skills work without it; only the two lifecycle hooks stay quiet until someone trusts them. Recorded in CLAUDE.md so the other fleet hosts are not mistaken for broken.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q48 — interactive/ponytail-role — deviation
+
+**Question:** What does each refresh task compare to decide `changed`, given that the claude-code role decides `claude plugin update` from stdout sentinels?
+**Options considered:** reuse the claude-code role's stdout sentinels / diff each host's own record of what is installed / diff git HEADs everywhere
+**Chosen:** Each host's own record: Claude Code's `gitCommitSha` in `installed_plugins.json`; the `revision` Codex writes to `.codex-marketplace-install.json` in its marketplace snapshot; the pi and Hermes checkouts' HEADs; the six versions in OpenClaw's `.clawhub/lock.json`; omp per Q46. OpenCode needs no refresh because a bare name in `opencode.json` resolves as `@latest` at startup.
+**Decided-by:** agent
+**Justification:** CLAUDE.md "Self-update tasks: diff state, don't grep output". The deviation from the claude-code role's sentinel match is deliberate: `installed_plugins.json` carries the commit, so there is no reason to read prose. Codex is the entry worth remembering — the first draft diffed the snapshot's git HEAD, and a drift test (snapshot rewound one commit) showed `codex plugin marketplace upgrade` still reporting "already up to date" and leaving the tree alone, while editing the recorded revision to the parent commit triggered a real upgrade that rewrote it: Codex's ledger is the record, not the checkout. Verified end to end: pi rewound one commit → exactly one change, then none; Codex record edited → "updated", then none; a playbook run of the converged role reported changed=0. Each refresh block is stat-gated so `--check` on a fresh host passes.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q49 — interactive/ponytail-role — tradeoff
+
+**Question:** Hermes's install-time plugin scanner returns a `dangerous` verdict for ponytail 4.9.0 (83 findings) and `--force` cannot override it, so `hermes plugins install` exits 1 on every always-on host. Fail the play, switch the scanner off, or tolerate it?
+**Options considered:** let the failure stop the play / have the role set `plugins.scan_on_install: false` in `~/.hermes/config.yaml` / tolerate exactly that failure, print the remedy, and retry on every run
+**Chosen:** Tolerate exactly that failure — `failed_when` matches the `Security scan blocked` line Hermes prints on stdout — report the remedy, and take `changed` from the plugin directory appearing rather than from the command. Every other error still fails the play.
+**Decided-by:** agent
+**Justification:** The findings are README prose ("Injects the ruleset every turn", in three languages) and `npm install` strings in tests, but disabling a security scanner is a posture decision that belongs to the user, not to a provisioning default. A hard failure would stop every always-on play at ponytail, ahead of a dozen unrelated roles, over an outcome the role cannot change. The bun role's spent-rate-limit shape (`failed_when` plus a debug) is the precedent, and the directory gate replaces `creates:` because a tolerated failure under `creates:` would report a change on every run. Cost: one clone-and-scan per play until upstream or the scanner changes. Assumed rather than escalated because the override is one reversible config line the user can add when they have read the findings.
+**Outcome:** assumed
+**Ref:** (pending)
+
+## Q50 — interactive/ponytail-role — gate-resolution
+
+**Question:** The ponytail OpenClaw half could not be verified on this host: the openclaw role's npm `state: latest` had moved openclaw to 2026.9.2, which rejects the host's `~/.openclaw/openclaw.json` (unrecognized keys, one of them the `tools.exec.timeoutSec` the openclaw role itself writes) so every `openclaw` command exits 1 with a JSON error, and the gateway LaunchAgent still points at the Homebrew node removed under Q38 and is crash-looping. Repair that as part of this task?
+**Options considered:** run `openclaw doctor --fix` and repoint the LaunchAgent now / change the openclaw role so it stops writing keys the new build rejects / report it and leave the host as it is
+**Chosen:** —
+**Decided-by:** agent (to escalate)
+**Justification:** The gateway is a live service other machines route sessions through, and the durable fix changes another role's managed config keys — both outside the ask, and the first is not something to do unattended. What was done: the OpenClaw half's parse gate now fails with the CLI's own error quoted instead of crashing inside a template, so the state is loud rather than confusing. Until the host is repaired the full play fails at the openclaw role on this machine regardless of ponytail.
+**Outcome:** escalated
+**Ref:** (pending)

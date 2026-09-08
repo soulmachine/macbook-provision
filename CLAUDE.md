@@ -82,8 +82,9 @@ over plain ssh. Only Homebrew needs this.
 LaunchAgent holding a port open and brokering sessions for other machines, Hermes's
 agent process with its own checkout, Chromium, and messaging gateways. Those only earn
 their keep on a Mac that is actually up, so both roles are gated on `mac_is_always_on`,
-and so is the one step in `claude-mem` that installs a plugin *into* the OpenClaw
-gateway (the rest of `claude-mem` is wanted everywhere and stays ungated).
+and so are the one step in `claude-mem` that installs a plugin *into* the OpenClaw
+gateway and the two halves of `ponytail` that install into OpenClaw and Hermes (the
+rest of both roles is wanted everywhere and stays ungated).
 
 **The gate is the battery, not a model whitelist**, and it is **fail-closed**: the
 `host-facts` role reads ioreg's AppleSmartBattery `BatteryInstalled` field and sets
@@ -205,6 +206,72 @@ no longer required.
 - **Idempotency hinges on `agent-reach check-update`'s stdout, not its exit code** — the command discards its own result and always exits 0. Install runs only when `command -v agent-reach` fails; update runs only when `check-update` prints the **positive** sentinel `有更新` (Chinese, hardcoded upstream). Do not invert this to "not up-to-date": `check-update` has two further branches — a GitHub rate-limit/network error (`无法检查更新`) and a no-releases fallback that prints the latest commit SHA (`最新提交:`) — and a negated match would fire on both, burning a full agent run on every converged playbook. The sentinel `有更新` appears in exactly one branch and not in the update instructions that branch prints alongside.
 - **The install is verified.** Because an LLM following prose can report success while landing nothing on PATH, a post-install `command -v agent-reach` check fails the play loudly rather than letting every later run silently re-attempt the install.
 - Optional channels (Twitter, 小红书, Reddit, …) need cookies or a Chrome extension click and are **not** provisioned — headless `claude -p` cannot answer the doc's "which channels do you want?" prompt, so only the zero-config core channels get set up. Run `agent-reach doctor` interactively to add the rest.
+
+#### Ponytail role specifics
+
+`ponytail` installs one upstream plugin into seven agents, each through that agent's
+own installer — one task file per host under `roles/ponytail/tasks/`. The facts that
+are easy to get wrong:
+
+- **Every refresh diffs state, never stdout**: Claude Code's `gitCommitSha` in
+  `installed_plugins.json`; the `revision` Codex records in
+  `~/.codex/.tmp/marketplaces/ponytail/.codex-marketplace-install.json` — its own
+  ledger, not the snapshot's git HEAD: `codex plugin marketplace upgrade` compares
+  upstream against that record, so a snapshot rewound one commit still reads "already
+  up to date" while a record pointing at an older commit triggers a real upgrade (both
+  verified); the pi and Hermes checkouts' HEADs; the six versions in OpenClaw's
+  workspace `.clawhub/lock.json`. OpenCode needs no refresh — a bare npm name in
+  `opencode.json` resolves as `@latest` at startup. Each refresh block is gated on a
+  `stat` of the record or checkout it diffs, so `--check` on a fresh host passes
+  instead of failing on a read of a file that does not exist yet.
+- **A `debug` task's `changed_when` is invisible to ad-hoc output.** The `minimal`
+  callback strips everything but `msg` from a debug result *before* it picks the
+  `CHANGED`/`SUCCESS` label, so the report tasks that carry the refresh verdicts (this
+  role's, and the opencode role's oh-my-openagent one) always print `SUCCESS` under
+  `ansible localhost -m include_role`, and `grep -c CHANGED` never counts them.
+  `ansible-playbook`'s recap does count them. Read the `msg` (`… updated` vs
+  `… already up to date`), or run the role through a playbook, when checking those.
+- **oh-my-pi has no upgrade path for npm plugins.** `omp plugin upgrade` takes only
+  `name@marketplace` IDs, and the package is pinned `^x.y.z` in
+  `~/.omp/plugins/package.json`, so the role re-runs `omp plugin install` — a
+  `bun install` in that directory — gated on `npm view … version` differing from the
+  version `omp plugin list --json` reports (the claude-mem role's shape). The gate is
+  load-bearing: a re-install also rewrites the plugin's runtime entry to
+  `enabled: true` with default features, so running it unconditionally would undo a
+  manual `omp plugin disable` on every play.
+- **Idempotency markers are the hosts' own records**: `[marketplaces.ponytail]` and
+  `[plugins."ponytail@ponytail"]` in `~/.codex/config.toml`, `installed_plugins.json`
+  and `enabledPlugins` for Claude Code, `openclaw skills list --json` names, the pi
+  checkout directory (`creates:`), the Hermes plugin directory (a `stat` gate — see
+  below for why not `creates:`).
+- **The pi package entry lives in `roles/pi/files/agent/settings.json`.** The pi role
+  copies that file over `~/.pi/agent/settings.json` every run; `pi install` records the
+  source string verbatim, so listing the same bare `git:github.com/DietrichGebert/ponytail`
+  there is what stops the copy from stripping it. Unpinned on purpose so the refresh
+  tracks upstream.
+- **ClawHub refs must be owner-qualified** (`@dietrichgebert/ponytail`): two publishers
+  own a `ponytail` slug, and a bare slug errors "Found multiple skills". All six skills
+  (the ruleset plus the five command skills) are installed, without
+  `--acknowledge-clawhub-risk` — a release that is not clean fails the play loudly.
+- **Hermes's plugin scanner blocks ponytail, and the role treats that as an expected
+  outcome.** `hermes plugins install` scans the tree first (`plugins.scan_on_install`,
+  on by default); ponytail 4.9.0 gets a `dangerous` verdict — 83 findings, 41 of them
+  CRITICAL "persistence" hits that are README sentences like "Injects the ruleset every
+  turn" — and `--force` cannot override a dangerous verdict. The only override is
+  `plugins.scan_on_install: false` in `~/.hermes/config.yaml`, a security posture the
+  role will not set for you. So the install task tolerates exactly that one failure
+  (`failed_when` on the `Security scan blocked` line, which Hermes prints on stdout),
+  prints the remedy, and reports `changed` from the plugin directory appearing rather
+  than from the command — which is why it cannot use `creates:` (a tolerated failure
+  would report a change on every run). Any other error still fails the play. The
+  install is retried on every run and lands by itself once upstream or the scanner
+  changes.
+- **Codex hook trust is a manual, one-time step** (`codex` → `/hooks`); no CLI or config
+  path exists, so the role prints a reminder when it installs. It also does not manage
+  `[features] hooks` in Codex's TOML.
+- **oh-my-pi is not documented upstream.** It is installed because omp's plugin manager
+  reads the same `pi` manifest key ponytail publishes to npm; if it ever stops loading,
+  drop `tasks/omp.yml`. kimi-code has no mechanism to install into and is skipped.
 
 ### Role Structure
 

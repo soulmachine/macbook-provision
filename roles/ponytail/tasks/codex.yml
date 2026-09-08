@@ -1,0 +1,93 @@
+---
+# Codex: `codex plugin marketplace add` snapshots the repo's marketplace
+# (.agents/plugins/marketplace.json, name `ponytail`) as a git checkout under
+# ~/.codex/.tmp/marketplaces/ponytail and records `[marketplaces.ponytail]` in
+# ~/.codex/config.toml; `codex plugin add` copies the plugin into
+# ~/.codex/plugins/cache and records `[plugins."ponytail@ponytail"]`. Both
+# sections are written for every marketplace and plugin (27 checked on this
+# host), so they are the idempotency markers — cheaper than
+# `codex plugin list`, which may go to the network.
+- name: Read the Codex config
+  ansible.builtin.slurp:
+    src: "{{ ponytail_home }}/.codex/config.toml"
+  register: ponytail_codex_config_raw
+  failed_when: false
+
+- name: Decode the Codex config
+  ansible.builtin.set_fact:
+    ponytail_codex_config: "{{ ponytail_codex_config_raw.content | default('') | b64decode }}"
+
+- name: Add the ponytail Codex marketplace
+  ansible.builtin.command: codex plugin marketplace add {{ ponytail_repo }}
+  when: >-
+    '[marketplaces.' ~ ponytail_codex_marketplace ~ ']' not in ponytail_codex_config
+  changed_when: true
+
+- name: Install the ponytail Codex plugin
+  ansible.builtin.command: codex plugin add {{ ponytail_codex_plugin }}
+  when: >-
+    '[plugins."' ~ ponytail_codex_plugin ~ '"]' not in ponytail_codex_config
+  register: ponytail_codex_install
+  changed_when: true
+
+# Refresh. `codex plugin marketplace upgrade <name>` compares upstream HEAD
+# with the revision it recorded at install time in the snapshot's
+# .codex-marketplace-install.json, and when they differ stages a fresh checkout,
+# activates it in place of the snapshot and refreshes the installed plugin
+# cache under ~/.codex/plugins/cache/ponytail (the binary carries "failed to
+# create marketplace upgrade staging directory", "failed to activate upgraded
+# marketplace" and "failed to refresh installed plugin cache after marketplace
+# upgrade" for those steps); otherwise it prints "is already up to date." That
+# recorded `revision` is the state codex tracks, so it is what gets diffed —
+# not the checkout's HEAD: with the snapshot rewound one commit the upgrade
+# still answered "already up to date" and left the working tree alone, because
+# the record still matched upstream. Gated on the record existing, which it
+# does not under `--check` on a fresh host; on a real run a missing record
+# means the add above failed, which already stopped the play.
+- name: Check whether the ponytail Codex marketplace record is present
+  ansible.builtin.stat:
+    path: "{{ ponytail_codex_record }}"
+  register: ponytail_codex_stat
+
+- name: Refresh the ponytail Codex plugin
+  when: ponytail_codex_stat.stat.exists
+  block:
+    - name: Read the ponytail Codex marketplace record before upgrading
+      ansible.builtin.slurp:
+        src: "{{ ponytail_codex_record }}"
+      register: ponytail_codex_record_before
+
+    - name: Upgrade the ponytail Codex marketplace
+      ansible.builtin.command: codex plugin marketplace upgrade {{ ponytail_codex_marketplace }}
+      changed_when: false
+
+    - name: Read the ponytail Codex marketplace record after upgrading
+      ansible.builtin.slurp:
+        src: "{{ ponytail_codex_record }}"
+      register: ponytail_codex_record_after
+
+    - name: Check whether the ponytail Codex plugin was updated
+      ansible.builtin.debug:
+        msg: >-
+          ponytail Codex plugin
+          {{ 'updated' if ponytail_codex_updated else 'already up to date' }}
+      vars:
+        ponytail_codex_rev_before: "{{ (ponytail_codex_record_before.content | b64decode | from_json).revision }}"
+        ponytail_codex_rev_after: "{{ (ponytail_codex_record_after.content | b64decode | from_json).revision }}"
+        ponytail_codex_updated: "{{ ponytail_codex_rev_before != ponytail_codex_rev_after }}"
+      changed_when: ponytail_codex_updated
+
+# The plugin ships two lifecycle hooks (hooks/claude-codex-hooks.json). Codex
+# runs plugin hooks only after they are reviewed and trusted in the TUI
+# (`/hooks`) — there is no CLI or config.toml path for that; the only related
+# key, `bypass_hook_trust`, is a blanket bypass, not a trust — and only with
+# `[features] hooks = true`, which this role does not manage. Without the
+# trust the skills still work; only the always-on activation stays quiet.
+# noqa no-handler: a handler would print this at the end of a forty-role play,
+# far from the install it explains; a debug beside the task keeps them together.
+- name: Remind about the one-time Codex hook trust # noqa: no-handler
+  ansible.builtin.debug:
+    msg: >-
+      ponytail was just installed into Codex. Run `codex`, open `/hooks`,
+      review and trust ponytail's two lifecycle hooks, then start a new thread.
+  when: ponytail_codex_install is changed

@@ -1,0 +1,89 @@
+---
+# Claude Code: marketplace + plugin, the same `claude plugin` steps the
+# claude-code role runs for its own plugin list (see roles/claude-code/tasks/
+# main.yml for the reasoning behind each gate).
+#
+# The plugin's SessionStart / SubagentStart / UserPromptSubmit hooks run `node`
+# (hooks/claude-codex-hooks.json in the repo); the nodejs role provides one, on
+# the non-interactive PATH too. The SessionStart hook also nudges the *agent* —
+# once, flag-filed — to add a `statusLine` to ~/.claude/settings.json. The
+# claude-code role's recursive settings merge passes that key through, so
+# nothing here manages it.
+- name: Check installed Claude Code plugins
+  ansible.builtin.slurp:
+    src: "{{ ponytail_home }}/.claude/plugins/installed_plugins.json"
+  register: ponytail_claude_plugins_raw
+  failed_when: false
+
+- name: Decode installed Claude Code plugins
+  ansible.builtin.set_fact:
+    ponytail_claude_plugins_content: "{{ ponytail_claude_plugins_raw.content | default('') | b64decode }}"
+
+- name: Add the ponytail Claude Code marketplace
+  ansible.builtin.command: claude plugin marketplace add {{ ponytail_repo }}
+  register: ponytail_claude_mp
+  changed_when: "'already' not in ponytail_claude_mp.stdout"
+
+- name: Install the ponytail Claude Code plugin
+  ansible.builtin.command: claude plugin install {{ ponytail_claude_plugin }}
+  when: ponytail_claude_plugin not in ponytail_claude_plugins_content
+  changed_when: true
+
+# Refresh. `claude plugin update` exits 0 on every path; the claude-code role
+# reads two stdout sentinels for its list, but installed_plugins.json records
+# the `gitCommitSha` each plugin was installed from, and that moves only when a
+# new upstream commit actually landed — so diff that instead. `e30=` is an
+# empty `{}`, for the fresh-host `--check` case where nothing is installed yet.
+- name: Read the ponytail Claude Code plugin record before updating
+  ansible.builtin.slurp:
+    src: "{{ ponytail_home }}/.claude/plugins/installed_plugins.json"
+  register: ponytail_claude_before
+  failed_when: false
+
+- name: Update the ponytail Claude Code plugin
+  ansible.builtin.command: claude plugin update {{ ponytail_claude_plugin }}
+  changed_when: false
+
+- name: Read the ponytail Claude Code plugin record after updating
+  ansible.builtin.slurp:
+    src: "{{ ponytail_home }}/.claude/plugins/installed_plugins.json"
+  register: ponytail_claude_after
+  failed_when: false
+
+- name: Check whether the ponytail Claude Code plugin was updated
+  ansible.builtin.debug:
+    msg: >-
+      ponytail Claude Code plugin
+      {{ 'updated' if ponytail_claude_updated else 'already up to date' }}
+  vars:
+    ponytail_claude_sha_before: >-
+      {{ ((ponytail_claude_before.content | default('e30=') | b64decode | from_json).plugins
+          | default({}))[ponytail_claude_plugin] | default([])
+         | map(attribute='gitCommitSha', default='') | list }}
+    ponytail_claude_sha_after: >-
+      {{ ((ponytail_claude_after.content | default('e30=') | b64decode | from_json).plugins
+          | default({}))[ponytail_claude_plugin] | default([])
+         | map(attribute='gitCommitSha', default='') | list }}
+    ponytail_claude_updated: "{{ ponytail_claude_sha_before != ponytail_claude_sha_after }}"
+  changed_when: ponytail_claude_updated
+
+- name: Read Claude Code settings
+  ansible.builtin.slurp:
+    src: "{{ ponytail_home }}/.claude/settings.json"
+  register: ponytail_claude_settings_raw
+  failed_when: false
+
+- name: Parse Claude Code settings
+  ansible.builtin.set_fact:
+    ponytail_claude_settings: >-
+      {{ (ponytail_claude_settings_raw.content | b64decode | from_json)
+         if (ponytail_claude_settings_raw.content | default('') | b64decode | trim | length > 0)
+         else {} }}
+
+# `claude plugin install` does not add to `enabledPlugins`, and only enabled
+# plugins load. Gate on key absence (not value) so a manual `/plugin` disable
+# is respected on re-runs — the same rule as the claude-code role.
+- name: Enable the ponytail Claude Code plugin
+  ansible.builtin.command: claude plugin enable {{ ponytail_claude_plugin }}
+  when: ponytail_claude_plugin not in (ponytail_claude_settings.enabledPlugins | default({}))
+  changed_when: true

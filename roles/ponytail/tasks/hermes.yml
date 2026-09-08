@@ -1,0 +1,88 @@
+---
+# Hermes: `hermes plugins install <owner/repo> --enable` clones the repo into
+# ~/.hermes/plugins/<name> (name from its plugin.yaml: `ponytail`), records the
+# source and revision, and — because of `--enable` — adds it to
+# `plugins.enabled` in ~/.hermes/config.yaml without the y/N prompt, whose
+# non-interactive default is *disabled*. A second install without `--force`
+# errors "already exists", hence the gate on the directory; a manual
+# `hermes plugins disable` is left alone for the same reason the claude-code
+# role gates on key absence.
+#
+# Hermes scans the plugin tree before installing (`plugins.scan_on_install`,
+# on by default). As of 2026-09-08 (ponytail 4.9.0) that scan returns a
+# `dangerous` verdict — 83 findings, 41 of them CRITICAL "persistence" hits
+# that are README sentences such as "Injects the ruleset every turn", in three
+# languages, plus `npm install` strings in its tests — and `--force` cannot
+# override a dangerous verdict; only `plugins.scan_on_install: false` in
+# ~/.hermes/config.yaml can, which is a security posture choice this role will
+# not make. A scanner block is therefore an EXPECTED outcome: reported below
+# with the remedy, not a play-stopping failure (the same `failed_when` +
+# debug shape the bun role uses for a spent rate limit). Every other error
+# still fails. With no directory created, the install is retried on each run
+# and lands by itself once upstream or the scanner changes. Hermes prints the
+# verdict on stdout (stderr stays empty), which is where the match looks.
+#
+# `changed` comes from the directory appearing, not from the command: a
+# blocked install exits 1 having created nothing, and must not report a
+# change on every converged run of an always-on host.
+- name: Check whether the ponytail Hermes plugin is present
+  ansible.builtin.stat:
+    path: "{{ ponytail_hermes_dir }}"
+  register: ponytail_hermes_before
+
+- name: Install the ponytail Hermes plugin
+  ansible.builtin.command: "{{ ponytail_home }}/.local/bin/hermes plugins install {{ ponytail_repo }} --enable"
+  register: ponytail_hermes_install
+  when: not ponytail_hermes_before.stat.exists
+  failed_when:
+    - ponytail_hermes_install.rc != 0
+    - "'Security scan blocked' not in ponytail_hermes_install.stdout"
+  changed_when: false
+
+- name: Report that Hermes's plugin scanner blocked ponytail
+  ansible.builtin.debug:
+    msg: >-
+      Hermes refused to install ponytail: its plugin scanner returned a
+      `dangerous` verdict, which `--force` cannot override. Review the findings
+      by running `hermes plugins install {{ ponytail_repo }} --enable` by hand;
+      to accept them, set `plugins.scan_on_install: false` in
+      ~/.hermes/config.yaml for that one install and re-run this role.
+  when: ponytail_hermes_install.rc | default(0) != 0
+
+- name: Check whether the ponytail Hermes plugin was installed
+  ansible.builtin.stat:
+    path: "{{ ponytail_hermes_dir }}"
+  register: ponytail_hermes_after
+
+- name: Report the ponytail Hermes plugin install
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'ponytail was just installed into Hermes — restart Hermes (or its
+      gateway) to load its hooks and commands.'
+         if ponytail_hermes_installed else
+         'ponytail Hermes plugin ' ~ ('already installed' if ponytail_hermes_after.stat.exists else 'not installed') }}
+  vars:
+    ponytail_hermes_installed: "{{ ponytail_hermes_after.stat.exists and not ponytail_hermes_before.stat.exists }}"
+  changed_when: ponytail_hermes_installed
+
+# Refresh: `hermes plugins update <name>` is a `git pull --ff-only` in the
+# plugin dir, printing "is already up to date." when nothing moved. Diff the
+# checkout's HEAD instead. Gated on the checkout existing, which it does not
+# after a scanner block or under `--check` on a fresh host.
+- name: Refresh the ponytail Hermes plugin
+  when: ponytail_hermes_after.stat.exists
+  block:
+    - name: Record the ponytail Hermes plugin revision before updating # noqa: command-instead-of-module
+      ansible.builtin.command: git -C {{ ponytail_hermes_dir }} rev-parse HEAD
+      register: ponytail_hermes_rev_before
+      changed_when: false
+      check_mode: false
+
+    - name: Update the ponytail Hermes plugin
+      ansible.builtin.command: "{{ ponytail_home }}/.local/bin/hermes plugins update {{ ponytail_hermes_plugin }}"
+      changed_when: false
+
+    - name: Check whether the ponytail Hermes plugin was updated # noqa: command-instead-of-module
+      ansible.builtin.command: git -C {{ ponytail_hermes_dir }} rev-parse HEAD
+      register: ponytail_hermes_rev_after
+      changed_when: ponytail_hermes_rev_after.stdout != ponytail_hermes_rev_before.stdout

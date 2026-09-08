@@ -41,6 +41,7 @@
     - claude-mem
     - cc-switch
     - hermes
+    - ponytail
     - role: paseo
       tags: [agent-multiplexer]
     - ghostty

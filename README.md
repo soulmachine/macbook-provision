@@ -99,13 +99,15 @@ ansible-playbook main.yml --check
 | codex | OpenAI Codex CLI（依赖 nodejs） |
 | openclaw | OpenClaw 及 ClawHub CLI（依赖 nodejs）；**仅限常驻开机的机器** |
 | hermes | Hermes 个人 agent（Nous Research）；**仅限常驻开机的机器** |
+| ponytail | 给所有 agent 安装 [ponytail](https://github.com/DietrichGebert/ponytail) 插件——Claude Code / Codex / OpenCode / pi / oh-my-pi / OpenClaw / Hermes 各用其原生安装方式；其中 OpenClaw 与 Hermes 两部分**仅限常驻开机的机器** |
 | tailscale | 独立版 Tailscale.app（cask）；若 `.env` 中有 `TAILSCALE_AUTH_KEY` 则自动登录，可选通过 API token 关闭 key 过期 |
 
 ### 仅限常驻开机的机器
 
 `openclaw` 和 `hermes` 都会常驻一个长期运行的本地服务（OpenClaw 的 gateway
 LaunchAgent、Hermes 的 agent 进程），只有 24x7 开机的机器才用得上。因此这两个 role
-以及 `claude-mem` 里安装 OpenClaw 插件的那一步，都以 `mac_is_always_on` 为开关。
+以及 `claude-mem` 里安装 OpenClaw 插件的那一步、`ponytail` 里往 OpenClaw 和 Hermes
+里装插件的那两步，都以 `mac_is_always_on` 为开关。
 
 这个 fact 由 `host-facts` role 设置。它同时是这三个 role 的 meta 依赖，并且被列在
 `main.yml` 的 `roles:` 第一位——前者让单独运行某个 role 时也能自行判定（无需
