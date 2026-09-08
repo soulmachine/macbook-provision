@@ -560,3 +560,13 @@
 **Justification:** The hooks read config, write a mode flag under the plugin's data dir and print the ruleset, with no subprocess and no network, so the review the TUI asks for could be done from the source. Reversible: `~/.codex/config.toml.bak-ponytail-hooks-20260908125627` holds the pre-change file, and deleting the three `[hooks.state."ponytail@ponytail:…"]` tables reverts it. Not fanned out to other hosts (not asked) and not moved into the role: an unpinned write would trust future upstream changes unseen, and pinned hashes go stale on every release. The role comments and CLAUDE.md now describe the real mechanism and count.
 **Outcome:** applied
 **Ref:** db05dec
+
+## Q56 — interactive/ponytail-followups — deviation
+
+**Question:** The standalone ponytail idempotency run reinstalled the OpenClaw CLI on mac-mini-m2 because the checkout still carried the pre-removal openclaw role: the removal commit (40b87e3) and its ref backfill (1291224) had been dropped from main by a reset and force-push at 12:40 PDT, before Q54 was committed. Undo the reinstall, and how to put the commits back?
+**Options considered:** leave the host and the branch as found and report / uninstall by hand and cherry-pick the two commits onto main / uninstall by hand and merge 1291224 into main
+**Chosen:** Uninstalled the two npm packages the run had added and deleted the `~/.openclaw` and cache directories it had recreated (all created 13:03–13:04, nothing older), then merged 1291224 into main, resolving the one DECISIONS.md conflict by ordering the journal Q51–Q55 with no entry text changed.
+**Decided-by:** agent
+**Justification:** Q52 and Q54 record the fleet-wide removal and purge as the user's decision, and the project memory says not to reinstall from the repo, so the reinstall was an unwanted side effect of the check and the tree contradicted the recorded decision. A merge rather than a cherry-pick because macbook-air, mac-mini-2018, mac-studio-m3 and dev-server-frank-lume still sit on 1291224 and fast-forward from a merge, while a rewritten history would have left them diverged; no force-push was used. Evidence for the drop: the local reflog (`reset: moving to c3d34f9`) and GitHub's branch activity (`force_push` 1291224 → c3d34f9 at 19:40:50Z).
+**Outcome:** applied
+**Ref:** b70f2c3
