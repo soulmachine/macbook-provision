@@ -447,7 +447,7 @@
 **Decided-by:** agent
 **Justification:** pi 0.84.3 stores a non-local source verbatim and its `addSourceToSettings` no-ops on an identical string, so a matching entry makes the copy and the CLI agree without touching the pi role's single-file model — the cheapest fix and the one that matches the existing pattern. Unpinned because the role's refresh (`pi update --extension`) hard-resets the checkout to upstream HEAD, which a pinned entry would fight; the neighbouring algal entry stays pinned exactly as the user wrote it. Verified: the pi role run twice after the change reported changed=0 both times with the entry retained.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** f8d9f3a
 
 ## Q45 — interactive/ponytail-role — tradeoff
 
@@ -457,7 +457,7 @@
 **Decided-by:** human (all six skills, answering the plan's question); agent (the command, the owner-qualified reference, no risk acknowledgement)
 **Justification:** ClawHub carries two `ponytail` slugs — the author's and `@paudyyin`'s — and a bare slug fails with "Found multiple skills". `openclaw skills install` is what the openclaw role already uses and lands in the same workspace directory. The openclaw role does not pass the risk flag either: a pending or review-required release cancels non-interactively and fails the play, which is the intended posture. The half could not be exercised on this host; see Q50.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** f8d9f3a
 
 ## Q46 — interactive/ponytail-role — gate-resolution
 
@@ -467,7 +467,7 @@
 **Decided-by:** human (inclusion, answering the plan's question); agent (the refresh path)
 **Justification:** omp's plugin manager reads `pkg.omp || pkg.pi` (its `manager.ts`) and ponytail's npm package declares `pi.extensions` and `pi.skills`, so the install is supported in practice; the installed plugin lists and loads. `omp plugin upgrade` rejects an npm spec outright (observed: `Invalid plugin ID … Expected "name@marketplace"`), and the pin in `~/.omp/plugins/package.json` is `^4.9.0`, so only a re-install — a `bun install <spec>` in that directory — can move it. That install also rewrites the plugin's runtime entry to `enabled: true` with default features, so an unconditional re-run would undo a manual `omp plugin disable` on every play; the version gate, in the claude-mem role's `npm view` shape, is what prevents that. Accepted cost: one registry call per run, and a re-enable whenever a release lands.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** f8d9f3a
 
 ## Q47 — interactive/ponytail-role — tradeoff
 
@@ -477,7 +477,7 @@
 **Decided-by:** agent
 **Justification:** codex 0.153.4 exposes no CLI or config path that *trusts* a hook; `bypass_hook_trust` is a bypass rather than a trust, and pre-writing the hash entries would forge the review the step exists for — a person reading what a plugin's hooks execute. The skills work without it; only the two lifecycle hooks stay quiet until someone trusts them. Recorded in CLAUDE.md so the other fleet hosts are not mistaken for broken.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** f8d9f3a
 
 ## Q48 — interactive/ponytail-role — deviation
 
@@ -487,7 +487,7 @@
 **Decided-by:** agent
 **Justification:** CLAUDE.md "Self-update tasks: diff state, don't grep output". The deviation from the claude-code role's sentinel match is deliberate: `installed_plugins.json` carries the commit, so there is no reason to read prose. Codex is the entry worth remembering — the first draft diffed the snapshot's git HEAD, and a drift test (snapshot rewound one commit) showed `codex plugin marketplace upgrade` still reporting "already up to date" and leaving the tree alone, while editing the recorded revision to the parent commit triggered a real upgrade that rewrote it: Codex's ledger is the record, not the checkout. Verified end to end: pi rewound one commit → exactly one change, then none; Codex record edited → "updated", then none; a playbook run of the converged role reported changed=0. Each refresh block is stat-gated so `--check` on a fresh host passes.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** f8d9f3a
 
 ## Q49 — interactive/ponytail-role — tradeoff
 
@@ -497,7 +497,7 @@
 **Decided-by:** agent
 **Justification:** The findings are README prose ("Injects the ruleset every turn", in three languages) and `npm install` strings in tests, but disabling a security scanner is a posture decision that belongs to the user, not to a provisioning default. A hard failure would stop every always-on play at ponytail, ahead of a dozen unrelated roles, over an outcome the role cannot change. The bun role's spent-rate-limit shape (`failed_when` plus a debug) is the precedent, and the directory gate replaces `creates:` because a tolerated failure under `creates:` would report a change on every run. Cost: one clone-and-scan per play until upstream or the scanner changes. Assumed rather than escalated because the override is one reversible config line the user can add when they have read the findings.
 **Outcome:** assumed
-**Ref:** (pending)
+**Ref:** f8d9f3a
 
 ## Q50 — interactive/ponytail-role — gate-resolution
 
@@ -507,4 +507,4 @@
 **Decided-by:** agent (to escalate)
 **Justification:** The gateway is a live service other machines route sessions through, and the durable fix changes another role's managed config keys — both outside the ask, and the first is not something to do unattended. What was done: the OpenClaw half's parse gate now fails with the CLI's own error quoted instead of crashing inside a template, so the state is loud rather than confusing. Until the host is repaired the full play fails at the openclaw role on this machine regardless of ponytail.
 **Outcome:** escalated
-**Ref:** (pending)
+**Ref:** f8d9f3a
