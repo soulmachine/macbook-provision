@@ -508,3 +508,14 @@
 **Justification:** The gateway is a live service other machines route sessions through, and the durable fix changes another role's managed config keys — both outside the ask, and the first is not something to do unattended. What was done: the OpenClaw half's parse gate now fails with the CLI's own error quoted instead of crashing inside a template, so the state is loud rather than confusing. Until the host is repaired the full play fails at the openclaw role on this machine regardless of ponytail.
 **Outcome:** escalated
 **Ref:** f8d9f3a
+
+## Q54 — interactive/openclaw-uninstall — irreversible-action
+
+**Question:** Q53 left OpenClaw's data directories in place and escalated their deletion. The user then asked, by exact command, to `rm -rf` `~/.openclaw`, `~/Library/Application Support/OpenClaw`, `~/Library/Logs/openclaw`, both caches and the `ai.openclaw.*` preference plists on the same six hosts. Run it as given?
+**Options considered:** run the command verbatim on each host / run it with `nullglob` so an unmatched preferences glob cannot abort the whole removal under zsh / widen it to the two remaining app remnants (`~/Library/WebKit/ai.openclaw.mac`, `~/Library/HTTPStorages/ai.openclaw.mac`)
+**Chosen:** Ran the given paths on all six hosts inside `zsh -lc` with `setopt nullglob`, verified every listed path gone afterwards, and left the two remnants outside the list untouched (reported instead).
+**Decided-by:** human (the deletion, the paths, the hosts); agent (nullglob, not widening the list)
+**Justification:** The deletion is the user's explicit, specific instruction, which resolves Q53's escalation. `nullglob` is load-bearing: zsh aborts a command whose glob matches nothing, and only mac-mini-m2 had the preference plists, so the literal command would have deleted nothing on the other five hosts while looking like it ran. The list was not widened because the user named the paths; the two leftover directories are kilobytes of the removed app's WebKit and HTTP storage, harmless and listed for a follow-up.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q53 — the human made the call the agent had escalated.
