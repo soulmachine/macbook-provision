@@ -620,3 +620,14 @@
 **Justification:** It holds the repo and the formula, so excluding it would have left exactly the shadowed-formula state Q58 removes everywhere else. But it has no ansible, so "run the playbook" was not available without first provisioning the machine — a far larger action than was asked for, and one that would add a host to the fleet by side effect. Verified the result is sound: its `.zshrc:105` puts `~/.local/bin` on PATH, so an interactive shell resolves `herdr` 0.9.0. Whether this host should formally join the fleet (and be added to the CLAUDE.md table) is left to the user.
 **Outcome:** applied
 **Ref:** a2ffdf4
+
+## Q62 — interactive/herdr-fleet-rollout — deviation
+
+**Question:** Q60 recorded that `franks-mac-mini-2018`'s play aborts because "Homebrew now refuses to run on Intel x86_64", and concluded the host "cannot be provisioned at all". Both claims are wrong. What actually happened, and what should the record say?
+**Options considered:** leave Q60 and note the correction elsewhere / append a superseding entry
+**Chosen:** Superseded. Homebrew still works on Intel — `brew --version`, `update` and `outdated` all exit 0, and the run's own log shows it resolving every formula and cask (`✔︎ Formula rust (1.98.1)`, `✔︎ Cask pycharm`, …). The Intel text is a **warning**. What Homebrew no longer ships for x86_64 is **bottles**, so formulae like `rust` build from source for hours. The play's actual failure was `Error: rust: Failure while executing … terminated by uncaught signal KILL` — **I sent that KILL**, killing what I misread as a hung `mdfind` but which was the running rust build (PID 86802, 2026-09-09 ~12:34).
+**Decided-by:** agent
+**Justification:** Q60's remedy still stands — herdr is installed there by script and that is the end state the role produces — but its stated cause would have sent the next reader to gate the homebrew role on architecture for a problem that does not exist. The real defect was the nightly job holding each playbook open on ssh against a 15-minute `idle_timeout`, fixed separately in `update-packages.cron.md`. The operative lesson is recorded in that task and in the openroutine project memory: **silence is not a hang**; an Intel source build prints nothing for a long time, and killing a brew child aborts the formula and fails the play.
+**Outcome:** applied
+**Supersedes:** Q60 — its diagnosis and its "cannot be provisioned at all" conclusion; the action it took remains correct.
+**Ref:** (pending)
