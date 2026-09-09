@@ -1,83 +1,109 @@
 ---
-# herdr — multiplexer that lives in your terminal. Shipped as the Homebrew core
-# formula `herdr` (no tap needed). https://herdr.dev
+# herdr — multiplexer that lives in your terminal. Installed from upstream's own
+# script, which writes the binary to ~/.local/bin/herdr. https://herdr.dev
 #
-# NOTE: a non-Homebrew herdr may already exist at ~/.local/bin/herdr, which
-# precedes /opt/homebrew/bin on PATH and would shadow this brew-installed copy.
-# The tasks after the install prune that shadow once it falls behind the formula.
+# ~/.zshenv puts ~/.local/bin ahead of the Homebrew prefix, so this copy is the
+# one that runs. The `herdr` core formula used to be the install method here and
+# is now removed below: leaving it would have brew quietly upgrading a binary
+# nobody executes, the same shadowing problem in the other direction.
+#
+# `herdr --remote` writes a version-matched binary to that same path on its
+# target, so that the far side speaks the local client's protocol. This role
+# will move such a host to the public latest on its next run — which is the
+# right default for a fleet that all tracks latest, but means a deliberately
+# pinned remote server does not survive a play.
 
-- name: Install herdr
-  community.general.homebrew:
-    name: herdr
-    state: latest
+- name: Install herdr # noqa: command-instead-of-module risky-shell-pipe
+  ansible.builtin.shell: curl -fsSL https://herdr.dev/install.sh | sh
+  args:
+    creates: "{{ lookup('env', 'HOME') }}/.local/bin/herdr"
 
-# Upstream's install script, `herdr update`, and the far side of `herdr --remote`
-# all write the binary to ~/.local/bin/herdr, and ~/.zprofile prepends that
-# directory ahead of the Homebrew prefix — so a self-installed copy silently
-# outranks the one installed above, and brew goes on upgrading a binary nobody
-# executes.
-#
-# What that costs is the pin, not the duplicate: the shadow stays frozen at
-# whatever version was written while brew moves on. A 0.5.9 from May 2026
-# outranked brew's 0.8.2 here until August, which is why double-click-to-copy —
-# an 0.8.x feature — read as missing rather than merely out of date.
-#
-# Only an older copy is pruned. `herdr --remote` installs a version-matched
-# binary on the target on purpose, so the remote server speaks the local client's
-# protocol, and a newer one is someone deliberately running ahead of the formula.
-# Deleting either would lose a race with the tool putting it straight back, and
-# the role would never converge; both settle on their own once brew ships past
-# them.
-- name: Get the Homebrew herdr version
-  ansible.builtin.command: brew list --versions herdr
-  register: herdr_brew_version
+# Full path because ~/.local/bin may not be on Ansible's PATH.
+- name: Get the installed herdr version
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.local/bin/herdr --version"
+  register: herdr_version
   changed_when: false
-  # Prints nothing and exits 1 when the formula is not installed. Tolerating that
-  # is what stops a machine whose brew install has not landed from having its
-  # only herdr deleted below.
+
+# `herdr update` is NOT the updater to call from here: it refuses to run from
+# inside a herdr session ("run `herdr update` outside herdr after detaching"),
+# and this playbook is routinely driven from a herdr pane — so it would fail on
+# every converged run and there is no way to tell that refusal from a real
+# network failure. Re-piping install.sh has no such restriction.
+#
+# https://herdr.dev/latest.json is the same manifest install.sh reads, and
+# upstream says so in the script — "use the same manifest as `herdr update` so
+# installs and updates agree on the public latest release" — so gating on it
+# cannot disagree with what the script would then install.
+#
+# check_mode: false because `uri` declares no check-mode support and would be
+# skipped under --check, leaving the register undefined for the tasks below.
+# Reading a public manifest changes nothing, so forcing it during a dry run is
+# safe and is what makes the dry run exercise the real comparison.
+- name: Fetch the herdr release manifest
+  ansible.builtin.uri:
+    url: https://herdr.dev/latest.json
+  register: herdr_manifest
+  check_mode: false
+  # An unreachable manifest is a check that did not happen, not a broken
+  # machine — herdr is installed and working by this point. failed_when rather
+  # than ignore_errors so it does not print a red `fatal:` block that trains you
+  # to skim past red; the warn task below says what happened.
   failed_when: false
 
-# shell rather than command so an absent shadow is empty stdout instead of a task
-# failure, which keeps the prune below down to plain version tests.
-- name: Get the version of any self-installed herdr in ~/.local/bin
-  ansible.builtin.shell: |
-    [ -x "$HOME/.local/bin/herdr" ] || exit 0
-    "$HOME/.local/bin/herdr" --version
-  register: herdr_local_version
-  changed_when: false
+- name: Warn that the herdr version check could not reach upstream
+  ansible.builtin.debug:
+    msg:
+      - "Could not read https://herdr.dev/latest.json (status {{ herdr_manifest.status }})."
+      - "{{ herdr_version.stdout }} is installed and working, but this run could not"
+      - "confirm whether a newer release exists. Diagnose with"
+      - "`curl -fsSL https://herdr.dev/latest.json`."
+  when: herdr_manifest.status != 200
 
-# Both commands print "herdr <semver>"; match the number rather than splitting on
-# whitespace, so a future suffix such as a channel name cannot feed a non-version
-# into the comparison and abort the play.
-- name: Remove the self-installed herdr once it falls behind the Homebrew one
-  ansible.builtin.file:
-    path: "{{ lookup('env', 'HOME') }}/.local/bin/herdr"
-    state: absent
-  register: herdr_shadow_pruned
-  vars:
-    herdr_brew_semver: "{{ herdr_brew_version.stdout | regex_search('[0-9]+[.][0-9]+[.][0-9]+') | default('', true) }}"
-    herdr_local_semver: "{{ herdr_local_version.stdout | regex_search('[0-9]+[.][0-9]+[.][0-9]+') | default('', true) }}"
-  when:
-    - herdr_brew_semver | length > 0
-    - herdr_local_semver | length > 0
-    - herdr_local_semver is version(herdr_brew_semver, '<')
-
-# Removing the file leaves an already-running server on its open inode, so the
-# machine keeps serving the shadowed version until herdr restarts. Say so, rather
-# than letting a green playbook imply the upgrade has already taken effect.
+# `herdr --version` prints "herdr <semver>"; match the number rather than
+# splitting on whitespace, so a future suffix such as a channel name cannot feed
+# a non-version into the comparison.
 #
-# noqa no-handler: a handler is the idiom for "restart the thing", but it fires at
-# the end of the whole play — dozens of roles downstream of this one — and is
+# Re-running the installer really does replace the binary, so changed_when: true
+# is honest — the `when` above is what keeps it off a converged run.
+- name: Update herdr to the latest release # noqa: command-instead-of-module risky-shell-pipe
+  ansible.builtin.shell: curl -fsSL https://herdr.dev/install.sh | sh
+  changed_when: true
+  register: herdr_updated
+  vars:
+    herdr_installed_semver: "{{ herdr_version.stdout | regex_search('[0-9]+[.][0-9]+[.][0-9]+') | default('', true) }}"
+  when:
+    - herdr_manifest.status == 200
+    - herdr_manifest.json.version | default('', true) | length > 0
+    - herdr_installed_semver != herdr_manifest.json.version
+
+# The installer replaces the file, which leaves an already-running server on the
+# old inode — so the machine keeps serving the previous version until herdr
+# restarts. Say so, rather than letting a green playbook imply the upgrade has
+# already taken effect. (Since 0.9.0 a client update can leave a compatible
+# server running on purpose; the binary on disk is still ahead of it either way.)
+#
+# noqa no-handler: a handler is the idiom for "restart the thing", but it fires
+# at the end of the whole play — dozens of roles downstream of this one — and is
 # skipped outright if any of them fail. A notice about what just happened here
-# belongs here, so this stays a task gated on the prune.
+# belongs here, so this stays a task gated on the update.
 - name: Report that a running herdr still needs a restart # noqa: no-handler
   ansible.builtin.debug:
     msg: >-
-      Removed the shadowed ~/.local/bin/herdr ({{ herdr_local_version.stdout }});
-      `herdr` now resolves to the Homebrew build ({{ herdr_brew_version.stdout }}).
-      A herdr server that is already running stays on the old binary until it is
-      restarted — detach, then `pkill -f 'herdr server'` and relaunch.
-  when: herdr_shadow_pruned is changed
+      herdr was updated ({{ herdr_version.stdout }} →
+      {{ herdr_manifest.json.version }}). A herdr server that is already running
+      stays on the old binary until it is restarted — detach, then
+      `pkill -f 'herdr server'` and relaunch.
+  when: herdr_updated is changed
+
+# Removes the copy left by the Homebrew formula this role used to install. It is
+# shadowed by ~/.local/bin on PATH, so it is dead weight brew would keep
+# upgrading; a machine that never had it no-ops here. Ordered after the install
+# so a failed download cannot leave the host with no herdr at all. Delete this
+# task once every fleet host has run it.
+- name: Remove the Homebrew herdr superseded by the upstream installer
+  community.general.homebrew:
+    name: herdr
+    state: absent
 
 # Multi-line, so blockinfile rather than the lineinfile used for one-line aliases
 # elsewhere. The named marker keeps this block from colliding with any other
