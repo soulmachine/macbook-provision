@@ -5,6 +5,16 @@
 # under HOMEBREW_REQUIRE_TAP_TRUST, refuses the untrusted formula, failing this
 # role before the owning role's guarded `brew trust` step ever runs.
 
+# Gathered up front because TWO tasks below gate on it: the x86_64 exception to
+# `upgrade_all`, and the Apple-Silicon-only casks at the end. The full play sets
+# it already (`gather_facts: true`); this is what keeps a standalone
+# `ansible localhost -m include_role -a name=homebrew` working, which gathers no
+# facts, and it must run before the first gate rather than after it.
+- name: Ensure architecture fact is gathered
+  ansible.builtin.setup:
+    gather_subset: architecture
+  when: ansible_facts['architecture'] is not defined
+
 - name: Fix fd symlink conflict if present
   ansible.builtin.command:
     cmd: brew link --overwrite fd
@@ -76,10 +86,24 @@
 # below see current versions, then upgrade everything already installed —
 # plain `brew upgrade` (what upgrade_all runs) covers formulae and casks.
 # Casks with auto_updates are skipped, as with the CLI.
+#
+# `upgrade_all` is OFF on x86_64. Homebrew stopped shipping Intel bottles (it
+# says so itself: "Homebrew no longer builds bottles for this configuration"),
+# so on mac-mini-2018 a blanket upgrade builds formulae like `rust` FROM SOURCE
+# — hours of CPU, nightly, for a machine that is upgraded rather than used to
+# build. Homebrew is not broken there and this is not an architecture gate on
+# the role: `update_homebrew` still runs, the install tasks below still work,
+# and a formula this repo asks for by name is still installed. Only the blanket
+# "upgrade everything already installed" is dropped, so Intel packages hold at
+# their installed versions until something asks for a newer one.
+#
+# Cast with `| bool`: a bare Jinja expression templates to the STRING "False",
+# and a non-empty string is truthy — the same trap CLAUDE.md documents for the
+# always-on gates.
 - name: Update Homebrew and upgrade all installed packages
   community.general.homebrew:
     update_homebrew: true
-    upgrade_all: true
+    upgrade_all: "{{ (ansible_facts['architecture'] != 'x86_64') | bool }}"
 
 - name: Install common Homebrew packages
   community.general.homebrew:
@@ -113,11 +137,6 @@
       - sublime-text
       - visual-studio-code
     state: present
-
-- name: Ensure architecture fact is gathered
-  ansible.builtin.setup:
-    gather_subset: architecture
-  when: ansible_facts['architecture'] is not defined
 
 - name: Install Apple Silicon-only Homebrew cask apps
   community.general.homebrew_cask:
