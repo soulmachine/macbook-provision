@@ -12,10 +12,22 @@ claude_mem_model: claude-opus-4-8
 claude_mem_runtime: worker
 
 # claude-mem is a Claude Code plugin (installed under the `thedotmack`
-# marketplace), not a global npm binary. This manifest carries the installed
-# version, which we diff against the latest published version to decide whether a
-# re-install (upgrade) is needed.
-claude_mem_plugin_manifest: "{{ lookup('env', 'HOME') }}/.claude/plugins/marketplaces/thedotmack/.claude-plugin/plugin.json"
+# marketplace), not a global npm binary. Claude Code's own plugin ledger records
+# what the installer actually landed, and we diff that against the latest
+# published npm version to decide whether a re-install (upgrade) is needed.
+#
+# Read the LEDGER, not the marketplace checkout's manifest. The obvious-looking
+# `~/.claude/plugins/marketplaces/thedotmack/.claude-plugin/plugin.json` is a
+# tracked file in a git clone of the upstream repo that Claude Code `git pull`s
+# on its own (several times a day), so its version is upstream's
+# *in-development* version, ahead of the npm `latest` dist-tag — measured
+# 2026-09-09:
+# manifest 13.24.5 vs npm 13.24.1, a version never published to npm at all. The
+# two only agree in the window between a publish and the next version bump
+# upstream, so diffing them fired every IDE install on every converged run. The
+# ledger is stamped by the installer itself and speaks the same npm channel
+# `npx -y claude-mem install` installs from.
+claude_mem_installed_plugins: "{{ lookup('env', 'HOME') }}/.claude/plugins/installed_plugins.json"
 
 # One `claude-mem install --ide <name>` per IDE. `marker` is a file whose
 # presence-of-the-string "claude-mem" proves that IDE is already wired up, so we

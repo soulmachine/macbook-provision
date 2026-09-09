@@ -570,3 +570,13 @@
 **Justification:** Q52 and Q54 record the fleet-wide removal and purge as the user's decision, and the project memory says not to reinstall from the repo, so the reinstall was an unwanted side effect of the check and the tree contradicted the recorded decision. A merge rather than a cherry-pick because macbook-air, mac-mini-2018, mac-studio-m3 and dev-server-frank-lume still sit on 1291224 and fast-forward from a merge, while a rewritten history would have left them diverged; no force-push was used. Evidence for the drop: the local reflog (`reset: moving to c3d34f9`) and GitHub's branch activity (`force_push` 1291224 → c3d34f9 at 19:40:50Z).
 **Outcome:** applied
 **Ref:** b70f2c3
+
+## Q57 — interactive/claude-mem-idempotency — tradeoff
+
+**Question:** The claude-mem role's "Install and wire claude-mem for each IDE" task reported changed on every run. Its version gate read the marketplace checkout's `.claude-plugin/plugin.json` (13.24.5) and compared it to npm `latest` (13.24.1), two different release channels. Which on-disk record should the gate diff instead?
+**Options considered:** keep the marketplace manifest and compare against upstream git HEAD instead of npm / read the installer-stomped `plugin/.claude-plugin/plugin.json`, which already reads 13.24.1 / read Claude Code's `installed_plugins.json` ledger
+**Chosen:** Read `~/.claude/plugins/installed_plugins.json` → `plugins['claude-mem@thedotmack'] | map('version') | first`, defaulting to `absent`, and diff that against `npm view claude-mem version`. Both sides now speak npm's `latest` channel.
+**Decided-by:** agent
+**Justification:** The installer is `npx -y claude-mem install`, so npm `latest` is the right upper bound; the mismatch was on the installed side. The marketplace manifest cannot work at all — it is a clean tracked file in a repo Claude Code pulls on its own (reflog: five pulls in four days), so it reports whatever upstream's main branch has bumped to, currently a version absent from `npm view claude-mem versions`. `plugin/.claude-plugin/plugin.json` does read the installed 13.24.1, but only as an uncommitted modification the installer makes to a tracked file, so any reclone or `git checkout` in that directory silently reverts it. The ledger is purpose-built, is what the installer stamps (`installedAt` matched the run), and is the record the ponytail role already diffs. Verified: two consecutive plays report `changed=0` with all three IDEs skipping, `--check` passes, and the upgrade branch still fires for `absent` and for an older version. yamllint went 4 errors → 3; ansible-lint's two failures (hyphenated role name, an unrelated `oh-my-zsh` module resolution) are unchanged from HEAD.
+**Outcome:** applied
+**Ref:** pending

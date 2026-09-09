@@ -325,6 +325,24 @@ change on a converged machine. `agent-reach` (below) is the deliberate exception
 it has no version to compare, so it matches a **positive** sentinel — never a
 negated one, for exactly the reason above.
 
+Diffing state is only half of it — **the two sides of the diff must speak the same
+release channel.** The `claude-mem` role diffed `npm view claude-mem version`
+against the version in
+`~/.claude/plugins/marketplaces/thedotmack/.claude-plugin/plugin.json`, which
+looks like the installed version and is not: that path is a tracked file inside a
+git clone of the upstream repo that Claude Code `git pull`s on its own several
+times a day, so it carries upstream's *in-development* version. Measured
+2026-09-09, it read 13.24.5 against an npm `latest` of 13.24.1 — a version never
+published to npm at all. The two agree only between a publish and the next
+version bump upstream, so the gate was permanently true and ran the heavy
+`npx -y claude-mem install` for all three IDEs on every converged run. The fix
+reads Claude Code's own plugin ledger,
+`~/.claude/plugins/installed_plugins.json` → `plugins['claude-mem@thedotmack']`,
+which the installer stamps and which therefore speaks npm's channel (the same
+ledger the ponytail role diffs `gitCommitSha` in). The role's `changed_when:
+true` is correct and was never the bug — a run of that installer really does
+change something.
+
 #### Borrowing gh's token for GitHub-API rate limits
 
 That 60-calls-an-hour ceiling is per **IP**, shared across every tool on the box,

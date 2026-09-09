@@ -14,18 +14,22 @@
   changed_when: false
   check_mode: false
 
-- name: Read installed claude-mem plugin manifest
+- name: Read Claude Code plugin ledger
   ansible.builtin.slurp:
-    path: "{{ claude_mem_plugin_manifest }}"
-  register: claude_mem_manifest_raw
+    path: "{{ claude_mem_installed_plugins }}"
+  register: claude_mem_ledger_raw
   failed_when: false
   check_mode: false
 
 - name: Determine installed claude-mem version
+  # Every step defaults: the ledger is absent on a fresh host, and carries no
+  # claude-mem entry until the first install lands.
   ansible.builtin.set_fact:
     claude_mem_installed_version: >-
-      {{ (claude_mem_manifest_raw.content | b64decode | from_json).version
-         if claude_mem_manifest_raw.content is defined else 'absent' }}
+      {{ ((claude_mem_ledger_raw.content | b64decode | from_json)
+           .get('plugins', {}).get('claude-mem@thedotmack', [])
+           | map(attribute='version') | first | default('absent', true))
+         if claude_mem_ledger_raw.content is defined else 'absent' }}
 
 - name: Check which IDEs already reference claude-mem
   # -q quiet, -s silent on a missing/unreadable file → rc 0 = wired, non-0 = not.
