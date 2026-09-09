@@ -609,7 +609,7 @@
 **Decided-by:** agent
 **Justification:** Reverting to the formula is not available — Homebrew refuses to install anything on that machine, which is the whole reason Q58's move off the formula helps here: the manifest ships a `macos-x86_64` binary and the script needs no Homebrew. Leaving it herdr-less was the state my own uninstall created, so restoring service was repair, not scope creep. The end state is exactly what the role would have produced had it been reached, so the next successful play converges with `changed=0` on the herdr role. **Not fixed and still open:** that host cannot be provisioned at all while the ungated `homebrew` role sits at task 8 — its nightly ~02:02 run has been failing for this reason. Gating that role on architecture, or retiring the host, is the user's call.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** a2ffdf4
 
 ## Q61 — interactive/herdr-fleet-rollout — gate-resolution
 
@@ -619,4 +619,4 @@
 **Decided-by:** agent
 **Justification:** It holds the repo and the formula, so excluding it would have left exactly the shadowed-formula state Q58 removes everywhere else. But it has no ansible, so "run the playbook" was not available without first provisioning the machine — a far larger action than was asked for, and one that would add a host to the fleet by side effect. Verified the result is sound: its `.zshrc:105` puts `~/.local/bin` on PATH, so an interactive shell resolves `herdr` 0.9.0. Whether this host should formally join the fleet (and be added to the CLAUDE.md table) is left to the user.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** a2ffdf4
