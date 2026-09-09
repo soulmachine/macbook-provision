@@ -630,4 +630,4 @@
 **Justification:** Q60's remedy still stands — herdr is installed there by script and that is the end state the role produces — but its stated cause would have sent the next reader to gate the homebrew role on architecture for a problem that does not exist. The real defect was the nightly job holding each playbook open on ssh against a 15-minute `idle_timeout`, fixed separately in `update-packages.cron.md`. The operative lesson is recorded in that task and in the openroutine project memory: **silence is not a hang**; an Intel source build prints nothing for a long time, and killing a brew child aborts the formula and fails the play.
 **Outcome:** applied
 **Supersedes:** Q60 — its diagnosis and its "cannot be provisioned at all" conclusion; the action it took remains correct.
-**Ref:** (pending)
+**Ref:** 3f3b792
