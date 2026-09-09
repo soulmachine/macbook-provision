@@ -640,4 +640,4 @@
 **Decided-by:** agent
 **Justification:** The ask was specifically `upgrade_all`, and the two differ in kind: `upgrade_all` upgrades *everything installed* — on the Intel mini that is where `rust` came from, a formula nothing in this repo installs directly — while the 13 named formulae are the ones the repo deliberately keeps current, and pinning them would let the Intel host silently drift on the tools it exists to provide. Measured after the change: the role converges on Intel in ~100s with `Changed: 0, Unchanged: 13`, so the residual risk only materialises when one of those 13 actually publishes a new version with no Intel bottle. Widening the change to `present` is a scope call for the user, not a side effect of this one.
 **Outcome:** assumed
-**Ref:** 3f8f071
+**Ref:** 3f8f071, 22c48cd
