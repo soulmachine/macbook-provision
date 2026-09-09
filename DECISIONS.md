@@ -589,7 +589,7 @@
 **Decided-by:** agent
 **Justification:** `~/.zshenv` prepends `~/.local/bin` ahead of the Homebrew prefix, so once the script's copy exists the formula's is unreachable — the same shadowing the removed block existed to fix, now pointing the other way, with brew going on upgrading a binary nobody executes. Trivially reversible (`brew install herdr`), and a host that never had the formula no-ops. Verified on mac-mini-m2: `which -a herdr` now resolves only to `~/.local/bin/herdr` 0.9.0 and `brew list --versions herdr` is empty. The task carries a note to delete it once every fleet host has run.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 19400a3
 
 ## Q59 — interactive/herdr-install-script — tradeoff
 
@@ -599,4 +599,4 @@
 **Decided-by:** agent
 **Justification:** `herdr update` refuses to run from inside a herdr session — measured, rc=1 with "run `herdr update` outside herdr after detaching from the session" — and this playbook is routinely driven from a herdr pane (`HERDR_ENV=1` on this host), so that path would have failed on every converged run and printed the "could not reach upstream" warning as a phantom every time, with no way to tell the refusal from a real network failure. An unconditional re-pipe reports `changed` forever, the same phantom the CLAUDE.md "diff state, don't grep output" rule exists to prevent. The manifest cannot disagree with the installer: the script's own comment says it uses "the same manifest as `herdr update` so installs and updates agree on the public latest release". Verified: two consecutive runs report `changed=0`; a stub binary reporting 0.1.0 fires the upgrade and install.sh restores the real 0.9.0 byte-identically with the restart notice quoting both versions; a fresh host (binary deleted) installs in one changed task; `--check` passes both with and without the binary present — a check-mode-skipped `command` register still carries an empty `stdout`, so no conditional goes undefined. yamllint errors 22 → 14; ansible-lint's one failure (`community.general.homebrew` module resolution) is unchanged from HEAD.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 19400a3
