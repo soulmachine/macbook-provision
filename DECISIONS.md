@@ -631,3 +631,13 @@
 **Outcome:** applied
 **Supersedes:** Q60 — its diagnosis and its "cannot be provisioned at all" conclusion; the action it took remains correct.
 **Ref:** 3f3b792
+
+## Q63 — interactive/herdr-fleet-rollout — tradeoff
+
+**Question:** Turning off `upgrade_all` on x86_64 stops the *blanket* nightly upgrade, but `Install common Homebrew packages` still carries `state: latest` for 13 formulae — so an outdated one there can still start an Intel source build. Should that be pinned to `present` on x86_64 as well?
+**Options considered:** pin the common-packages task to `present` on x86_64 too / leave it at `latest` and change only what was asked
+**Chosen:** Left at `latest`. Only the blanket `upgrade_all` was gated.
+**Decided-by:** agent
+**Justification:** The ask was specifically `upgrade_all`, and the two differ in kind: `upgrade_all` upgrades *everything installed* — on the Intel mini that is where `rust` came from, a formula nothing in this repo installs directly — while the 13 named formulae are the ones the repo deliberately keeps current, and pinning them would let the Intel host silently drift on the tools it exists to provide. Measured after the change: the role converges on Intel in ~100s with `Changed: 0, Unchanged: 13`, so the residual risk only materialises when one of those 13 actually publishes a new version with no Intel bottle. Widening the change to `present` is a scope call for the user, not a side effect of this one.
+**Outcome:** assumed
+**Ref:** 3f8f071
