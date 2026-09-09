@@ -600,3 +600,23 @@
 **Justification:** `herdr update` refuses to run from inside a herdr session — measured, rc=1 with "run `herdr update` outside herdr after detaching from the session" — and this playbook is routinely driven from a herdr pane (`HERDR_ENV=1` on this host), so that path would have failed on every converged run and printed the "could not reach upstream" warning as a phantom every time, with no way to tell the refusal from a real network failure. An unconditional re-pipe reports `changed` forever, the same phantom the CLAUDE.md "diff state, don't grep output" rule exists to prevent. The manifest cannot disagree with the installer: the script's own comment says it uses "the same manifest as `herdr update` so installs and updates agree on the public latest release". Verified: two consecutive runs report `changed=0`; a stub binary reporting 0.1.0 fires the upgrade and install.sh restores the real 0.9.0 byte-identically with the restart notice quoting both versions; a fresh host (binary deleted) installs in one changed task; `--check` passes both with and without the binary present — a check-mode-skipped `command` register still carries an empty `stdout`, so no conditional goes undefined. yamllint errors 22 → 14; ansible-lint's one failure (`community.general.homebrew` module resolution) is unchanged from HEAD.
 **Outcome:** applied
 **Ref:** 19400a3
+
+## Q60 — interactive/herdr-fleet-rollout — deviation
+
+**Question:** The fleet rollout of Q58 could not complete on `franks-mac-mini-2018`: the playbook aborts at task 8 because Homebrew now refuses to run on Intel x86_64 ("We do not provide support for this platform (as-of September 2026, announced August 2025)"), so the herdr role — role ~60 of the play — never executes. The explicit `brew uninstall herdr` had already run, leaving the host with no herdr at all. Leave it broken pending a decision on the host, or install herdr outside the playbook?
+**Options considered:** revert by reinstalling the brew formula / leave the host with no herdr until the Intel question is settled / run the install script directly on that host
+**Chosen:** Ran `curl -fsSL https://herdr.dev/install.sh | sh` directly on the host. It now has 0.9.0 at `~/.local/bin/herdr`, resolving in an interactive shell, with no formula.
+**Decided-by:** agent
+**Justification:** Reverting to the formula is not available — Homebrew refuses to install anything on that machine, which is the whole reason Q58's move off the formula helps here: the manifest ships a `macos-x86_64` binary and the script needs no Homebrew. Leaving it herdr-less was the state my own uninstall created, so restoring service was repair, not scope creep. The end state is exactly what the role would have produced had it been reached, so the next successful play converges with `changed=0` on the herdr role. **Not fixed and still open:** that host cannot be provisioned at all while the ungated `homebrew` role sits at task 8 — its nightly ~02:02 run has been failing for this reason. Gating that role on architecture, or retiring the host, is the user's call.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q61 — interactive/herdr-fleet-rollout — gate-resolution
+
+**Question:** `macbook-pro-nickel` (`franks-macbook-pro`) carries a checkout of this repo and had the `herdr` formula, but is absent from the fleet table in CLAUDE.md §Always-on-only roles and has no `ansible-playbook` on PATH. Does "all hosts" include it?
+**Options considered:** treat the CLAUDE.md table as the fleet definition and skip it / include it in the uninstall and provision it fully / include it in the uninstall only, and install herdr by script
+**Chosen:** Included it in the uninstall, then installed herdr with the script. Did not install ansible or run the playbook there.
+**Decided-by:** agent
+**Justification:** It holds the repo and the formula, so excluding it would have left exactly the shadowed-formula state Q58 removes everywhere else. But it has no ansible, so "run the playbook" was not available without first provisioning the machine — a far larger action than was asked for, and one that would add a host to the fleet by side effect. Verified the result is sound: its `.zshrc:105` puts `~/.local/bin` on PATH, so an interactive shell resolves `herdr` 0.9.0. Whether this host should formally join the fleet (and be added to the CLAUDE.md table) is left to the user.
+**Outcome:** applied
+**Ref:** (pending)
