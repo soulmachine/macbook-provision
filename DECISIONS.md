@@ -811,3 +811,23 @@ configuration to separate a 1-in-3 rate from zero.
 **Outcome:** applied
 **Ref:** 6959c39
 **Supersedes:** Q61 and Q65 — their deferral of nickel's fleet membership to the user; the user has now made that call.
+
+## Q75 — interactive/dotenv-role — tradeoff
+
+**Question:** The `dotenv` role has to learn the values it writes. Read them from the ambient environment with `lookup('env', ...)` — the pattern every other role in this repo uses — or parse the `.env` file itself?
+**Options considered:** `lookup('env', VAR)` per known variable, matching the existing convention / read and parse the `.env` file / read the env but fall back to the file
+**Chosen:** Parse the `.env` file. The role never calls `lookup('env')` for a secret.
+**Decided-by:** agent
+**Justification:** The convention is right for the consuming roles and wrong for this one, because the lookup reads exactly what is missing in the case being fixed. `lookup('env')` resolves on the control node from the ambient environment; the whole premise (Q66) is that a non-interactive run has no `.env` in its environment. On a fresh host that resolves to nothing, and the role would write an **empty** managed block — stripping every export from every non-interactive shell, i.e. delivering the breakage as the fix. On an already-fixed host it is circular: the values would come from the block being rewritten, so an edited `.env` would never propagate. Reading the file is the only non-circular source. Two consequences were designed in rather than discovered: a `.env` that parses to zero assignments **fails the play** (a parse bug, not a configuration), while a **missing** `.env` skips with a message (per-machine and legitimately absent — and indistinguishable in the recap from being run in the wrong directory unless it says so). Values also get one layer of matching surrounding quotes stripped before being re-quoted, so `KEY="v"` resolves to the same `v` direnv hands an interactive shell instead of silently differing between the two paths.
+**Outcome:** applied
+**Ref:** 0a6dc5a
+
+## Q76 — interactive/dotenv-role — tradeoff
+
+**Question:** The managed block *is* four credentials, so any `-v` or `--diff` on the `blockinfile` task prints them. `no_log: true` stops that, but it also suppresses the task's failure message. Which loses?
+**Options considered:** `no_log: true` and accept opaque failures / leave logging on and accept credentials in terminal output and logs / no_log plus a separate non-secret diagnostic
+**Chosen:** `no_log: true`, made affordable by `validate: zsh -n %s` and a separate names-only report task.
+**Decided-by:** agent
+**Justification:** Credentials in scrollback and logs are the worse failure, and the diagnosability cost is mostly recoverable. `blockinfile`'s `validate` runs against the candidate **before** anything is written, so the dangerous outcome — a `~/.zshenv` that fails to parse, which would error in every single zsh on the host — cannot reach disk, and the operator reproduces any error by hand with `zsh -n ~/.zshenv`. What `no_log` would otherwise hide is the changed/unchanged verdict, so a following `debug` task reports it along with the variable **names**, which are not secret (they are all in `.env.example`). The parse is likewise split so that only `dotenv_names` is ever printed and `dotenv_lines`/`dotenv_values` stay inside the no_log'd task.
+**Outcome:** applied
+**Ref:** 0a6dc5a
