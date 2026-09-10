@@ -1,0 +1,100 @@
+---
+# dotenv — export the repo's .env into ~/.zshenv, inside a managed block.
+#
+# `.envrc` runs `dotenv_if_exists .env`, but direnv is hooked from ~/.zshrc by
+# the oh-my-zsh plugin, so it only ever fires in an INTERACTIVE shell. Every
+# non-interactive one sees none of it — including `ssh host 'cmd'`, git hooks,
+# launchd, and the `zsh -lc "... ansible-playbook ..."` form CLAUDE.md documents
+# for driving another host, which is a login shell but not an interactive one.
+# So a remote run of this playbook reached the tailscale and github roles with
+# TAILSCALE_AUTH_KEY and GITHUB_TOKEN unset, and those roles are gated on
+# `lookup('env', VAR) | length > 0` — they skipped silently rather than failing.
+# ~/.zshenv is the one startup file every zsh reads, which is why the block goes
+# there. Done by hand across the fleet on 2026-09-10; this role is that fix,
+# made reproducible (DECISIONS Q66/Q67).
+#
+# This role reads the .env FILE, never `lookup('env', ...)`. The lookup reads
+# the ambient environment, which is exactly what is missing in the case this
+# role exists to fix — on a fresh host it would resolve to nothing and write an
+# empty block, and on a host whose .env had been edited it would rewrite the
+# block with the stale values already exported from it.
+
+- name: Check for the repo .env
+  ansible.builtin.stat:
+    path: "{{ dotenv_path }}"
+  register: dotenv_env_file
+
+# A missing .env is legitimate — the file is per-machine and gitignored, and a
+# host may deliberately carry no secrets. Say so rather than skipping in
+# silence, because "no .env here" and "run from the wrong directory" look
+# identical from the recap, and only the second is a mistake.
+- name: Report that there is no .env to export
+  ansible.builtin.debug:
+    msg: >-
+      No {{ dotenv_path }} — nothing to export, and any existing managed block
+      in ~/.zshenv is left alone. If that is unexpected, check the run is from
+      the repo root; this path comes from playbook_dir.
+  when: not dotenv_env_file.stat.exists
+
+- name: Export the .env into ~/.zshenv
+  when: dotenv_env_file.stat.exists
+  block:
+    # The source of the secrets should be no more readable than the copy.
+    - name: Keep the .env private
+      ansible.builtin.file:
+        path: "{{ dotenv_path }}"
+        mode: "0600"
+
+    # The guard that matters. blockinfile happily writes an empty block, so a
+    # parse that matched nothing would silently strip every export from every
+    # non-interactive shell on the host — the exact breakage this role fixes,
+    # delivered by the fix. A .env that exists but yields no assignment is a
+    # parse bug or a corrupt file, not a configuration; fail rather than write.
+    - name: Fail when the .env parses to no variables
+      ansible.builtin.assert:
+        that: dotenv_names | length > 0
+        fail_msg: >-
+          {{ dotenv_path }} exists but no line in it parses as an assignment.
+          Refusing to write an empty managed block, which would unset every
+          variable ~/.zshenv currently exports.
+        success_msg: "{{ dotenv_names | length }} variable(s) to export: {{ dotenv_names | join(', ') }}"
+
+    # Markers match the hand-written block already on all seven hosts, so this
+    # adopts them in place instead of appending a second copy. They are not
+    # symmetric, hence the split marker_begin/marker_end rather than one {mark}.
+    #
+    # no_log because the block is the credentials themselves — otherwise -v or
+    # --diff prints all of them. That hides a failure message too, which is
+    # affordable only because `validate` runs `zsh -n` on the candidate BEFORE
+    # anything is written: a bad parse leaves the live file untouched, and the
+    # operator can reproduce the error with `zsh -n ~/.zshenv`. A broken
+    # ~/.zshenv would error in every single zsh on the machine.
+    #
+    # Values are single-quoted with the POSIX '\'' escape so an apostrophe
+    # survives; one layer of matching surrounding quotes is stripped first, so
+    # KEY="v" in .env resolves to the same v direnv hands an interactive shell
+    # rather than to a value with the quotes baked in.
+    - name: Write the managed .env block into ~/.zshenv
+      ansible.builtin.blockinfile:
+        path: "{{ lookup('env', 'HOME') }}/.zshenv"
+        marker: "# --- {mark} ---"
+        marker_begin: "macbook-provision .env (managed)"
+        marker_end: "end macbook-provision .env"
+        create: true
+        mode: "0600"
+        validate: zsh -n %s
+        block: |
+          # Generated from the repo .env — edit that file, then re-run. Do not hand-edit.
+          {% for name in dotenv_names %}
+          export {{ name }}='{{ dotenv_values[loop.index0] }}'
+          {% endfor %}
+      no_log: true
+      register: dotenv_block
+
+    # no_log above suppresses this task's own report, so say what happened here
+    # instead — names only, never values.
+    - name: Report the exported variables
+      ansible.builtin.debug:
+        msg: >-
+          ~/.zshenv managed block {{ 'updated' if dotenv_block is changed else 'already current' }}
+          ({{ dotenv_names | length }}): {{ dotenv_names | join(', ') }}

@@ -17,6 +17,7 @@
     - github
     - oh-my-zsh
     - direnv
+    - dotenv
     - uv
     - python
     - go

@@ -32,7 +32,7 @@ ssh -o BatchMode=yes -o ConnectTimeout=15 <host> \
   "Always-on-only roles" below.
 - **playbook.yml** — Legacy playbook (not actively used). Defines packages inline with Japanese comments.
 - **bootstrap.sh** — Bootstrap script. Prepares a fresh Mac for Ansible. Also configures **passwordless sudo** so the playbook's sudo subprocesses (Homebrew casks, `pkgutil`/`rm` cleanup, Ansible `become`) run unattended: it installs a `/etc/sudoers.d/<user>-nopasswd` drop-in (`<user> ALL=(ALL) NOPASSWD: ALL`, mode 0440), validated with `visudo -cf` and rolled back if validation fails. The first `sudo` call prompts once on a fresh Mac (to write the drop-in); every `sudo` after — both in the rest of bootstrap and in the playbook — is passwordless, so no `SUDO_ASKPASS` helper or `sudo -A -v` priming is needed anywhere (and `ansible.cfg` uses plain `become_flags = -H`). The script is idempotent — it skips the sudoers setup if the drop-in already exists (`[[ -f ... ]]`, no sudo required to check). It also runs a no-op `osascript` against System Events to trigger the macOS Automation (AppleEvents) consent dialog for the host terminal (e.g. Ghostty) on first run; later runs no longer prompt. This pre-authorizes the terminal so headless osascript calls (e.g. `brew uninstall --cask`'s `tell app to quit`) don't hang on a dialog nobody is around to click.
-- **`.env` / `.envrc`** — Optional, gitignored, and **per-machine**. `.envrc` runs `dotenv_if_exists .env` so direnv loads `.env` into the shell. The `tailscale` role reads `TAILSCALE_AUTH_KEY` (to auto-run `tailscale up`) and optionally a `devices:core`-scoped OAuth client as `TAILSCALE_OAUTH_CLIENT_ID` + `TAILSCALE_OAUTH_CLIENT_SECRET` (to disable node-key expiry); the `github` and `bun` roles read `GITHUB_TOKEN`, plus an optional `GITHUB_SSH_KEY` (unset across the fleet; see `.env.example`). Values legitimately differ across the fleet — a Tailscale auth key is tailnet-scoped, so hosts on different tailnets must carry different ones, and a host may deliberately carry no `GITHUB_TOKEN` at all. That divergence is correct, not drift to reconcile. New roles that need secrets should follow the same pattern — gate the task on `lookup('env', 'VAR') | length > 0` and document the var in `.env.example`.
+- **`.env` / `.envrc`** — Optional, gitignored, and **per-machine**. `.envrc` runs `dotenv_if_exists .env` so direnv loads `.env` into the shell — but direnv is hooked from `~/.zshrc`, so that only ever happens in an **interactive** shell. The `dotenv` role covers every other kind by exporting the same `.env` into `~/.zshenv` inside a managed block; see "Dotenv role specifics" below. The `tailscale` role reads `TAILSCALE_AUTH_KEY` (to auto-run `tailscale up`) and optionally a `devices:core`-scoped OAuth client as `TAILSCALE_OAUTH_CLIENT_ID` + `TAILSCALE_OAUTH_CLIENT_SECRET` (to disable node-key expiry); the `github` and `bun` roles read `GITHUB_TOKEN`, plus an optional `GITHUB_SSH_KEY` (unset across the fleet; see `.env.example`). Values legitimately differ across the fleet — a Tailscale auth key is tailnet-scoped, so hosts on different tailnets must carry different ones, and a host may deliberately carry no `GITHUB_TOKEN` at all. That divergence is correct, not drift to reconcile. New roles that need secrets should follow the same pattern — gate the task on `lookup('env', 'VAR') | length > 0` and document the var in `.env.example`.
 - **inventory** — Holds only `127.0.0.1 ansible_connection=local`, deliberately. Do NOT add remote hosts to it. See "Runs per-host only, never from a control node" below.
 - **roles/** — Each role provisions one tool or application.
 
@@ -201,6 +201,48 @@ no longer required.
 - **The key-expiry POST is gated on a read, not fired blind.** `GET /api/v2/device/{id}?fields=all` returns `keyExpiryDisabled`, and the POST is skipped when it is already `true`. Without the gate the role reports one CHANGED task on every converged run forever: the POST returns 200 whether or not it altered anything, so its response cannot distinguish the two — the same "diff state, don't grep output" rule the self-update roles follow. Note `?fields=all` is load-bearing; the default field set omits `keyExpiryDisabled`.
 
 - **Every `uri` task that a later task reads from needs `check_mode: false`.** `ansible.builtin.uri` declares no check-mode support, so under `--check` it is **skipped** — which would leave the OAuth and device-read registers undefined and blow up the `set_fact`/`when` beneath them. Both are read-only (minting a one-hour token changes no durable state), so forcing them during a dry run is safe and is what makes the dry run exercise the real credential. The final POST deliberately does *not* get the flag: it is the one write, and it should stay skipped under `--check`.
+
+#### Dotenv role specifics
+
+**`.env` alone never reaches a non-interactive shell**, which is what this role exists to fix.
+direnv is hooked by the oh-my-zsh plugin in `~/.zshrc`, so `dotenv_if_exists .env` fires only in
+an interactive shell. Everything else sees none of it: `ssh host 'cmd'`, git hooks, launchd — and
+the `zsh -lc "... ansible-playbook ..."` form documented above for driving another host, which is
+a login shell but *not* an interactive one. So a remote run reached the `tailscale` and `github`
+roles with `TAILSCALE_AUTH_KEY` and `GITHUB_TOKEN` unset, and because those roles gate on
+`lookup('env', VAR) | length > 0`, they **skipped silently** rather than failing. `~/.zshenv` is
+the one startup file every zsh reads, so the block goes there. Done by hand across the fleet on
+2026-09-10 (DECISIONS Q66/Q67); this role is that fix made reproducible.
+
+Four things are load-bearing:
+
+- **It reads the `.env` file, never `lookup('env', ...)`.** The lookup reads the ambient
+  environment — precisely what is missing in the case being fixed. On a fresh host it would
+  resolve to nothing and write an **empty** block; on a host whose `.env` had been edited it would
+  write back the stale values already exported from the old block. Reading the file is the only
+  non-circular source.
+- **An empty parse fails the play.** `blockinfile` will happily write a block with no exports,
+  which would strip every variable from every non-interactive shell on the machine — the exact
+  breakage this role fixes, delivered by the fix. A `.env` that exists but yields no assignment is
+  a parse bug, not a configuration, so the `assert` stops it. A **missing** `.env` is different
+  and legitimate (the file is per-machine): that path skips, and says so, because "no `.env` here"
+  and "run from the wrong directory" look identical in the recap.
+- **`no_log: true` is affordable only because of `validate: zsh -n %s`.** The block *is* the
+  credentials, so without `no_log` any `-v` or `--diff` prints all of them; but `no_log` also
+  hides a failure message. `validate` runs on the candidate **before** anything is written, so a
+  bad parse leaves the live file untouched and `zsh -n ~/.zshenv` reproduces the error by hand. A
+  broken `~/.zshenv` would error in every single zsh on the host.
+- **`{% set %}` inside the `block:` template renders as empty.** Ansible's inline templating does
+  not carry the binding through to the surrounding expression — no error, just blank names and
+  blank values, which is how a lint-driven line-shortening turned the whole block into
+  `export =''` four times. The names and values are therefore built as two parallel lists in
+  `vars/main.yml`, where the expressions can wrap freely, and the template only indexes them.
+
+The markers are asymmetric (`# --- macbook-provision .env (managed) ---` /
+`# --- end macbook-provision .env ---`) because they match the hand-written blocks already on all
+seven hosts, so the role adopts those in place instead of appending a second copy — verified as a
+`changed: false` on a converged host. That is why `marker_begin`/`marker_end` are set separately
+rather than using one `{mark}`.
 
 #### Agent-reach role specifics
 
