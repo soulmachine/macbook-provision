@@ -103,7 +103,10 @@ if ! command -v uv >/dev/null 2>&1 && [[ ! -x "$HOME/.local/bin/uv" ]]; then
 fi
 export PATH="$HOME/.local/bin:$PATH"
 # (the uv omz plugin is enabled by the oh-my-zsh role, with the rest of the plugin set)
-uv python find 3.14 >/dev/null 2>&1 || \
+# --managed-python is load-bearing: a bare `uv python find` also matches Homebrew's
+# python@3.14 and mise's python, so on a host carrying either, the install would
+# short-circuit and never create the ~/.local/bin/python|python3 shims.
+uv python find --managed-python 3.14 >/dev/null 2>&1 || \
   uv python install 3.14 --default   # prebuilt CPython → ~/.local/bin/python3.14 + python3 + python
 uv python pin --global 3.14          # idempotent: rewrites the same user-level pin
 
