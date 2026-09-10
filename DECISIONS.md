@@ -723,3 +723,15 @@
 **Justification:** None is a duplicate, so removing one **would** change behaviour — the opposite of the property that made Q68 safe — and each needs context I do not have. `TAILSCALE_API_KEY` looks retired: CLAUDE.md §Tailscale role specifics records that Tailscale personal access tokens carry no scopes and expire 90 days after minting, and that the sibling `TAILSCALE_API_ACCESS_TOKEN` "is gone and must not come back" — but the role never reads *this* name, so what still consumes it is unknown. `OPENAI_API_KEY` is the sharper one: `~/.agents/AGENTS.md` §AI gateway says never to export it globally on these hosts, because pi reads it while ignoring the matching `*_BASE_URL` and so silently bypasses the cliproxy gateway — meaning its presence may already be causing that, and removing it is plausibly a fix rather than a cleanup. That is a live-config change on a host I was not asked to reconfigure, so it is the user's call.
 **Outcome:** escalated
 **Ref:** d55f89f
+
+## Q70 — interactive/nickel-python-migration — gate-resolution
+
+**Question:** Q69 escalated three non-duplicate credentials rather than removing them. The user then asked for all three to go: `TAILSCALE_API_KEY` (dev-server-frank-lume), `OPENAI_API_KEY` + `OPENCOMPACTOR_API_KEY` (mac-studio-m3).
+**Options considered:** remove all three as asked / remove the two with no consumer and re-escalate `OPENAI_API_KEY` / decline
+**Chosen:** Removed all three. Verified before/after that every *other* variable on each host was byte-identical, with automatic restore-from-backup wired to a mismatch.
+**Decided-by:** human
+**Justification:** Consumer search first, and it changed what each removal meant. `TAILSCALE_API_KEY` had no reference anywhere but its own line. `OPENCOMPACTOR_API_KEY` is read by the `com.big3.opencompact` LaunchAgent — but that plist carries its **own** `EnvironmentVariables` copy, and per `~/.agents/AGENTS.md` §Zsh startup files a LaunchAgent spawns a binary, not a shell, so it never read the `.zshenv` line at all; the agent's `launchctl list` status was `- 78` both before and after, unchanged. `OPENAI_API_KEY` was the one worth a second look: mac-studio-m3's `.zshrc` carries a *managed* block built around it (`pi() { OPENAI_API_KEY= command pi "$@"; }`) commented "the key stays set for everything else that expects it" — information the user did not have when they asked. Surfaced it, and proceeded because the grep found no such consumer: only that wrapper, which blanks the variable, and `omp()`, which overrides it with the cliproxy key. Removing it is what `~/.agents/AGENTS.md` §AI gateway asks for — it warns that a global `OPENAI_API_KEY` makes pi bypass the gateway.
+**Outcome:** applied
+**Supersedes:** Q69 — its escalation, resolved by the user.
+**Ref:** (pending)
+**Follow-up:** the `pi()` wrapper on mac-studio-m3 now blanks a variable that no longer exists — harmless, and left alone because it is a managed cliproxyapi block, not this task's to edit. Values remain recoverable from `~/.zshenv.bak-rmvars-20260910-040307` on both hosts.
