@@ -703,3 +703,23 @@
 **Justification:** Both failure modes actually occurred, so this is measured rather than precautionary. (1) The first parser used zsh extended-glob `#` quantifiers without `setopt extended_glob`, so every line was skipped and the block held zero exports — caught by a dry run, and the reason the installer now refuses to install a block with no exports. (2) The splice passed the multi-line block through `awk -v`, which cannot carry newlines; it aborted with `newline in string`, and only `set -e` firing before the `mv` kept seven `~/.zshenv` files intact. That path was rewritten in Python and re-tested: all seven now report `replaced` and hold exactly one block. Left behind: `~/.zshenv.bak-<timestamp>` on every host.
 **Outcome:** applied
 **Ref:** f2cb634
+
+## Q68 — interactive/nickel-python-migration — gate-resolution
+
+**Question:** After Q66 exported each host's `.env` into a managed `~/.zshenv` block, some hosts still carried loose credential assignments outside that block. "Clean up the stale duplicates" — which of those lines are actually in scope, given the file also holds live config and unrelated secrets?
+**Options considered:** every credential-looking assignment outside the block / only lines assigning a key the block already owns / only those, and only where the block demonstrably shadows them
+**Chosen:** The narrowest reading: a line was removed only if it assigns a key the managed block **also** assigns **and** sits **before** the block. 8 lines across 4 hosts (`TAILSCALE_OAUTH_CLIENT_ID` and `_SECRET` on franks-mac-mini-m2, franks-macbook-air, franks-mac-mini-2018, dev-server-frank-lume). Three hosts had none.
+**Decided-by:** agent
+**Justification:** That definition makes removal provably behaviour-neutral rather than a judgement call: zsh takes the last assignment, so a duplicate preceding the block is already dead code. Verified structurally before touching anything — every one of the 8 was tagged `INERT`, none appeared after the block — and again empirically, by hashing `env` from a clean `env -i` shell before and after on each host: identical on all four, with an automatic restore-from-backup wired to a mismatch. A wider reading would have swept up live config (`CLIPROXY_API_KEY` on all seven, `CLOUDFLARE_API_TOKEN` on the mini) whose only definition is that line, so deleting it would have changed behaviour, not tidied it.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q69 — interactive/nickel-python-migration — escalation
+
+**Question:** Three credentials sit outside the managed block, are **not** duplicates of anything, and are not obviously live: `TAILSCALE_API_KEY` (dev-server-frank-lume), `OPENAI_API_KEY` and `OPENCOMPACTOR_API_KEY` (mac-studio-m3). Should they be removed too?
+**Options considered:** remove as part of the duplicate cleanup / leave and surface for a human decision
+**Chosen:** — (left in place, surfaced to the user)
+**Decided-by:** agent
+**Justification:** None is a duplicate, so removing one **would** change behaviour — the opposite of the property that made Q68 safe — and each needs context I do not have. `TAILSCALE_API_KEY` looks retired: CLAUDE.md §Tailscale role specifics records that Tailscale personal access tokens carry no scopes and expire 90 days after minting, and that the sibling `TAILSCALE_API_ACCESS_TOKEN` "is gone and must not come back" — but the role never reads *this* name, so what still consumes it is unknown. `OPENAI_API_KEY` is the sharper one: `~/.agents/AGENTS.md` §AI gateway says never to export it globally on these hosts, because pi reads it while ignoring the matching `*_BASE_URL` and so silently bypasses the cliproxy gateway — meaning its presence may already be causing that, and removing it is plausibly a fix rather than a cleanup. That is a live-config change on a host I was not asked to reconfigure, so it is the user's call.
+**Outcome:** escalated
+**Ref:** (pending)
