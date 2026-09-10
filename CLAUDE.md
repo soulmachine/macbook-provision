@@ -105,6 +105,7 @@ every reachable host — every row below is observed, none inferred:
 | franks-mac-studio | `Mac15,14` (M3) | Mac Studio | `No` | **install** |
 | dev-server-frank-lume | `VirtualMac2,1` | Apple Virtual Machine 1 | *absent* | **install** — VM exception |
 | franks-macbook-air | `Mac16,12` (M4) | MacBook Air | `Yes` | skip — portable |
+| macbook-pro-nickel | `Mac17,2` (M5) | MacBook Pro | `Yes` | skip — portable |
 | franks-mac-mini-2018 | `Macmini8,1` (Intel) | Mac mini | *absent* | skip |
 
 Apple Silicon desktops publish an AppleSmartBattery node answering `No`. Intel Macs and
