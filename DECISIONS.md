@@ -641,3 +641,24 @@
 **Justification:** The ask was specifically `upgrade_all`, and the two differ in kind: `upgrade_all` upgrades *everything installed* — on the Intel mini that is where `rust` came from, a formula nothing in this repo installs directly — while the 13 named formulae are the ones the repo deliberately keeps current, and pinning them would let the Intel host silently drift on the tools it exists to provide. Measured after the change: the role converges on Intel in ~100s with `Changed: 0, Unchanged: 13`, so the residual risk only materialises when one of those 13 actually publishes a new version with no Intel bottle. Widening the change to `present` is a scope call for the user, not a side effect of this one.
 **Outcome:** assumed
 **Ref:** 3f8f071, 22c48cd
+
+## Q64 — interactive/nickel-python-migration — tradeoff
+
+**Question:** `bootstrap.sh`'s Python step was guarded by `uv python find 3.14`, which matches *any* discoverable 3.14 — including Homebrew's `python@3.14` and mise's python — not specifically a uv-managed one carrying the `--default` shims. On `macbook-pro-nickel` that guard found `/opt/homebrew/opt/python@3.14/bin/python3.14` and exited 0, so `uv python install 3.14 --default` never ran and `~/.local/bin/{python,python3}` were never created. What should the guard test instead?
+**Options considered:** `uv python find --managed-python 3.14` / test the artifact directly with `[[ -x "$HOME/.local/bin/python" ]]` / drop the guard and rely on `uv python install` being idempotent
+**Chosen:** `uv python find --managed-python 3.14`.
+**Decided-by:** agent
+**Justification:** The artifact test cannot tell *which* interpreter the shim points at — a host left on a uv-managed 3.13 `--default` install (nickel had exactly that, cpython-3.13.13, un-shimmed) would satisfy `[[ -x ~/.local/bin/python ]]` and skip the 3.14 install forever, trading one silent short-circuit for another. Dropping the guard costs a network round-trip on every bootstrap for no gain. `--managed-python` is the flag whose meaning matches the step's intent — "a *uv-managed* 3.14 exists" — and it restricts rather than widens the match, so it cannot introduce a new false positive. Verified on both hosts before and after: mini exits 0 (guard correctly no-ops on an already-correct host), nickel exited 2 with `No interpreter found for Python 3.14 in virtual environments or managed installations` and then installed, after which it exits 0.
+**Outcome:** applied
+**Ref:** cb29815
+
+## Q65 — interactive/nickel-python-migration — deviation
+
+**Question:** Q61 recorded of `macbook-pro-nickel`: "Did not install ansible or run the playbook there," leaving fleet membership to the user. This session's ask was to migrate that host's Python to match the mini; the user additionally approved installing ansible-core. Does that settle the fleet question Q61 left open?
+**Options considered:** install ansible and treat nickel as a fleet host (add it to the CLAUDE.md table) / install ansible only, leaving fleet membership still open / decline the ansible install to keep Q61's stance intact
+**Chosen:** Installed `ansible-core` via `uv tool install --with ansible ansible-core` (bootstrap.sh's own line). Did **not** add nickel to the CLAUDE.md fleet table, and did not run the playbook there.
+**Decided-by:** human
+**Justification:** The user chose the install explicitly when asked. It supersedes only the *capability* half of Q61 — nickel can now self-provision (`ansible [core 2.21.4]` at `~/.local/bin/ansible`) — and the reason Q61 gave for skipping it ("would add a host to the fleet by side effect") no longer holds, because installing the tool is not the same as declaring membership. The CLAUDE.md table is specifically the `mac_is_always_on` battery gate; nickel is a MacBook Pro and would be skipped by that gate regardless, so adding it there decides nothing and was left alone. Whether nickel formally joins the fleet remains the user's call, as Q61 said.
+**Outcome:** applied
+**Supersedes:** Q61 — its "did not install ansible" stance only; its deferral of fleet membership to the user still stands.
+**Ref:** (pending)
