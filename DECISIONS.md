@@ -780,3 +780,34 @@ configuration to separate a 1-in-3 rate from zero.
 **Justification:** The premise was mine and it was wrong. `dev-server-frank` is a live Linux node on the tailnet (`100.69.125.61`, `dev-server-frank.taila7647e.ts.net`), reachable over ssh as user `frank` — distinct from `dev-server-frank-lume` (macOS, user `lume`), which is why both appear in `~/.ssh/config`. Checked the mapping against the source of truth rather than eyeballing it: all eight `com.cliproxy.tunnel.*.plist` launchd agents agree with `host-loopback.txt` line for line, `dev-server-frank` → `127.0.0.7` and `-lume` → `127.0.0.8` included. Deleting the line would have mis-attributed a real host's traffic to `127.0.0.7(unmapped)`. What made the row look odd was only its low volume — 3 requests ever, against 48–1095 for the others — plus 1 non-2xx, which the log shows as a single `401 GET /v1/models` on 2026-09-09 06:15:54 between two `200`s; a live probe from that host through the tunnel returns 200 today, so the key is valid and the 401 was transient. It is absent from CLAUDE.md's fleet table because that table gates macOS-only always-on roles, and this is a Linux box outside this repo's scope.
 **Outcome:** applied
 **Ref:** ebc8014
+
+## Q72 — interactive/nickel-python-migration — irreversible-action
+
+**Question:** The user asked to prune "the backups I created today." Three of those backups (`~/.zshenv.bak-rmvars-*`) are the only remaining copies of three credentials deliberately removed earlier in the session (Q70). Delete them anyway?
+**Options considered:** delete every backup this session created, as asked / keep the `rmvars` ones as the last copy of the removed values / delete all but warn first
+**Chosen:** Deleted all 25, after stating plainly which three carried the last copies. Kept every pre-existing backup.
+**Decided-by:** human
+**Justification:** The user's ask names today's backups specifically, and the three credentials in question were removed on the user's own instruction one step earlier — keeping a rollback for a change the user ordered would have quietly re-scoped their request. Flagged the last-copy point before applying rather than after, so the call stayed theirs. The script refuses to delete unless the live `~/.zshenv` passes `zsh -n` and still exports at least two expected vars, so no host can lose its rollback while its config is broken. Deletion was matched by an explicit keep-list, verified per host: `.bak-precliproxy`, `.bak-bunpath`, `.bak-2026-08-23`, `.bak-20260826`, `.bak-20260905-*` all survive. Per-host counts removed: mini 4, nickel 3, macbook-air 4, mac-mini-2018 3, archs-mac-mini 2, mac-studio-m3 4, lume 5. Post-check on all seven: shell ok, 3–4 vars exporting, 2–5 backups remaining.
+**Outcome:** applied
+**Ref:** (host-local; no repo change)
+
+## Q73 — interactive/nickel-python-migration — irreversible-action
+
+**Question:** Removing the `com.big3.opencompact` LaunchAgent from `mac-studio-m3` — delete the plist outright, or keep it?
+**Options considered:** `rm` the plist after bootout / archive it outside `LaunchAgents/` / leave it on disk but unloaded
+**Chosen:** Booted it out, then moved the plist to `~/.local/share/removed-launchagents/com.big3.opencompact.plist.removed-20260910` (mode 600, directory 700).
+**Decided-by:** agent
+**Justification:** Confirmed dead before touching it rather than trusting the label: its `ProgramArguments[0]` points at a virtualenv interpreter that does not exist on the host, and launchd's recorded exit status is 78 (`EX_CONFIG`) — it has not run successfully. Archived rather than deleted because the plist embeds AWS credentials in `EnvironmentVariables`; deleting it would destroy the only record of which credentials to revoke, and a plist outside `~/Library/LaunchAgents` is inert regardless. Restricted the mode because moving a secret-bearing file is not a reason to widen who can read it. Verified after: launchd reports it gone, the plist is out of `LaunchAgents`, and nothing listens on its port.
+**Outcome:** applied
+**Ref:** (host-local; no repo change)
+
+## Q74 — interactive/nickel-python-migration — gate-resolution
+
+**Question:** Q61 deferred `macbook-pro-nickel`'s fleet membership to the user and Q65 reaffirmed the deferral. The user has now asked to "add nickel's fleet membership." What does adding it actually change?
+**Options considered:** add the table row only / add the row and also grant it the always-on roles via an override / defer again
+**Chosen:** Added the observed row to the CLAUDE.md table. Changed no gate and set no override.
+**Decided-by:** human
+**Justification:** The table is the `mac_is_always_on` battery gate's observed record, and its own rule is that every row is measured. Measured on the host: `hw.model` `Mac17,2`, chip Apple M5, `mac_family` `MacBook Pro`, `BatteryInstalled` `Yes`, macOS 26.6.2 arm64 — then ran `host-facts` there directly, which resolved `mac_is_always_on: false`. So the row records a verdict the gate already reached; nickel skips the always-on roles for exactly the reason `franks-macbook-air` does, and would have with or without the row. This is documentation, not a behaviour change — which is precisely the point Q65 made when it declined to add the row unasked.
+**Outcome:** applied
+**Ref:** 6959c39
+**Supersedes:** Q61 and Q65 — their deferral of nickel's fleet membership to the user; the user has now made that call.
