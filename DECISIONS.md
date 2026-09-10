@@ -712,7 +712,7 @@
 **Decided-by:** agent
 **Justification:** That definition makes removal provably behaviour-neutral rather than a judgement call: zsh takes the last assignment, so a duplicate preceding the block is already dead code. Verified structurally before touching anything — every one of the 8 was tagged `INERT`, none appeared after the block — and again empirically, by hashing `env` from a clean `env -i` shell before and after on each host: identical on all four, with an automatic restore-from-backup wired to a mismatch. A wider reading would have swept up live config (`CLIPROXY_API_KEY` on all seven, `CLOUDFLARE_API_TOKEN` on the mini) whose only definition is that line, so deleting it would have changed behaviour, not tidied it.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** d55f89f
 
 ## Q69 — interactive/nickel-python-migration — escalation
 
@@ -722,4 +722,4 @@
 **Decided-by:** agent
 **Justification:** None is a duplicate, so removing one **would** change behaviour — the opposite of the property that made Q68 safe — and each needs context I do not have. `TAILSCALE_API_KEY` looks retired: CLAUDE.md §Tailscale role specifics records that Tailscale personal access tokens carry no scopes and expire 90 days after minting, and that the sibling `TAILSCALE_API_ACCESS_TOKEN` "is gone and must not come back" — but the role never reads *this* name, so what still consumes it is unknown. `OPENAI_API_KEY` is the sharper one: `~/.agents/AGENTS.md` §AI gateway says never to export it globally on these hosts, because pi reads it while ignoring the matching `*_BASE_URL` and so silently bypasses the cliproxy gateway — meaning its presence may already be causing that, and removing it is plausibly a fix rather than a cleanup. That is a live-config change on a host I was not asked to reconfigure, so it is the user's call.
 **Outcome:** escalated
-**Ref:** (pending)
+**Ref:** d55f89f
