@@ -661,4 +661,4 @@
 **Justification:** The user chose the install explicitly when asked. It supersedes only the *capability* half of Q61 — nickel can now self-provision (`ansible [core 2.21.4]` at `~/.local/bin/ansible`) — and the reason Q61 gave for skipping it ("would add a host to the fleet by side effect") no longer holds, because installing the tool is not the same as declaring membership. The CLAUDE.md table is specifically the `mac_is_always_on` battery gate; nickel is a MacBook Pro and would be skipped by that gate regardless, so adding it there decides nothing and was left alone. Whether nickel formally joins the fleet remains the user's call, as Q61 said.
 **Outcome:** applied
 **Supersedes:** Q61 — its "did not install ansible" stance only; its deferral of fleet membership to the user still stands.
-**Ref:** (pending)
+**Ref:** b002c5d
