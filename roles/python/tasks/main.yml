@@ -17,7 +17,9 @@
 # play.
 - name: Install Python CLI tools with uv
   ansible.builtin.command: >-
-    {{ lookup('env', 'HOME') }}/.local/bin/uv tool install {{ item }}@latest
+    {{ lookup('env', 'HOME') }}/.local/bin/uv tool install
+    {{ ('--with ' ~ python_cli_tool_extras[item]) if item in python_cli_tool_extras else '' }}
+    {{ item }}@latest
   loop: "{{ python_cli_tools }}"
   register: python_uv_tool_install
   failed_when: false
@@ -71,6 +73,7 @@
 - name: Re-install tools whose executables predate uv
   ansible.builtin.command: >-
     {{ lookup('env', 'HOME') }}/.local/bin/uv tool install --force
+    {{ ('--with ' ~ python_cli_tool_extras[item.item]) if item.item in python_cli_tool_extras else '' }}
     {{ item.item }}@latest
   loop: "{{ python_uv_results }}"
   loop_control:
