@@ -107,6 +107,31 @@
     line: 'eval "$(mise activate zsh)"'
     state: present
 
+# The activation above only reaches *interactive* shells — .zshrc is the sole
+# file zsh sources for those, while every provisioning run is `zsh -lc`, login
+# but not interactive. So node and npm were missing from exactly the shell that
+# provisions: `claude-extras : Install cux` failed on mac-mini-m2 with
+# `Failed to find required executable "npm"` while npm resolved fine by hand.
+# The shims directory carries the same tools without needing activation.
+#
+# .zprofile, not .zshenv, because macOS's /etc/zprofile runs path_helper and
+# rebuilds PATH afterwards, demoting anything .zshenv prepended — the same
+# reason bootstrap.sh puts `brew shellenv` here. Prepending is load-bearing: it
+# makes mise's node win over a Homebrew one, and on 2026-09-10 every host but
+# mac-mini-m2 was silently provisioning against a Homebrew node that the
+# `nodejs` role does not manage (m2 had no such fallback, which is why it was
+# the only one that failed rather than the only one that worked). Interactive
+# shells are unaffected — `mise activate` runs later, from .zshrc, and puts the
+# real install directory ahead of these shims.
+- name: Ensure mise shims are on PATH in .zprofile
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zprofile"
+    regexp: '^export PATH=".*mise/shims.*"$'
+    line: 'export PATH="$HOME/.local/share/mise/shims:$PATH"'
+    create: true
+    mode: "0644"
+    state: present
+
 - name: Ensure starship is initialized in .zshrc
   ansible.builtin.lineinfile:
     path: "{{ lookup('env', 'HOME') }}/.zshrc"
