@@ -3,9 +3,9 @@
 # script, which writes the binary to ~/.local/bin/herdr. https://herdr.dev
 #
 # ~/.zshenv puts ~/.local/bin ahead of the Homebrew prefix, so this copy is the
-# one that runs. The `herdr` core formula used to be the install method here and
-# is now removed below: leaving it would have brew quietly upgrading a binary
-# nobody executes, the same shadowing problem in the other direction.
+# one that runs. The `herdr` core formula used to be the install method here; the
+# task that removed that leftover was retired on 2026-09-10 once every fleet host
+# had run it, verified absent on all seven.
 #
 # `herdr --remote` writes a version-matched binary to that same path on its
 # target, so that the far side speaks the local client's protocol. This role
@@ -94,16 +94,6 @@
       stays on the old binary until it is restarted — detach, then
       `pkill -f 'herdr server'` and relaunch.
   when: herdr_updated is changed
-
-# Removes the copy left by the Homebrew formula this role used to install. It is
-# shadowed by ~/.local/bin on PATH, so it is dead weight brew would keep
-# upgrading; a machine that never had it no-ops here. Ordered after the install
-# so a failed download cannot leave the host with no herdr at all. Delete this
-# task once every fleet host has run it.
-- name: Remove the Homebrew herdr superseded by the upstream installer
-  community.general.homebrew:
-    name: herdr
-    state: absent
 
 # Multi-line, so blockinfile rather than the lineinfile used for one-line aliases
 # elsewhere. The named marker keeps this block from colliding with any other

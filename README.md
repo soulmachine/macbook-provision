@@ -97,17 +97,16 @@ ansible-playbook main.yml --check
 | intellij-idea | IntelliJ IDEA（依赖 jdk） |
 | claude-code | Claude Code CLI 及插件（依赖 nodejs） |
 | codex | OpenAI Codex CLI（依赖 nodejs） |
-| openclaw | **卸载**OpenClaw（2026-09-08 起全员移除）：删掉 openclaw / clawhub 两个 npm 包、OpenClaw.app 的 cask 和 `ai.openclaw.*` LaunchAgent；`~/.openclaw` 等数据目录保留不动，运行结束时会列出 |
 | hermes | Hermes 个人 agent（Nous Research）；**仅限常驻开机的机器** |
 | ponytail | 给所有 agent 安装 [ponytail](https://github.com/DietrichGebert/ponytail) 插件——Claude Code / Codex / OpenCode / pi / oh-my-pi / Hermes 各用其原生安装方式；其中 Hermes 部分**仅限常驻开机的机器** |
-| tailscale | 独立版 Tailscale.app（cask）；若 `.env` 中有 `TAILSCALE_AUTH_KEY` 则自动登录，可选通过 API token 关闭 key 过期 |
+| tailscale | 独立版 Tailscale.app（cask）；若 `.env` 中有 `TAILSCALE_AUTH_KEY` 则自动登录，可选通过 OAuth client 关闭 key 过期 |
 
 ### 仅限常驻开机的机器
 
 `hermes` 会常驻一个长期运行的本地服务（Hermes 的 agent 进程），只有 24x7 开机的
 机器才用得上。因此这个 role 以及 `ponytail` 里往 Hermes 里装插件的那一步，都以
 `mac_is_always_on` 为开关。（`openclaw` 曾经也是这样的 role，2026-09-08 起已从所有
-机器卸载，现在的 `openclaw` role 只负责确保它不存在。）
+机器卸载；负责卸载的 role 在 2026-09-10 也已删除。）
 
 这个 fact 由 `host-facts` role 设置。它同时是这两个 role 的 meta 依赖，并且被列在
 `main.yml` 的 `roles:` 第一位——前者让单独运行某个 role 时也能自行判定（无需

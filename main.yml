@@ -37,7 +37,6 @@
     - playwright-cli
     - intellij-idea
     - webstorm
-    - openclaw # REMOVAL role since 2026-09-08: ensures OpenClaw is absent
     - claude-mem
     - cc-switch
     - hermes

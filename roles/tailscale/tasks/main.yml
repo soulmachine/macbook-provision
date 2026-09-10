@@ -143,38 +143,6 @@
     - not (tailscale_oauth_configured | bool)
     - (tailscale_oauth_client_id | length > 0) or (tailscale_oauth_client_secret | length > 0)
 
-# MIGRATION TRIPWIRE — delete this task once every fleet host has moved to an
-# OAuth client. Without it a host whose .env still carries only the removed
-# variable would skip the key-expiry block in silence and drift back to
-# expiring node keys, with no error to notice. It is the loud version of that
-# drift, not a fallback: the token is never read as a credential.
-- name: Fail on a host still carrying the removed TAILSCALE_API_ACCESS_TOKEN
-  ansible.builtin.fail:
-    msg: |
-
-      ================================================================
-      TAILSCALE_API_ACCESS_TOKEN is no longer supported
-      ================================================================
-
-      This machine's .env still sets TAILSCALE_API_ACCESS_TOKEN and no
-      OAuth client, so node-key expiry would silently stop being
-      disabled and this node would eventually drop off the tailnet.
-
-      Personal access tokens are fully permitted (no scopes) and expire
-      90 days after minting. Replace it with an OAuth client:
-
-        1. https://login.tailscale.com/admin/settings/trust-credentials
-           -> Credential, tick the `devices:core` write scope
-        2. put the pair in this repo's .env:
-             TAILSCALE_OAUTH_CLIENT_ID=...
-             TAILSCALE_OAUTH_CLIENT_SECRET=tskey-client-...
-        3. delete the TAILSCALE_API_ACCESS_TOKEN line, then revoke the
-           token at https://login.tailscale.com/admin/settings/keys
-      ================================================================
-  when:
-    - not (tailscale_oauth_configured | bool)
-    - lookup('env', 'TAILSCALE_API_ACCESS_TOKEN') | length > 0
-
 # ─── CLI launcher ─────────────────────────────────────────────────────────────
 # The `tailscale` CLI is the other GUI-only step. The cask's .pkg installs ONLY
 # the app bundle (verify with `pkgutil --files com.tailscale.ipn.macsys`) — it

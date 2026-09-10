@@ -84,18 +84,7 @@ actually up, so the role is gated on `mac_is_always_on`, and so is the half of
 `ponytail` that installs into Hermes (the rest of `ponytail` is wanted everywhere and
 stays ungated).
 
-**`openclaw` used to be the other always-on role and is now a removal role.** OpenClaw
-was uninstalled from the whole fleet on 2026-09-08 (DECISIONS Q52): its `state: latest`
-had moved it to 2026.9.2, which rejects the managed `openclaw.json` — one of the
-rejected keys was the role's own `tools.exec.timeoutSec` — so every `openclaw` command
-exited 1 on any host it upgraded. `roles/openclaw` now ensures OpenClaw is **absent**,
-ungated, on every host: the `openclaw` and `clawhub` npm packages from every npm prefix
-on the machine (the fleet had them under mise's node, Homebrew's node and hermes's
-bundled node, a different one per host), the `openclaw` cask that carried
-OpenClaw.app, and the `ai.openclaw.*` LaunchAgents. It leaves `~/.openclaw` and the
-app's Library files alone and lists them; purging data is a human's call (Q53). The
-claude-mem gateway-plugin step and ponytail's OpenClaw half were deleted with it.
-Delete the role once every host has run it.
+**OpenClaw is gone from this repo and must not come back.** It was uninstalled fleet-wide on 2026-09-08 (DECISIONS Q52-Q54), and the removal role that did it was deleted on 2026-09-10 once all seven hosts verified clean of its npm packages, cask and LaunchAgents. Re-adding a role for it needs a fresh decision.
 
 **The gate is the battery, not a model whitelist**, and it is **fail-closed**: the
 `host-facts` role reads ioreg's AppleSmartBattery `BatteryInstalled` field and sets
@@ -161,7 +150,7 @@ Three details that are easy to get wrong:
   `include_tasks: install.yml` carrying the real work — dynamic on purpose, so a
   skipped host logs one line instead of a dozen. A role-level `when:` would also be
   inherited by dependencies, which would take `host-facts` down with `hermes`; the
-  same shape took `nodejs` down with `openclaw` while that role still installed.
+  same shape took `nodejs` down with `openclaw`, back when that role still existed.
 - **The facts come from the `host-facts` role, not from `pre_tasks`, and that is what
   makes a bare `ansible localhost -m include_role -a name=hermes` work.** `pre_tasks`
   only run in a full play, so a single-role run used to abort with
@@ -197,9 +186,10 @@ no longer required.
 
   **`TAILSCALE_API_ACCESS_TOKEN` is gone and must not come back.** Personal access tokens carry **no scopes at all** (this repo's read back as `["all","all:read"]`) and **expire 90 days** after minting, which made this task a 401 on a timer nobody watched. An OAuth client secret has no expiry — verified, the credential's `expires` field reads `null` — belongs to the tailnet rather than to a person, and is revocable on its own.
 
-  Two guards make the removal loud rather than silent, and both matter because the block is otherwise gated on a credential being present, so a misconfigured host would just *skip* key-expiry disable and drift back to expiring node keys with no error:
+  One guard keeps a misconfiguration loud rather than silent, and it matters because the block is otherwise gated on a credential being present, so a misconfigured host would just *skip* key-expiry disable and drift back to expiring node keys with no error:
   - **Half a pair fails the play.** One of the two variables set without the other cannot authenticate.
-  - **A leftover `TAILSCALE_API_ACCESS_TOKEN` fails the play**, with migration instructions, when no OAuth client is configured. This is a **migration tripwire, not a fallback** — the token is never read as a credential. Delete that task once every fleet host has moved.
+
+  A migration tripwire that failed the play on a leftover `TAILSCALE_API_ACCESS_TOKEN` stood beside it until 2026-09-10, retired once all seven hosts were verified free of the variable in `.env`, `~/.zshenv` and the environment.
 
   An OAuth client secret **cannot** be used as a bearer token directly, hence the exchange. It *can* be passed straight to `tailscale up --auth-key=`, but that needs the `auth_keys` scope and forces tag ownership onto the node, so `TAILSCALE_AUTH_KEY` stays a separate credential. Creating the client is console-only: `GET /api/v2/tailnet/-/oauth-clients` and `.../oauth_clients` both 404.
 
