@@ -162,6 +162,11 @@
       # Only `defaultMode` is managed; `allow`/`deny` are left to the user.
       permissions:
         defaultMode: bypassPermissions
+      # Keep prompt suggestions on. Claude Code reads this one from the
+      # environment, so it belongs in the settings `env` map — the recursive
+      # combine adds the key and leaves the gateway vars there alone.
+      env:
+        CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION: "true"
 
 # Gate on the merge changing something, not on `copy`'s content diff:
 # `to_nice_json` emits 4-space, key-sorted JSON while Claude Code rewrites the
