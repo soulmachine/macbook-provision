@@ -735,3 +735,38 @@
 **Supersedes:** Q69 — its escalation, resolved by the user.
 **Ref:** be13383
 **Follow-up:** the `pi()` wrapper on mac-studio-m3 now blanks a variable that no longer exists — harmless, and left alone because it is a managed cliproxyapi block, not this task's to edit. Values remain recoverable from `~/.zshenv.bak-rmvars-20260910-040307` on both hosts.
+
+## Q71 — interactive/mdfind-wedge — gate-resolution
+
+**Question:** Is the recurring `mdfind` hang on mac-mini-2018 — which wedges `brew` and stalled the
+nightly sweep — actually caused by the SMB mounts, or only correlated with them?
+
+**Options considered:** accept the 7/7 correlation and stop / unmount all three SMB shares with the
+automount LaunchAgent booted out and measure hang rate with and without them
+**Chosen:** Ran the unmount test. All three mounted → 3 of 8 global `mdfind` probes hung; none
+mounted → 0 of 8 hung. SMB mounts are causal, and the effect is intermittent at roughly 1 in 3.
+**Decided-by:** human
+**Justification:** Correlation alone could not distinguish the mounts from the host's OS build or
+its Spotlight state, and both alternatives had already been ruled out by other means (four healthy
+hosts share the OS build; `mdutil -i off` was silently ineffective on these volumes). Only removing
+the suspected cause could settle it. The user accepted the remount risk when choosing this option.
+**Outcome:** applied — host state fully restored afterwards (agent loaded=1, mounts=3)
+**Ref:** (pending)
+
+## Q72 — interactive/mdfind-wedge — deviation
+
+**Question:** Does the earlier per-share isolation result — "only GoogleDrive (FileProvider) hung" —
+identify which of the three shares is responsible?
+
+**Options considered:** keep the GoogleDrive attribution / retract it as unsupported
+**Chosen:** Retracted. The single-share runs were one probe each against an effect since measured at
+~1 in 3, so a lone `HUNG` on one share and `ok` on the others is inside the noise; a rigorous repeat
+of the same two-mount configuration gave `ok` then `HUNG`. The automount agent also remounts within
+about five seconds, so a share believed unmounted during a probe may not have been.
+**Decided-by:** agent
+**Justification:** Supersedes a conclusion drawn before the intermittency was known. Which specific
+share is responsible remains unproven; settling it needs the agent booted out and enough probes per
+configuration to separate a 1-in-3 rate from zero.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** — (no prior entry; the retracted claim was stated in conversation only)
