@@ -692,7 +692,7 @@
 **Justification:** It fixes every consumer at once — `ssh host 'cmd'`, git hooks and launchd, not just the one playbook command a run-command change would have covered — and `.zshenv` is where this repo's hosts already keep `CLIPROXY_*`, so it follows the established local convention. Hooking direnv from `.zshenv` was rejected: CLAUDE.md §Zsh startup files requires `.zshenv` stay fast and silent because it runs for scp/rsync/git-over-ssh, and a direnv hook there would evaluate on every one of those. **Each host exports its own `.env`, never a copied one** — CLAUDE.md is explicit that tailnet-scoped values legitimately differ, and two hosts carry no `GITHUB_TOKEN` at all, which was preserved (3 exports there, 4 elsewhere). Verified per host in a clean `env -i` shell that every value round-trips byte-identical to its `.env` (mismatch=0 on all seven), and that both `zsh -c` and `zsh -lc` now see the pair.
 **Cost accepted:** a second on-disk copy of each secret, which can drift from `.env`. Mitigated by making the block generated-and-replaced rather than hand-edited, and by `chmod 600` on both files — which also fixed `macbook-pro-nickel`'s `.env`, found at **644**, world-readable.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** f2cb634
 
 ## Q67 — interactive/nickel-python-migration — gate-resolution
 
@@ -702,4 +702,4 @@
 **Decided-by:** agent
 **Justification:** Both failure modes actually occurred, so this is measured rather than precautionary. (1) The first parser used zsh extended-glob `#` quantifiers without `setopt extended_glob`, so every line was skipped and the block held zero exports — caught by a dry run, and the reason the installer now refuses to install a block with no exports. (2) The splice passed the multi-line block through `awk -v`, which cannot carry newlines; it aborted with `newline in string`, and only `set -e` firing before the `mv` kept seven `~/.zshenv` files intact. That path was rewritten in Python and re-tested: all seven now report `replaced` and hold exactly one block. Left behind: `~/.zshenv.bak-<timestamp>` on every host.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** f2cb634
