@@ -770,3 +770,13 @@ configuration to separate a 1-in-3 rate from zero.
 **Outcome:** applied
 **Ref:** bb5b794
 **Supersedes:** — (no prior entry; the retracted claim was stated in conversation only)
+
+## Q71 — interactive/nickel-python-migration — deviation
+
+**Question:** I reported the `dev-server-frank` row in `cliproxy-usage` as "likely a stale loopback-alias mapping, not a real eighth host," and the user asked for it to be fixed. Is it stale?
+**Options considered:** remove the `dev-server-frank` line from `~/.cli-proxy-api/host-loopback.txt` as asked / verify the premise first and decline if the mapping is correct
+**Chosen:** Made no change. The mapping is correct and `dev-server-frank` is a real host.
+**Decided-by:** agent
+**Justification:** The premise was mine and it was wrong. `dev-server-frank` is a live Linux node on the tailnet (`100.69.125.61`, `dev-server-frank.taila7647e.ts.net`), reachable over ssh as user `frank` — distinct from `dev-server-frank-lume` (macOS, user `lume`), which is why both appear in `~/.ssh/config`. Checked the mapping against the source of truth rather than eyeballing it: all eight `com.cliproxy.tunnel.*.plist` launchd agents agree with `host-loopback.txt` line for line, `dev-server-frank` → `127.0.0.7` and `-lume` → `127.0.0.8` included. Deleting the line would have mis-attributed a real host's traffic to `127.0.0.7(unmapped)`. What made the row look odd was only its low volume — 3 requests ever, against 48–1095 for the others — plus 1 non-2xx, which the log shows as a single `401 GET /v1/models` on 2026-09-09 06:15:54 between two `200`s; a live probe from that host through the tunnel returns 200 today, so the key is valid and the 401 was transient. It is absent from CLAUDE.md's fleet table because that table gates macOS-only always-on roles, and this is a Linux box outside this repo's scope.
+**Outcome:** applied
+**Ref:** (pending)
