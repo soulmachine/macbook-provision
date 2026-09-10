@@ -751,7 +751,7 @@ its Spotlight state, and both alternatives had already been ruled out by other m
 hosts share the OS build; `mdutil -i off` was silently ineffective on these volumes). Only removing
 the suspected cause could settle it. The user accepted the remount risk when choosing this option.
 **Outcome:** applied — host state fully restored afterwards (agent loaded=1, mounts=3)
-**Ref:** (pending)
+**Ref:** bb5b794
 
 ## Q72 — interactive/mdfind-wedge — deviation
 
@@ -768,5 +768,5 @@ about five seconds, so a share believed unmounted during a probe may not have be
 share is responsible remains unproven; settling it needs the agent booted out and enough probes per
 configuration to separate a 1-in-3 rate from zero.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** bb5b794
 **Supersedes:** — (no prior entry; the retracted claim was stated in conversation only)
