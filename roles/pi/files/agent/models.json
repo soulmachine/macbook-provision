@@ -12,6 +12,22 @@
           "contextWindow": 272000
         }
       }
+    },
+    "cliproxy": {
+      "baseUrl": "http://127.0.0.1:8317",
+      "api": "anthropic-messages",
+      "apiKey": "$CLIPROXY_API_KEY",
+      "models": [
+        {
+          "id": "claude-opus-5"
+        },
+        {
+          "id": "claude-sonnet-5"
+        },
+        {
+          "id": "claude-haiku-4-5-20251001"
+        }
+      ]
     }
   }
 }

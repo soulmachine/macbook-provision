@@ -831,3 +831,13 @@ configuration to separate a 1-in-3 rate from zero.
 **Justification:** Credentials in scrollback and logs are the worse failure, and the diagnosability cost is mostly recoverable. `blockinfile`'s `validate` runs against the candidate **before** anything is written, so the dangerous outcome — a `~/.zshenv` that fails to parse, which would error in every single zsh on the host — cannot reach disk, and the operator reproduces any error by hand with `zsh -n ~/.zshenv`. What `no_log` would otherwise hide is the changed/unchanged verdict, so a following `debug` task reports it along with the variable **names**, which are not secret (they are all in `.env.example`). The parse is likewise split so that only `dotenv_names` is ever printed and `dotenv_lines`/`dotenv_values` stay inside the no_log'd task.
 **Outcome:** applied
 **Ref:** 0a6dc5a
+
+## Q77 — interactive/pi-role — deviation
+
+**Question:** pi's gateway config (`providers.cliproxy` in `models.json`, `defaultModel` in `settings.json`) was hand-installed on every host and silently reverted each night. Cause: this role's `copy src: agent/` overwrites both files. Ship the gateway in the payload, or keep an out-of-band re-assert job?
+**Options considered:** commit the gateway config into `roles/pi/files/agent/` / keep only `cliproxy-assert-pi` (hourly ssh re-assert) / stop copying those two files
+**Chosen:** Commit it into the payload (exact object `cliproxy-assert-pi` asserts, so the two writers agree); keep `cliproxy-assert-pi` as the safety net for the two hosts this playbook does not run on.
+**Decided-by:** agent
+**Justification:** pi is in the gateway-mandatory tier (no vendor login exists on any host), so the gateway config is the correct desired state for every provisioned host, and the role is the thing that kept undoing it. The `apiKey` is the literal string `$CLIPROXY_API_KEY`, which pi expands from the environment — no secret enters the repo.
+**Outcome:** applied
+**Ref:** (pending)
