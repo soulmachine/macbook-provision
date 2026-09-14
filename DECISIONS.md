@@ -850,7 +850,7 @@ configuration to separate a 1-in-3 rate from zero.
 **Decided-by:** user
 **Justification:** Claude Code already loads every mattpocock skill from the store — `~/.claude/skills/tdd -> ../../.agents/skills/tdd` and ~25 more. Upstream's `.claude-plugin/marketplace.json` publishes marketplace `mattpocock` with one plugin, `mattpocock-skills`, whose curated subset (~26 of the 47 in the lock file) would load a second time under a `mattpocock-skills:` prefix — the way `last30days` and `swe-workflow` are already doubled on this host. The alternative, keeping the store out of `~/.claude/skills`, is not this repo's to make: that fan-out belongs to agentstow.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 244db02
 
 ## Q79 — interactive/skills-role — deviation
 
@@ -860,7 +860,7 @@ configuration to separate a 1-in-3 rate from zero.
 **Decided-by:** agent
 **Justification:** The task has never run on any host — the only thing preventing it is that its `creates:` sentinel, `~/.agents/skills/mac-mini-as-headless-server`, happens to be satisfied by an agentstow symlink. If it ever did run, the CLI's `createSymlink` would replace each git-backed symlink with a CLI-managed copy, silently detaching 22 self-authored skills from git and breaking the author-in-git workflow `~/.agents/AGENTS.md` documents. That makes it dead code that is also a landmine, and the `creates:` guard an accident rather than a design. Deleting it is the only state that cannot misfire. Consequence accepted: these 22 skills stay agentstow's to fan out.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 244db02
 
 ## Q80 — interactive/skills-role — gate-resolution
 
@@ -870,4 +870,4 @@ configuration to separate a 1-in-3 rate from zero.
 **Decided-by:** agent
 **Justification:** Both gates were built and both failed against measurement. The lock file records what was *asked* for, not what upstream ships: mattpocock deleted `to-issues` and `to-prd` (both 404 on 2026-09-14) and their lock entries outlived them, so the gate was permanently unsatisfiable and re-ran the installers anyway — the same stale-lock trap as Q7. The link-count gate rested on a wrong premise: an agent whose `skillsDir` is `.agents/skills` reads the store directly and is never given links (`isUniversalAgent`, skills@1.5.26 `dist/cli.mjs:2135`), so Codex, OpenCode, Kimi Code, Cursor and Gemini have permanently empty per-agent directories that read as drift. Only Claude Code, Pi and Hermes are linked — exactly the three `agentstow status` reports. With both gates gone the cost was measured rather than assumed: four fetches take 20s, and an in-process `find … get_checksum` over the store's 1,728 files takes 1.2s, not the 17.7s an earlier `find -exec shasum` measurement suggested (that figure was process-spawn overhead). At 20s a play no gate is needed, which leaves the plain three-task herdr sandwich and drops ~40 lines of Jinja.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 244db02
