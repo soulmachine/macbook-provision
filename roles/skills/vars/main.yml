@@ -1,0 +1,24 @@
+---
+skills_home: "{{ lookup('env', 'HOME') }}"
+
+# Where `npx skills add -g` puts every skill. Per-agent directories are either
+# symlink farms pointing back here (Claude Code, Pi, Hermes) or nothing at all:
+# an agent whose skillsDir is `.agents/skills` reads this directory **directly**
+# and is never given links (`isUniversalAgent`, skills@1.5.26 dist/cli.mjs:2135).
+# Codex, OpenCode, Kimi Code, Cursor and Gemini are all universal in that sense,
+# so an empty ~/.codex/skills is correct rather than drift. Fingerprinting this
+# one directory therefore covers every agent's content.
+skills_store: "{{ skills_home }}/.agents/skills"
+
+# Sources the skills CLI owns and re-fetches.
+#
+# `soulmachine/skills` is deliberately absent. Its skills reach the store as
+# agentstow symlinks into ~/github.com/soulmachine/skills/ (author in git, `agentstow
+# adopt`, edits flow to every agent) — so the CLI has never installed them, they carry
+# no entry in the lock file, and `skills add soulmachine/skills` would replace each
+# git-backed symlink with a CLI-managed copy. See DECISIONS.md Q78.
+skills_sources:
+  - jimliu/baoyu-skills
+  - mattpocock/skills
+  - mvanhorn/last30days-skill
+  - tt-a1i/archify

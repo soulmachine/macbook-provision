@@ -1,25 +1,57 @@
 ---
-- name: Install baoyu skills for all agents
-  ansible.builtin.command:
-    cmd: npx skills add jimliu/baoyu-skills -g -y --all
-    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/baoyu-youtube-transcript"
+# `creates:` alone froze this role: each source was guarded on one sentinel directory,
+# so after the first install `skills add` never ran again and no source ever refreshed.
+# Re-running it is the only mechanism that pulls upstream edits — measured on
+# mac-mini-m2 2026-09-14, the first unguarded run brought in months of them (the
+# last30days, baoyu-image-gen and baoyu-post-to-wechat skills all changed).
+#
+# So the installers now run every play, and `changed` comes from fingerprinting the
+# store around them — CLAUDE.md, "Self-update tasks: diff state, don't grep output".
+# `skills add` is safe to repeat: its `createSymlink` (skills@1.5.26, dist/cli.mjs)
+# returns early when a link already resolves to its target.
+#
+# Two cheaper-looking designs were tried first and rejected against measurement:
+#
+#   * Gating on the lock file's skill list. The lock records what was *asked* for, not
+#     what upstream still ships — mattpocock deleted `to-issues` and `to-prd` (both 404
+#     upstream on 2026-09-14) and their lock entries outlived them, so the gate was
+#     permanently unsatisfiable and re-ran the installers every time anyway. Same
+#     stale-lock trap as the herdr skill, DECISIONS.md Q7.
+#   * Gating on per-agent link counts. Wrong premise: universal agents never get links
+#     (see vars/main.yml), so their empty directories read as permanent drift.
+#
+# Running unconditionally costs one network fetch per source — 20s for all four,
+# measured — which is why no gate is needed to keep a converged run cheap.
 
-- name: Install mattpocock skills for all agents
-  ansible.builtin.command:
-    cmd: npx skills@latest add mattpocock/skills -g -y --all
-    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/grill-me"
+- name: Fingerprint the skill store before installing
+  ansible.builtin.find:
+    paths: "{{ skills_store }}"
+    recurse: true
+    file_type: file
+    get_checksum: true
+  register: skills_before
+  changed_when: false
 
-- name: Install soulmachine skills for all agents
-  ansible.builtin.command:
-    cmd: npx skills add soulmachine/skills -g -y --all
-    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/mac-mini-as-headless-server"
+- name: Install the skill sources for every agent
+  ansible.builtin.command: "npx skills@latest add {{ item }} -g -y --all"
+  loop: "{{ skills_sources }}"
+  changed_when: false
 
-- name: Install last30days skill for all agents
-  ansible.builtin.command:
-    cmd: npx skills add mvanhorn/last30days-skill -g -y --all
-    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/last30days"
-
-- name: Install archify skill for all agents
-  ansible.builtin.command:
-    cmd: npx skills add tt-a1i/archify -g -y --all
-    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/archify"
+# Ceiling: this fingerprints content, not the per-agent symlink farms, so a link
+# restored in ~/.claude/skills reports no change even though the run repaired it. The
+# repair still happens — `skills add` runs regardless — and agentstow maintains those
+# same three directories, so the verdict is the only thing affected.
+#
+# `recurse` does not follow symlinks, so the 17 agentstow skills symlinked into
+# ~/github.com/soulmachine/skills are not traversed. That is deliberate: their content
+# belongs to git, and including it would report a change whenever one is edited there.
+- name: Check whether any skill changed
+  ansible.builtin.find:
+    paths: "{{ skills_store }}"
+    recurse: true
+    file_type: file
+    get_checksum: true
+  register: skills_after
+  changed_when: >-
+    (skills_after.files | map(attribute='checksum') | sort)
+    != (skills_before.files | map(attribute='checksum') | sort)
