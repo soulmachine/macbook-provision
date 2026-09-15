@@ -1014,5 +1014,5 @@ configuration to separate a 1-in-3 rate from zero.
 **Decided-by:** human
 **Justification:** These are the litter Q94 diagnosed: every ungated `npx oh-my-openagent install` rewrote `opencode.json` and left a timestamped copy, so the pile measures how often the role ran, not how often anything changed — 44 files collapsing to 6 distinct contents on macbook-air, 55 to 5 on mac-studio-m3. Deleted by script (`/tmp/oc-backup-sweep.py`) that flattens every backup to dotted key paths plus scalar list members (so a dropped plugin or `enabled_providers` entry surfaces as a missing item, not a silent diff), diffs each against the live config, and **aborts the host** on any key present in a backup and absent from the live file, or any backup that fails to parse. Zero missing keys and zero unreadable files on all six, so nothing unique was destroyed. Verified afterwards: 0 backups, `opencode.json` valid JSON, and the role reporting `already up to date — skipped` on every host — Q94's gate holds, so the pile does not start rebuilding.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 526bfa6
 **Supersedes:** Q96 — scope only; Q96 swept the orphaned `oh-my-openagent.json.backup-*` files and recorded this parallel litter as deliberately untouched. That exclusion no longer holds; Q96's own deletion stands.
