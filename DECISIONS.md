@@ -1114,7 +1114,7 @@ Probed with git rather than `hermes --version` because the breakage is in Python
 
 Verified on mac-studio-m3 (no hermes gateway there) by deepening the deliberately-shallow agent clone with `git fetch --depth=2`, rewinding one commit to create a real pending update, and running the role: `update --check` reported "1 commit behind", the update applied, the revision task reported CHANGED, the fail task skipped, and the role exited 0 — the exact case that previously failed the play. Side effect accepted: that clone is now depth 2 rather than depth 1.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 88f7f75
 
 ## Q106 — interactive/fleet-converge — deviation
 
@@ -1128,4 +1128,4 @@ Why it needed fixing rather than tolerating: the collision left docker **unlinke
 
 Verified on mac-mini-m2, which was in the broken state: before, `docker-completion` installed and `/opt/homebrew/bin/docker` missing; after one role run, the formula gone and the symlink present, with zero task failures.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 88f7f75
