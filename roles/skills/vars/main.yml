@@ -38,15 +38,16 @@ skills_store: "{{ skills_home }}/.agents/skills"
 #     every agent), so the CLI has never installed them, they carry no lock entry, and
 #     `skills add soulmachine/skills` would replace each git-backed symlink with a
 #     CLI-managed copy. See DECISIONS.md Q82.
-#   * `backnotprop/plannotator` — upstream no longer ships any `plannotator-*` skill. It
+#   * `backnotprop/plannotator` — upstream no longer ships any `plannotator-*` skill; it
 #     ships four for maintaining the plannotator repo itself (`pierre-guard`,
-#     `release-plannotator`, `review-renovate`, `update-deps`), so adopting would install
-#     four irrelevant skills fleet-wide and refresh none of the six `plannotator-*`
-#     directories already in the store. No collision with Claude's `-annotate`/`-last`/
-#     `-review` variants, but no value either.
-#   * `cursor/plugins` — the installers run `--all` (`--skill '*'`), so adoption is
-#     all-or-nothing: 29 installed against 88 upstream. Taking a subset needs
-#     skills_sources to carry per-source skill lists, which is a design change.
+#     `release-plannotator`, `review-renovate`, `update-deps`). Its six store directories
+#     were deleted fleet-wide on 2026-09-15 (Q88), so a line here would *install* those
+#     four rather than adopt anything. Claude's `plannotator-annotate`/`-last`/`-review`
+#     survive as per-agent variants and are not managed by this role.
+#   * `cursor/plugins` — its 28 skills were deleted fleet-wide the same day (Q88). The
+#     installers run `--all` (`--skill '*'`), so re-adding is all-or-nothing: 88 upstream
+#     against the 28 that were installed. Taking a subset needs skills_sources to carry
+#     per-source skill lists, which is a design change rather than a line.
 skills_sources:
   - jimliu/baoyu-skills
   - mattpocock/skills
