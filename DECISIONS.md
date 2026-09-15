@@ -1068,4 +1068,4 @@ configuration to separate a 1-in-3 rate from zero.
 **Decided-by:** agent
 **Justification:** Deleting the four rows would have fixed the false attribution by destroying true information: the software is still installed, just by a different role. Re-writing each row in place would have kept four entries for something that is one role. The single row does both jobs — it removes four things that are not roles from a role table, and it documents `homebrew`, which was itself undocumented despite installing more than any other role. **This lowers the headline coverage number from 18/41 to 15/41, and that is the point:** four of the old eighteen were not roles, so the previous figure overstated coverage. 15 is the first honest count. Package list read from the role rather than copied from the old rows, so it reflects the `pycharm` removal in Q99. Verified: all 15 rows resolve to a real `roles/` directory, `ansible-lint` still 0 failures at `production`.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 175f807
