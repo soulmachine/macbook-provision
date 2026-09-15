@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 ## Project Overview
 
@@ -246,10 +246,10 @@ rather than using one `{mark}`.
 
 #### Agent-reach role specifics
 
-- **Installed by an agent, not a script.** Upstream ships `docs/install.md` and `docs/update.md` as prompts addressed "For AI Agents" — they branch on environment detection, `agent-reach doctor` output, and which upstream CLIs already exist, so there is no idempotent one-liner to call. The role therefore shells out to `claude --dangerously-skip-permissions --effort xhigh -p "<instruction> <doc URL>"` and lets the sub-agent execute the doc. Both invocations `chdir` to `$HOME`: `install.md` forbids writing inside the working directory, and `$HOME` also keeps this repo's `CLAUDE.md` out of the sub-agent's context.
+- **Installed by an agent, not a script.** Upstream ships `docs/install.md` and `docs/update.md` as prompts addressed "For AI Agents" — they branch on environment detection, `agent-reach doctor` output, and which upstream CLIs already exist, so there is no idempotent one-liner to call. The role therefore shells out to `Codex --dangerously-skip-permissions --effort xhigh -p "<instruction> <doc URL>"` and lets the sub-agent execute the doc. Both invocations `chdir` to `$HOME`: `install.md` forbids writing inside the working directory, and `$HOME` also keeps this repo's `AGENTS.md` out of the sub-agent's context.
 - **Idempotency hinges on `agent-reach check-update`'s stdout, not its exit code** — the command discards its own result and always exits 0. Install runs only when `command -v agent-reach` fails; update runs only when `check-update` prints the **positive** sentinel `有更新` (Chinese, hardcoded upstream). Do not invert this to "not up-to-date": `check-update` has two further branches — a GitHub rate-limit/network error (`无法检查更新`) and a no-releases fallback that prints the latest commit SHA (`最新提交:`) — and a negated match would fire on both, burning a full agent run on every converged playbook. The sentinel `有更新` appears in exactly one branch and not in the update instructions that branch prints alongside.
 - **The install is verified.** Because an LLM following prose can report success while landing nothing on PATH, a post-install `command -v agent-reach` check fails the play loudly rather than letting every later run silently re-attempt the install.
-- Optional channels (Twitter, 小红书, Reddit, …) need cookies or a Chrome extension click and are **not** provisioned — headless `claude -p` cannot answer the doc's "which channels do you want?" prompt, so only the zero-config core channels get set up. Run `agent-reach doctor` interactively to add the rest.
+- Optional channels (Twitter, 小红书, Reddit, …) need cookies or a Chrome extension click and are **not** provisioned — headless `Codex -p` cannot answer the doc's "which channels do you want?" prompt, so only the zero-config core channels get set up. Run `agent-reach doctor` interactively to add the rest.
 
 #### Ponytail role specifics
 
@@ -259,7 +259,7 @@ half — six owner-qualified ClawHub skills — existed for one commit and went 
 fleet-wide OpenClaw removal; DECISIONS Q45 and Q52.) The facts that are easy to get
 wrong:
 
-- **Every refresh diffs state, never stdout**: Claude Code's `gitCommitSha` in
+- **Every refresh diffs state, never stdout**: Codex's `gitCommitSha` in
   `installed_plugins.json`; the `revision` Codex records in
   `~/.codex/.tmp/marketplaces/ponytail/.codex-marketplace-install.json` — its own
   ledger, not the snapshot's git HEAD: `codex plugin marketplace upgrade` compares
@@ -281,13 +281,13 @@ wrong:
   `name@marketplace` IDs, and the package is pinned `^x.y.z` in
   `~/.omp/plugins/package.json`, so the role re-runs `omp plugin install` — a
   `bun install` in that directory — gated on `npm view … version` differing from the
-  version `omp plugin list --json` reports (the claude-mem role's shape). The gate is
+  version `omp plugin list --json` reports (the Codex-mem role's shape). The gate is
   load-bearing: a re-install also rewrites the plugin's runtime entry to
   `enabled: true` with default features, so running it unconditionally would undo a
   manual `omp plugin disable` on every play.
 - **Idempotency markers are the hosts' own records**: `[marketplaces.ponytail]` and
   `[plugins."ponytail@ponytail"]` in `~/.codex/config.toml`, `installed_plugins.json`
-  and `enabledPlugins` for Claude Code, the pi checkout directory (`creates:`), the
+  and `enabledPlugins` for Codex, the pi checkout directory (`creates:`), the
   Hermes plugin directory (a `stat` gate — see below for why not `creates:`).
 - **The pi package entry lives in `roles/pi/files/agent/settings.json`.** The pi role
   copies that file over `~/.pi/agent/settings.json` every run; `pi install` records the
@@ -342,7 +342,7 @@ Every role has `tasks/main.yml`. Some also have:
 
 #### Self-update tasks: diff state, don't grep output
 
-Roles that shell out to a tool's own updater (`claude update`, `codex update`,
+Roles that shell out to a tool's own updater (`Codex update`, `codex update`,
 `npx skills update`) must decide `changed` from **observable state measured
 before and after the call**, not from a phrase in the tool's stdout. Record the
 version or checksum, run the updater with `changed_when: false`, then re-measure
@@ -359,18 +359,18 @@ it has no version to compare, so it matches a **positive** sentinel — never a
 negated one, for exactly the reason above.
 
 Diffing state is only half of it — **the two sides of the diff must speak the same
-release channel.** The `claude-mem` role diffed `npm view claude-mem version`
+release channel.** The `Codex-mem` role diffed `npm view Codex-mem version`
 against the version in
-`~/.claude/plugins/marketplaces/thedotmack/.claude-plugin/plugin.json`, which
+`~/.Codex/plugins/marketplaces/thedotmack/.Codex-plugin/plugin.json`, which
 looks like the installed version and is not: that path is a tracked file inside a
-git clone of the upstream repo that Claude Code `git pull`s on its own several
+git clone of the upstream repo that Codex `git pull`s on its own several
 times a day, so it carries upstream's *in-development* version. Measured
 2026-09-09, it read 13.24.5 against an npm `latest` of 13.24.1 — a version never
 published to npm at all. The two agree only between a publish and the next
 version bump upstream, so the gate was permanently true and ran the heavy
-`npx -y claude-mem install` for all three IDEs on every converged run. The fix
-reads Claude Code's own plugin ledger,
-`~/.claude/plugins/installed_plugins.json` → `plugins['claude-mem@thedotmack']`,
+`npx -y Codex-mem install` for all three IDEs on every converged run. The fix
+reads Codex's own plugin ledger,
+`~/.Codex/plugins/installed_plugins.json` → `plugins['Codex-mem@thedotmack']`,
 which the installer stamps and which therefore speaks npm's channel (the same
 ledger the ponytail role diffs `gitCommitSha` in). The role's `changed_when:
 true` is correct and was never the bug — a run of that installer really does

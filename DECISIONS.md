@@ -683,7 +683,7 @@
 **Outcome:** applied
 **Ref:** 79c33bc
 
-## Q66 — interactive/nickel-python-migration — irreversible-action
+## Q68 — interactive/nickel-python-migration — irreversible-action
 
 **Question:** The documented remote-run form `ssh <host> 'zsh -lc "... ansible-playbook"'` never loads the repo's `.env` — `.envrc`'s `dotenv_if_exists` runs through direnv, which is hooked from the oh-my-zsh plugin list in `~/.zshrc`, and a login *non-interactive* shell does not source `.zshrc`. Measured: 4 of 6 remote hosts saw 0 of the `TAILSCALE_OAUTH_CLIENT_*` pair inside that exact shell, so the tailscale role's key-expiry block was gated off and skipped silently while reporting converged. How should the secrets reach non-interactive shells?
 **Options considered:** export each host's own `.env` into `~/.zshenv` inside a managed block / source `.env` explicitly in the documented run command / hook direnv from `.zshenv` instead of `.zshrc` / leave it and rely on the sticky `keyExpiryDisabled` flag
@@ -694,7 +694,7 @@
 **Outcome:** applied
 **Ref:** f2cb634
 
-## Q67 — interactive/nickel-python-migration — gate-resolution
+## Q69 — interactive/nickel-python-migration — gate-resolution
 
 **Question:** Writing `~/.zshenv` on seven hosts is unusually dangerous — the file is sourced by *every* zsh, so one malformed line makes every shell on that host error. What safety bar should the installer meet, given a first draft silently produced an empty block?
 **Options considered:** write directly and check afterwards / build a candidate, validate with `zsh -n`, install only on pass / hand-edit each host
@@ -704,9 +704,9 @@
 **Outcome:** applied
 **Ref:** f2cb634
 
-## Q68 — interactive/nickel-python-migration — gate-resolution
+## Q70 — interactive/nickel-python-migration — gate-resolution
 
-**Question:** After Q66 exported each host's `.env` into a managed `~/.zshenv` block, some hosts still carried loose credential assignments outside that block. "Clean up the stale duplicates" — which of those lines are actually in scope, given the file also holds live config and unrelated secrets?
+**Question:** After Q68 exported each host's `.env` into a managed `~/.zshenv` block, some hosts still carried loose credential assignments outside that block. "Clean up the stale duplicates" — which of those lines are actually in scope, given the file also holds live config and unrelated secrets?
 **Options considered:** every credential-looking assignment outside the block / only lines assigning a key the block already owns / only those, and only where the block demonstrably shadows them
 **Chosen:** The narrowest reading: a line was removed only if it assigns a key the managed block **also** assigns **and** sits **before** the block. 8 lines across 4 hosts (`TAILSCALE_OAUTH_CLIENT_ID` and `_SECRET` on franks-mac-mini-m2, franks-macbook-air, franks-mac-mini-2018, dev-server-frank-lume). Three hosts had none.
 **Decided-by:** agent
@@ -714,29 +714,29 @@
 **Outcome:** applied
 **Ref:** d55f89f
 
-## Q69 — interactive/nickel-python-migration — escalation
+## Q71 — interactive/nickel-python-migration — escalation
 
 **Question:** Three credentials sit outside the managed block, are **not** duplicates of anything, and are not obviously live: `TAILSCALE_API_KEY` (dev-server-frank-lume), `OPENAI_API_KEY` and `OPENCOMPACTOR_API_KEY` (mac-studio-m3). Should they be removed too?
 **Options considered:** remove as part of the duplicate cleanup / leave and surface for a human decision
 **Chosen:** — (left in place, surfaced to the user)
 **Decided-by:** agent
-**Justification:** None is a duplicate, so removing one **would** change behaviour — the opposite of the property that made Q68 safe — and each needs context I do not have. `TAILSCALE_API_KEY` looks retired: CLAUDE.md §Tailscale role specifics records that Tailscale personal access tokens carry no scopes and expire 90 days after minting, and that the sibling `TAILSCALE_API_ACCESS_TOKEN` "is gone and must not come back" — but the role never reads *this* name, so what still consumes it is unknown. `OPENAI_API_KEY` is the sharper one: `~/.agents/AGENTS.md` §AI gateway says never to export it globally on these hosts, because pi reads it while ignoring the matching `*_BASE_URL` and so silently bypasses the cliproxy gateway — meaning its presence may already be causing that, and removing it is plausibly a fix rather than a cleanup. That is a live-config change on a host I was not asked to reconfigure, so it is the user's call.
+**Justification:** None is a duplicate, so removing one **would** change behaviour — the opposite of the property that made Q70 safe — and each needs context I do not have. `TAILSCALE_API_KEY` looks retired: CLAUDE.md §Tailscale role specifics records that Tailscale personal access tokens carry no scopes and expire 90 days after minting, and that the sibling `TAILSCALE_API_ACCESS_TOKEN` "is gone and must not come back" — but the role never reads *this* name, so what still consumes it is unknown. `OPENAI_API_KEY` is the sharper one: `~/.agents/AGENTS.md` §AI gateway says never to export it globally on these hosts, because pi reads it while ignoring the matching `*_BASE_URL` and so silently bypasses the cliproxy gateway — meaning its presence may already be causing that, and removing it is plausibly a fix rather than a cleanup. That is a live-config change on a host I was not asked to reconfigure, so it is the user's call.
 **Outcome:** escalated
 **Ref:** d55f89f
 
-## Q70 — interactive/nickel-python-migration — gate-resolution
+## Q72 — interactive/nickel-python-migration — gate-resolution
 
-**Question:** Q69 escalated three non-duplicate credentials rather than removing them. The user then asked for all three to go: `TAILSCALE_API_KEY` (dev-server-frank-lume), `OPENAI_API_KEY` + `OPENCOMPACTOR_API_KEY` (mac-studio-m3).
+**Question:** Q71 escalated three non-duplicate credentials rather than removing them. The user then asked for all three to go: `TAILSCALE_API_KEY` (dev-server-frank-lume), `OPENAI_API_KEY` + `OPENCOMPACTOR_API_KEY` (mac-studio-m3).
 **Options considered:** remove all three as asked / remove the two with no consumer and re-escalate `OPENAI_API_KEY` / decline
 **Chosen:** Removed all three. Verified before/after that every *other* variable on each host was byte-identical, with automatic restore-from-backup wired to a mismatch.
 **Decided-by:** human
 **Justification:** Consumer search first, and it changed what each removal meant. `TAILSCALE_API_KEY` had no reference anywhere but its own line. `OPENCOMPACTOR_API_KEY` is read by the `com.big3.opencompact` LaunchAgent — but that plist carries its **own** `EnvironmentVariables` copy, and per `~/.agents/AGENTS.md` §Zsh startup files a LaunchAgent spawns a binary, not a shell, so it never read the `.zshenv` line at all; the agent's `launchctl list` status was `- 78` both before and after, unchanged. `OPENAI_API_KEY` was the one worth a second look: mac-studio-m3's `.zshrc` carries a *managed* block built around it (`pi() { OPENAI_API_KEY= command pi "$@"; }`) commented "the key stays set for everything else that expects it" — information the user did not have when they asked. Surfaced it, and proceeded because the grep found no such consumer: only that wrapper, which blanks the variable, and `omp()`, which overrides it with the cliproxy key. Removing it is what `~/.agents/AGENTS.md` §AI gateway asks for — it warns that a global `OPENAI_API_KEY` makes pi bypass the gateway.
 **Outcome:** applied
-**Supersedes:** Q69 — its escalation, resolved by the user.
+**Supersedes:** Q71 — its escalation, resolved by the user.
 **Ref:** be13383
 **Follow-up:** the `pi()` wrapper on mac-studio-m3 now blanks a variable that no longer exists — harmless, and left alone because it is a managed cliproxyapi block, not this task's to edit. Values remain recoverable from `~/.zshenv.bak-rmvars-20260910-040307` on both hosts.
 
-## Q71 — interactive/mdfind-wedge — gate-resolution
+## Q73 — interactive/mdfind-wedge — gate-resolution
 
 **Question:** Is the recurring `mdfind` hang on mac-mini-2018 — which wedges `brew` and stalled the
 nightly sweep — actually caused by the SMB mounts, or only correlated with them?
@@ -753,7 +753,7 @@ the suspected cause could settle it. The user accepted the remount risk when cho
 **Outcome:** applied — host state fully restored afterwards (agent loaded=1, mounts=3)
 **Ref:** bb5b794
 
-## Q72 — interactive/mdfind-wedge — deviation
+## Q74 — interactive/mdfind-wedge — deviation
 
 **Question:** Does the earlier per-share isolation result — "only GoogleDrive (FileProvider) hung" —
 identify which of the three shares is responsible?
@@ -771,7 +771,7 @@ configuration to separate a 1-in-3 rate from zero.
 **Ref:** bb5b794
 **Supersedes:** — (no prior entry; the retracted claim was stated in conversation only)
 
-## Q71 — interactive/nickel-python-migration — deviation
+## Q75 — interactive/nickel-python-migration — deviation
 
 **Question:** I reported the `dev-server-frank` row in `cliproxy-usage` as "likely a stale loopback-alias mapping, not a real eighth host," and the user asked for it to be fixed. Is it stale?
 **Options considered:** remove the `dev-server-frank` line from `~/.cli-proxy-api/host-loopback.txt` as asked / verify the premise first and decline if the mapping is correct
@@ -781,9 +781,9 @@ configuration to separate a 1-in-3 rate from zero.
 **Outcome:** applied
 **Ref:** ebc8014
 
-## Q72 — interactive/nickel-python-migration — irreversible-action
+## Q76 — interactive/nickel-python-migration — irreversible-action
 
-**Question:** The user asked to prune "the backups I created today." Three of those backups (`~/.zshenv.bak-rmvars-*`) are the only remaining copies of three credentials deliberately removed earlier in the session (Q70). Delete them anyway?
+**Question:** The user asked to prune "the backups I created today." Three of those backups (`~/.zshenv.bak-rmvars-*`) are the only remaining copies of three credentials deliberately removed earlier in the session (Q72). Delete them anyway?
 **Options considered:** delete every backup this session created, as asked / keep the `rmvars` ones as the last copy of the removed values / delete all but warn first
 **Chosen:** Deleted all 25, after stating plainly which three carried the last copies. Kept every pre-existing backup.
 **Decided-by:** human
@@ -791,7 +791,7 @@ configuration to separate a 1-in-3 rate from zero.
 **Outcome:** applied
 **Ref:** (host-local; no repo change)
 
-## Q73 — interactive/nickel-python-migration — irreversible-action
+## Q77 — interactive/nickel-python-migration — irreversible-action
 
 **Question:** Removing the `com.big3.opencompact` LaunchAgent from `mac-studio-m3` — delete the plist outright, or keep it?
 **Options considered:** `rm` the plist after bootout / archive it outside `LaunchAgents/` / leave it on disk but unloaded
@@ -801,7 +801,7 @@ configuration to separate a 1-in-3 rate from zero.
 **Outcome:** applied
 **Ref:** (host-local; no repo change)
 
-## Q74 — interactive/nickel-python-migration — gate-resolution
+## Q78 — interactive/nickel-python-migration — gate-resolution
 
 **Question:** Q61 deferred `macbook-pro-nickel`'s fleet membership to the user and Q65 reaffirmed the deferral. The user has now asked to "add nickel's fleet membership." What does adding it actually change?
 **Options considered:** add the table row only / add the row and also grant it the always-on roles via an override / defer again
@@ -812,17 +812,17 @@ configuration to separate a 1-in-3 rate from zero.
 **Ref:** 6959c39
 **Supersedes:** Q61 and Q65 — their deferral of nickel's fleet membership to the user; the user has now made that call.
 
-## Q75 — interactive/dotenv-role — tradeoff
+## Q79 — interactive/dotenv-role — tradeoff
 
 **Question:** The `dotenv` role has to learn the values it writes. Read them from the ambient environment with `lookup('env', ...)` — the pattern every other role in this repo uses — or parse the `.env` file itself?
 **Options considered:** `lookup('env', VAR)` per known variable, matching the existing convention / read and parse the `.env` file / read the env but fall back to the file
 **Chosen:** Parse the `.env` file. The role never calls `lookup('env')` for a secret.
 **Decided-by:** agent
-**Justification:** The convention is right for the consuming roles and wrong for this one, because the lookup reads exactly what is missing in the case being fixed. `lookup('env')` resolves on the control node from the ambient environment; the whole premise (Q66) is that a non-interactive run has no `.env` in its environment. On a fresh host that resolves to nothing, and the role would write an **empty** managed block — stripping every export from every non-interactive shell, i.e. delivering the breakage as the fix. On an already-fixed host it is circular: the values would come from the block being rewritten, so an edited `.env` would never propagate. Reading the file is the only non-circular source. Two consequences were designed in rather than discovered: a `.env` that parses to zero assignments **fails the play** (a parse bug, not a configuration), while a **missing** `.env` skips with a message (per-machine and legitimately absent — and indistinguishable in the recap from being run in the wrong directory unless it says so). Values also get one layer of matching surrounding quotes stripped before being re-quoted, so `KEY="v"` resolves to the same `v` direnv hands an interactive shell instead of silently differing between the two paths.
+**Justification:** The convention is right for the consuming roles and wrong for this one, because the lookup reads exactly what is missing in the case being fixed. `lookup('env')` resolves on the control node from the ambient environment; the whole premise (Q68) is that a non-interactive run has no `.env` in its environment. On a fresh host that resolves to nothing, and the role would write an **empty** managed block — stripping every export from every non-interactive shell, i.e. delivering the breakage as the fix. On an already-fixed host it is circular: the values would come from the block being rewritten, so an edited `.env` would never propagate. Reading the file is the only non-circular source. Two consequences were designed in rather than discovered: a `.env` that parses to zero assignments **fails the play** (a parse bug, not a configuration), while a **missing** `.env` skips with a message (per-machine and legitimately absent — and indistinguishable in the recap from being run in the wrong directory unless it says so). Values also get one layer of matching surrounding quotes stripped before being re-quoted, so `KEY="v"` resolves to the same `v` direnv hands an interactive shell instead of silently differing between the two paths.
 **Outcome:** applied
 **Ref:** 0a6dc5a
 
-## Q76 — interactive/dotenv-role — tradeoff
+## Q80 — interactive/dotenv-role — tradeoff
 
 **Question:** The managed block *is* four credentials, so any `-v` or `--diff` on the `blockinfile` task prints them. `no_log: true` stops that, but it also suppresses the task's failure message. Which loses?
 **Options considered:** `no_log: true` and accept opaque failures / leave logging on and accept credentials in terminal output and logs / no_log plus a separate non-secret diagnostic
@@ -832,7 +832,7 @@ configuration to separate a 1-in-3 rate from zero.
 **Outcome:** applied
 **Ref:** 0a6dc5a
 
-## Q77 — interactive/pi-role — deviation
+## Q81 — interactive/pi-role — deviation
 
 **Question:** pi's gateway config (`providers.cliproxy` in `models.json`, `defaultModel` in `settings.json`) was hand-installed on every host and silently reverted each night. Cause: this role's `copy src: agent/` overwrites both files. Ship the gateway in the payload, or keep an out-of-band re-assert job?
 **Options considered:** commit the gateway config into `roles/pi/files/agent/` / keep only `cliproxy-assert-pi` (hourly ssh re-assert) / stop copying those two files
@@ -842,7 +842,7 @@ configuration to separate a 1-in-3 rate from zero.
 **Outcome:** applied
 **Ref:** 8d08037
 
-## Q78 — interactive/skills-role — interpreted-ambiguity
+## Q82 — interactive/skills-role — interpreted-ambiguity
 
 **Question:** The ask was to install mattpocock skills via `claude plugins install mattpocock-skills` *and* `npx skills@latest add mattpocock/skills -g -y --all`. The second command already exists in `roles/skills`. Does the Claude Code plugin get added alongside it?
 **Options considered:** add the plugin and accept duplicate skills / add the plugin and stop the store reaching ~/.claude/skills / skills CLI only, no plugin
@@ -852,7 +852,7 @@ configuration to separate a 1-in-3 rate from zero.
 **Outcome:** applied
 **Ref:** 244db02
 
-## Q79 — interactive/skills-role — deviation
+## Q83 — interactive/skills-role — deviation
 
 **Question:** Un-freezing all five sources in `roles/skills` was approved. But `soulmachine/skills` has no entry in `~/.agents/.skill-lock.json` at all — its 22 skills are in the store as agentstow symlinks into `~/github.com/soulmachine/skills/`. Convert it like the others, leave it frozen, or delete it?
 **Options considered:** convert it with the rest / keep the `creates:`-guarded task as-is / delete the task
@@ -862,7 +862,7 @@ configuration to separate a 1-in-3 rate from zero.
 **Outcome:** applied
 **Ref:** 244db02
 
-## Q80 — interactive/skills-role — gate-resolution
+## Q84 — interactive/skills-role — gate-resolution
 
 **Question:** `npx skills add` re-fetches each source over the network. What stops a converged run paying for four fetches — the failure the claude-mem role was fixed for?
 **Options considered:** gate on the lock file's skill list / gate on per-agent link counts / no gate, decide `changed` from a checksum fingerprint
@@ -872,22 +872,32 @@ configuration to separate a 1-in-3 rate from zero.
 **Outcome:** applied
 **Ref:** 244db02
 
-## Q81 — interactive/skills-role — tradeoff
+## Q85 — interactive/skills-role — tradeoff
 
-**Question:** `roles/cmux`, `roles/cloudflare` and `roles/obsidian` each installed a skill source behind the same `creates:` sentinel Q80 removed from `roles/skills`, freezing 32 skills at 2026-07-02. Repeat the Q80 fix in each role, or move the three sources into `roles/skills`?
+**Question:** `roles/cmux`, `roles/cloudflare` and `roles/obsidian` each installed a skill source behind the same `creates:` sentinel Q84 removed from `roles/skills`, freezing 32 skills at 2026-07-02. Repeat the Q84 fix in each role, or move the three sources into `roles/skills`?
 **Options considered:** give each role its own fingerprint sandwich / move the three sources into `skills_sources` / leave them frozen
 **Chosen:** Move them. The three roles keep their app installs and lose their skill task.
 **Decided-by:** agent
-**Justification:** After Q80 `roles/skills` is source-agnostic — its three tasks fingerprint the store, run `skills add` per source, and diff — so adopting a source costs one list entry. Repeating the sandwich per role would instead run four whole-store fingerprints per play and, because each brackets the same shared directory, make every one of those roles report `changed` whenever any source moved. One role also gives skill sources a single place to be declared. Verified before the move: the 32 skills collide by name with no agentstow git symlink and no per-agent variant directory on any of the seven hosts, and the URL spelling those roles used (`https://github.com/kepano/obsidian-skills`) normalises to the owner/repo form the lock already records, so the existing entries are adopted rather than duplicated. First run pulled 2.5 months of upstream: cloudflare 8→15 skills, cmux 19→22, obsidian 5→6.
+**Justification:** After Q84 `roles/skills` is source-agnostic — its three tasks fingerprint the store, run `skills add` per source, and diff — so adopting a source costs one list entry. Repeating the sandwich per role would instead run four whole-store fingerprints per play and, because each brackets the same shared directory, make every one of those roles report `changed` whenever any source moved. One role also gives skill sources a single place to be declared. Verified before the move: the 32 skills collide by name with no agentstow git symlink and no per-agent variant directory on any of the seven hosts, and the URL spelling those roles used (`https://github.com/kepano/obsidian-skills`) normalises to the owner/repo form the lock already records, so the existing entries are adopted rather than duplicated. First run pulled 2.5 months of upstream: cloudflare 8→15 skills, cmux 19→22, obsidian 5→6.
 **Outcome:** applied
 **Ref:** f988a2e
 
-## Q82 — interactive/skills-role — tradeoff
+## Q86 — interactive/skills-role — tradeoff
 
 **Question:** Five skill sources in `~/.agents/.skill-lock.json` were installed by hand and belong to no role, so nothing refreshes them — all five stale since July/August. Adopt all five into `skills_sources`?
 **Options considered:** adopt all five / adopt none / adopt the subset whose upstream still matches what is installed
 **Chosen:** Adopt three — `swe-workflow/log-decisions`, `vercel-labs/skills`, `kunchenguid/lavish-axi`. Leave `backnotprop/plannotator` and `cursor/plugins` unmanaged.
 **Decided-by:** agent
-**Justification:** An earlier pass checked the five for name collisions against the lock file and cleared all of them. That was the wrong instrument — the Q7/Q80 stale-lock trap again, since the lock records what was once asked for rather than what upstream ships. Re-checked with `skills add <source> -l`, which lists a repository's skills **without installing**, and two verdicts changed. `backnotprop/plannotator` no longer ships any `plannotator-*` skill; it ships four for maintaining the plannotator repo itself (`pierre-guard`, `release-plannotator`, `review-renovate`, `update-deps`), so adopting would install four irrelevant skills fleet-wide and refresh none of the six `plannotator-*` directories in the store. It is also safe in the way first claimed — no name overlap with the Claude-native `-annotate`/`-last`/`-review` variants `createSymlink` would `rm -r` — but safety was never the reason to do it. `cursor/plugins` records 29 skills against 88 upstream, and the installers run `--all` (`--skill '*'`), so adoption is all-or-nothing; taking a subset needs `skills_sources` to carry per-source skill lists, which is a design change rather than a line. The three adopted each ship exactly one skill, already a CLI-owned real directory in the store with no agentstow symlink and no per-agent variant directory — verified before the edit. `log-decisions` is the skill `~/github.com/AGENTS.md` mandates and had been frozen since 2026-08-11.
+**Justification:** An earlier pass checked the five for name collisions against the lock file and cleared all of them. That was the wrong instrument — the Q7/Q84 stale-lock trap again, since the lock records what was once asked for rather than what upstream ships. Re-checked with `skills add <source> -l`, which lists a repository's skills **without installing**, and two verdicts changed. `backnotprop/plannotator` no longer ships any `plannotator-*` skill; it ships four for maintaining the plannotator repo itself (`pierre-guard`, `release-plannotator`, `review-renovate`, `update-deps`), so adopting would install four irrelevant skills fleet-wide and refresh none of the six `plannotator-*` directories in the store. It is also safe in the way first claimed — no name overlap with the Claude-native `-annotate`/`-last`/`-review` variants `createSymlink` would `rm -r` — but safety was never the reason to do it. `cursor/plugins` records 29 skills against 88 upstream, and the installers run `--all` (`--skill '*'`), so adoption is all-or-nothing; taking a subset needs `skills_sources` to carry per-source skill lists, which is a design change rather than a line. The three adopted each ship exactly one skill, already a CLI-owned real directory in the store with no agentstow symlink and no per-agent variant directory — verified before the edit. `log-decisions` is the skill `~/github.com/AGENTS.md` mandates and had been frozen since 2026-08-11.
 **Outcome:** applied
 **Ref:** a5d5437
+
+## Q87 — interactive/decisions-renumber — irreversible-action
+
+**Question:** The journal held 86 entries but numbered only to Q82: four numbers (Q66, Q67, Q71, Q72) appeared twice, where the `npm-path-fix` / `tripwire-cleanup` / `mdfind-wedge` stream collided with `nickel-python-migration` on 2026-09-10/11. Renumber, or leave the duplicates and note them?
+**Options considered:** leave them and warn readers / renumber entries #68-#86 to match position, rewriting every citation in lockstep
+**Chosen:** Renumbered. Entries #68-#86 moved +2 or +4 to their own positions, so the file now reads Q1..Q86 with no gaps or duplicates.
+**Decided-by:** human
+**Justification:** The user asked for it directly, using the `/log-decisions` skill's own repair procedure, which sanctions renumbering as the one exception to "never edit existing entries" — numbers are addresses, and a broken sequence makes every later citation ambiguous, which it already had: "see Q71" named two different decisions. Headings were rewritten *positionally in a single awk pass* rather than by sequential in-place edits, so no number was transiently written while still in use. Nine citations moved with them, remapped in one substitution carrying a hash so `Q68→Q70` and `Q70→Q72` evaluated against the original text instead of chaining; each was resolved by reading the cited entry, because a duplicated number cannot be remapped mechanically — the external `Q66/Q67` citations in `CLAUDE.md`, `roles/dotenv` and the project memory all pointed at the *second* pair (the `.env`→`~/.zshenv` fleet fix, now Q68/Q69), not the originals. Citations outside the journal were part of the change: `CLAUDE.md`, the untracked sibling `AGENTS.md`, `roles/dotenv`, `roles/pi`, `roles/skills/vars` and two memory files. **Known ceiling:** git history was not rewritten, so commit `a5d5437`'s message still says "See DECISIONS.md Q82" for the entry now numbered Q86, and any citation written before 2026-09-15 naming Q66 or higher is stale by two to four.
+**Outcome:** applied
+**Ref:** (pending)

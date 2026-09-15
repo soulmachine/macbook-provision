@@ -31,13 +31,13 @@ skills_store: "{{ skills_home }}/.agents/skills"
 # Three sources are deliberately NOT here, all verified with `skills add <source> -l`,
 # which lists what upstream ships **without installing**. Check adoption that way rather
 # than against the lock file, which records what was once asked for — the same stale-lock
-# trap as DECISIONS.md Q7 and Q80:
+# trap as DECISIONS.md Q7 and Q84:
 #
 #   * `soulmachine/skills` — its skills reach the store as agentstow symlinks into
 #     ~/github.com/soulmachine/skills/ (author in git, `agentstow adopt`, edits flow to
 #     every agent), so the CLI has never installed them, they carry no lock entry, and
 #     `skills add soulmachine/skills` would replace each git-backed symlink with a
-#     CLI-managed copy. See DECISIONS.md Q78.
+#     CLI-managed copy. See DECISIONS.md Q82.
 #   * `backnotprop/plannotator` — upstream no longer ships any `plannotator-*` skill. It
 #     ships four for maintaining the plannotator repo itself (`pierre-guard`,
 #     `release-plannotator`, `review-renovate`, `update-deps`), so adopting would install

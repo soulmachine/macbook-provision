@@ -11,7 +11,7 @@
 # `lookup('env', VAR) | length > 0` — they skipped silently rather than failing.
 # ~/.zshenv is the one startup file every zsh reads, which is why the block goes
 # there. Done by hand across the fleet on 2026-09-10; this role is that fix,
-# made reproducible (DECISIONS Q66/Q67).
+# made reproducible (DECISIONS Q68/Q69).
 #
 # This role reads the .env FILE, never `lookup('env', ...)`. The lookup reads
 # the ambient environment, which is exactly what is missing in the case this
