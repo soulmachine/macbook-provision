@@ -920,4 +920,4 @@ configuration to separate a 1-in-3 rate from zero.
 **Decided-by:** agent
 **Justification:** agentstow owns this path for **151 skills** across four agent directories and is the documented mechanism in `~/.agents/AGENTS.md` ("Agent skill dirs hold **relative** symlinks into the store"); these two roles own one link each. The minority yields to the documented majority. Reconfiguring agentstow was rejected as out-of-repo and would make this repo's spelling authoritative over a tool that serves every agent. Deleting the tasks was rejected because they also handle first-install and the real-directory-to-symlink upgrade, which `agentstow sync` does not do for a skill it has not adopted. Verified rather than assumed: playbook → `agentstow sync` → playbook now reports `changed=0` on all three passes, both links keep the relative form across the sync, and `agentstow status` no longer lists either as stale (claude 142 → 144 linked). The pre-existing `ansible-lint` `role-name` failure on `roles/multica-cli` (hyphen in the directory name) is untouched and unrelated.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 44ed46e
