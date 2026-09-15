@@ -880,4 +880,4 @@ configuration to separate a 1-in-3 rate from zero.
 **Decided-by:** agent
 **Justification:** After Q80 `roles/skills` is source-agnostic — its three tasks fingerprint the store, run `skills add` per source, and diff — so adopting a source costs one list entry. Repeating the sandwich per role would instead run four whole-store fingerprints per play and, because each brackets the same shared directory, make every one of those roles report `changed` whenever any source moved. One role also gives skill sources a single place to be declared. Verified before the move: the 32 skills collide by name with no agentstow git symlink and no per-agent variant directory on any of the seven hosts, and the URL spelling those roles used (`https://github.com/kepano/obsidian-skills`) normalises to the owner/repo form the lock already records, so the existing entries are adopted rather than duplicated. First run pulled 2.5 months of upstream: cloudflare 8→15 skills, cmux 19→22, obsidian 5→6.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** f988a2e
