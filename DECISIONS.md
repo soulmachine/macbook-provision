@@ -1082,4 +1082,4 @@ Every row was written from the role's own task files, not from the previous tabl
 
 Verified: table order `diff`s clean against `main.yml`, all 41 rows resolve to a real `roles/` directory, coverage 41/41.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 70677f2
