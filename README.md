@@ -80,23 +80,51 @@ ansible-playbook main.yml --check
 
 ### Playbook 中的 Roles（`main.yml`）
 
+按 `main.yml` 中的执行顺序排列。
+
 | Role | 说明 |
 |------|------|
 | host-facts | 机器判定（`mac_family` / `mac_battery_installed` / `mac_is_vm` / `mac_is_always_on`）；不装任何软件 |
 | homebrew | 通用 Homebrew 包与 GUI 应用：git、curl、wget、jq、ripgrep、fd、tree、htop、docker、ffmpeg、gh、gnupg、tmux；cask 含 claude、gemini、pearcleaner、sublime-text、visual-studio-code，Apple Silicon 另加 chatgpt |
+| github | gh CLI（brew）；若 `.env` 中有 `GITHUB_TOKEN`，另外配置 SSH key 与 git 签名 |
 | oh-my-zsh | Zsh 框架及插件管理 |
 | direnv | 目录级环境变量管理 |
+| dotenv | 不装任何软件；把 `.env` 以托管块写入 `~/.zshenv`，让非交互式 shell（`ssh host 'cmd'`、git hook、launchd）也能读到其中的变量 |
+| uv | Python 包与工具管理器（通过官方 astral.sh 脚本安装） |
+| python | 用 uv 安装 Python 命令行工具：yamllint、ansible-lint、ruff、pre-commit、httpie；Apple Silicon 另加 openai-whisper、whisper-ctranslate2（依赖 uv） |
 | go | Go 语言（通过 mise 安装） |
 | nodejs | Node.js（通过 mise 安装） |
 | bun | Bun JavaScript 运行时 |
 | rust | Rust 工具链（通过官方 rustup 安装；额外含 rust-src、rust-analyzer 组件） |
 | jdk | JDK（通过 mise 安装） |
-| intellij-idea | IntelliJ IDEA（依赖 jdk） |
 | claude-code | Claude Code CLI 及插件（依赖 nodejs） |
+| claude-extras | Claude Code 周边工具：npm `@inulute/cux`、uv 工具 `claude-swap`（依赖 nodejs、uv、claude-code） |
 | codex | OpenAI Codex CLI（依赖 nodejs） |
+| opencode | OpenCode CLI（npm `opencode-ai`）；并用 `npx oh-my-openagent` 写入 `~/.config/opencode/opencode.json`，由版本戳门控，避免每次 play 重装（依赖 nodejs） |
+| kimi-code | Kimi Code CLI（通过官方 code.kimi.com 脚本安装） |
+| omp | oh-my-pi：bun 全局 `@oh-my-pi/pi-coding-agent`（依赖 bun） |
+| pi | pi coding agent：bun 全局 `@earendil-works/pi-coding-agent`，并下发 `~/.pi/agent/settings.json`（依赖 bun） |
+| skills | 用 `npx skills@latest add` 安装十个技能源，并扇出到各 agent 的 skills 目录（依赖 claude-code、codex） |
+| agent-reach | 多渠道触达工具；上游只提供面向 AI agent 的安装文档，故由 `claude -p` 按文档驱动安装（依赖 claude-code、python） |
+| playwright | 浏览器自动化：npm 全局 `playwright@latest`（依赖 nodejs） |
+| playwright-cli | Playwright CLI：npm 全局 `@playwright/cli@latest`，并安装其 skill（依赖 playwright） |
+| intellij-idea | IntelliJ IDEA（依赖 jdk） |
+| claude-mem | Claude 记忆插件；`npx -y claude-mem install` 为 claude-code / codex-cli / opencode 三者接线（依赖 nodejs、bun、uv） |
+| cc-switch | Claude 配置切换器：tap `farion1231/ccswitch` + cask `cc-switch`（依赖 claude-code、codex） |
 | hermes | Hermes 个人 agent（Nous Research）；**仅限常驻开机的机器** |
 | ponytail | 给所有 agent 安装 [ponytail](https://github.com/DietrichGebert/ponytail) 插件——Claude Code / Codex / OpenCode / pi / oh-my-pi / Hermes 各用其原生安装方式；其中 Hermes 部分**仅限常驻开机的机器** |
+| paseo | agent 多路复用 GUI（cask `paseo`）；tag `agent-multiplexer`（依赖 claude-code、codex） |
+| ghostty | 终端模拟器（cask `ghostty`）（依赖 oh-my-zsh） |
+| cmux | 多 agent 工作区：tap `manaflow-ai/cmux` + cask `cmux`，并把 CLI 链接到 `~/.local/bin`（依赖 ghostty） |
+| obsidian | Obsidian（cask）+ npm 全局 `defuddle`（依赖 claude-code） |
+| cloudflare | Cloudflare CLI：npm 全局 `cf`（依赖 claude-code） |
+| multica-cli | tap `multica-ai/tap` + brew `multica-ai/tap/multica` |
 | tailscale | 独立版 Tailscale.app（cask）；若 `.env` 中有 `TAILSCALE_AUTH_KEY` 则自动登录，可选通过 OAuth client 关闭 key 过期 |
+| apple-container | Apple `container`（brew）；**仅限 Apple Silicon**，安装后启动 container system |
+| moshi | tap `rjyo/moshi` + brew `moshi-hook`，并通过 brew services 常驻；tag `agent-multiplexer` |
+| zellij | 终端复用器（brew `zellij`）；tag `terminal-multiplexer` |
+| tmux | 终端复用器（brew `tmux`）；tag `terminal-multiplexer`（`homebrew` 的通用包列表中也有，两处都是 `state: latest`，重复无害） |
+| herdr | 用 `npx skills add herdrdev/herdr` 安装 herdr skill，并以相对符号链接接入 `~/.claude/skills`；tag `terminal-multiplexer` |
 
 ### 仅限常驻开机的机器
 

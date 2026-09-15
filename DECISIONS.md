@@ -1069,3 +1069,17 @@ configuration to separate a 1-in-3 rate from zero.
 **Justification:** Deleting the four rows would have fixed the false attribution by destroying true information: the software is still installed, just by a different role. Re-writing each row in place would have kept four entries for something that is one role. The single row does both jobs — it removes four things that are not roles from a role table, and it documents `homebrew`, which was itself undocumented despite installing more than any other role. **This lowers the headline coverage number from 18/41 to 15/41, and that is the point:** four of the old eighteen were not roles, so the previous figure overstated coverage. 15 is the first honest count. Package list read from the role rather than copied from the old rows, so it reflects the `pycharm` removal in Q99. Verified: all 15 rows resolve to a real `roles/` directory, `ansible-lint` still 0 failures at `production`.
 **Outcome:** applied
 **Ref:** 175f807
+
+## Q103 — interactive/readme-role-coverage — deviation
+
+**Question:** README documented 15 of 41 roles. Add the missing 26 — and in what order?
+**Options considered:** append the 26 to the end of the existing table / insert each near a related row / rebuild the whole table in `main.yml` execution order
+**Chosen:** Rebuilt the table in exact `main.yml` order, 41 rows, with the note 按 `main.yml` 中的执行顺序排列 under the heading. Existing row text was preserved verbatim; only position changed.
+**Decided-by:** agent
+**Justification:** Appending would have left the table in no particular order, which is how it drifted in the first place — four non-roles sat in it unnoticed for months (Q102) because nothing could be checked against anything. Matching `main.yml` order turns the table into a **verifiable invariant**: extract the roles block, extract the table's first column, `diff` them. Both are 41 lines and identical today, so any future role added to the playbook and not to README shows up as a one-line diff rather than as silent omission. Ordering by execution is also the more useful reading order, since it is the order a provisioning run actually does things, and it puts each role after its dependencies.
+
+Every row was written from the role's own task files, not from the previous table or from the role name: `uv` from its `astral.sh` installer, `omp`/`pi` from their distinct bun globals (`@oh-my-pi/pi-coding-agent` vs `@earendil-works/pi-coding-agent`), `apple-container` from the `ansible_facts['architecture'] == "arm64"` gate, `python`'s Apple-Silicon-only `openai-whisper`/`whisper-ctranslate2` split, `obsidian`'s second install (npm `defuddle`) that the cask name alone does not reveal. Dependencies are named per row because the table is now in dependency-respecting order and they explain it. Three rows carry their `main.yml` tag (`agent-multiplexer`, `terminal-multiplexer`); `tmux` notes that `homebrew` installs it too, which `roles/tmux/tasks/main.yml:5-7` already documents as deliberate and harmless.
+
+Verified: table order `diff`s clean against `main.yml`, all 41 rows resolve to a real `roles/` directory, coverage 41/41.
+**Outcome:** applied
+**Ref:** (pending)
