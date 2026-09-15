@@ -1047,4 +1047,4 @@ configuration to separate a 1-in-3 rate from zero.
 
 **archs-mac-mini is excluded and this is a hold, not a decision.** It is the one fleet host that is not the user's own — the 2026-09-08 OpenClaw removal excluded it on exactly that ground, and Q98 preserved its `~/.openclaw` for a live service belonging to someone else. It carries JetBrains settings under user `archiebot`, which indicates active use, and uninstalling a working IDE out from under another person is not recoverable by re-running a playbook. Pending the machine owner's word.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** afeb3a0
