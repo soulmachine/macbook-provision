@@ -22,11 +22,31 @@ skills_store: "{{ skills_home }}/.agents/skills"
 # normalises to the owner/repo spelling used here; the lock file records the latter for
 # both, so the change adopts the existing entries rather than duplicating them.
 #
-# `soulmachine/skills` is deliberately absent. Its skills reach the store as
-# agentstow symlinks into ~/github.com/soulmachine/skills/ (author in git, `agentstow
-# adopt`, edits flow to every agent) — so the CLI has never installed them, they carry
-# no entry in the lock file, and `skills add soulmachine/skills` would replace each
-# git-backed symlink with a CLI-managed copy. See DECISIONS.md Q78.
+# The last three were installed by hand and had gone stale the same way — `log-decisions`
+# is the skill ~/github.com/AGENTS.md mandates and was frozen at 2026-08-11. Each ships
+# exactly one skill upstream, already a CLI-owned real directory in the store, so adopting
+# them changes nothing but who refreshes them. `lavish-design` stays behind as an orphan
+# store directory: it is in the lock but no longer shipped, and `skills add` never deletes.
+#
+# Three sources are deliberately NOT here, all verified with `skills add <source> -l`,
+# which lists what upstream ships **without installing**. Check adoption that way rather
+# than against the lock file, which records what was once asked for — the same stale-lock
+# trap as DECISIONS.md Q7 and Q80:
+#
+#   * `soulmachine/skills` — its skills reach the store as agentstow symlinks into
+#     ~/github.com/soulmachine/skills/ (author in git, `agentstow adopt`, edits flow to
+#     every agent), so the CLI has never installed them, they carry no lock entry, and
+#     `skills add soulmachine/skills` would replace each git-backed symlink with a
+#     CLI-managed copy. See DECISIONS.md Q78.
+#   * `backnotprop/plannotator` — upstream no longer ships any `plannotator-*` skill. It
+#     ships four for maintaining the plannotator repo itself (`pierre-guard`,
+#     `release-plannotator`, `review-renovate`, `update-deps`), so adopting would install
+#     four irrelevant skills fleet-wide and refresh none of the six `plannotator-*`
+#     directories already in the store. No collision with Claude's `-annotate`/`-last`/
+#     `-review` variants, but no value either.
+#   * `cursor/plugins` — the installers run `--all` (`--skill '*'`), so adoption is
+#     all-or-nothing: 29 installed against 88 upstream. Taking a subset needs
+#     skills_sources to carry per-source skill lists, which is a design change.
 skills_sources:
   - jimliu/baoyu-skills
   - mattpocock/skills
@@ -35,3 +55,6 @@ skills_sources:
   - manaflow-ai/cmux
   - cloudflare/skills
   - kepano/obsidian-skills
+  - swe-workflow/log-decisions
+  - vercel-labs/skills
+  - kunchenguid/lavish-axi
