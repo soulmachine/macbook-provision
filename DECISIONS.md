@@ -1016,3 +1016,13 @@ configuration to separate a 1-in-3 rate from zero.
 **Outcome:** applied
 **Ref:** 526bfa6
 **Supersedes:** Q96 — scope only; Q96 swept the orphaned `oh-my-openagent.json.backup-*` files and recorded this parallel litter as deliberately untouched. That exclusion no longer holds; Q96's own deletion stands.
+
+## Q98 — interactive/archs-openclaw-retain — gate-resolution
+
+**Question:** archs-mac-mini was the one host spared by the `~/.openclaw` sweep, on the grounds that something live read it. Remove it now, or keep it?
+**Options considered:** remove for fleet consistency / keep / keep and pin the dependency so a future sweep cannot take it
+**Chosen:** Keep `~/.openclaw` on archs-mac-mini untouched, and record it as a permanent exclusion from any future sweep.
+**Decided-by:** human
+**Justification:** The machine owner confirmed an active OpenClaw gateway there, which matches the observed state: LaunchAgent `com.archauto.openclaw-invoice-watcher` running as PID 56069 (uptime 3h49m at the time of check), a node process out of `~/github.com/ArchAuto-Tech/openclaw-invoice-watcher` under user `archiebot`, whose `src/config.js:11` resolves `join(homedir(), '.openclaw', 'openclaw.json')`. The directory holds 6.3 GB of live gateway state — `credentials`, `identity`, `devices`, `locks`, `flows`, `gateway-supervisor-restart-handoff.json` — not the empty `skills`-only shell Q91 removed elsewhere. This does **not** reopen the repo prohibition in CLAUDE.md: archs-mac-mini has no `/Applications/OpenClaw.app` and no `openclaw` on PATH, so the cask and npm globals removed on 2026-09-08 are still gone; what remains is one third-party application's data directory, and no role in this repo installs, updates or references it. Closes the item Q90 escalated to the machine owner.
+**Outcome:** applied
+**Ref:** (pending)
