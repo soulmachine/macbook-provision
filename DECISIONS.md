@@ -985,3 +985,23 @@ configuration to separate a 1-in-3 rate from zero.
 **Ceiling:** the 81 pre-existing backup files are left on disk — the fix stops them accumulating but deletes nothing, since they are the user's files and removing them is a separate call.
 **Outcome:** applied
 **Ref:** 92c7d2d
+
+## Q95 — interactive/macbook-air-bun-shim — gate-resolution
+
+**Question:** macbook-air was the one host that could not converge: `roles/opencode/tasks/main.yml:92` (`npx oh-my-openagent install`) died on `mise ERROR No version is set for shim: bun`. Three ways to make `bun` stop erroring — which one?
+**Options considered:** (a) delete the orphaned npm `bun` package under mise's node prefix so the shim stops being generated / (b) `mise use -g bun@latest` to give the shim a real version / (c) put `~/.bun/bin` ahead of the mise shims on PATH
+**Chosen:** (a) — removed `~/.local/share/mise/installs/node/24.13.1/{lib/node_modules/bun,bin/bun}` (an orphaned npm global dated 2026-04-02) and ran `mise reshim`.
+**Decided-by:** human
+**Justification:** A fleet survey settled it. Every host carries a real bun 1.4.2 at `~/.bun/bin`, off PATH; only macbook-air also had a mise `bun` shim, and only because mise auto-shims every bin in an installed tool's `bin/` — that stray `bun -> ../lib/node_modules/bun/bin/bun.exe` under node 24.13.1 generated it, while `mise ls` lists no `bun` tool, so the dispatcher had nothing to resolve. `~/.local/share/mise/shims` is PATH entry #1, so `bun` resolved to something that exits non-zero. oh-my-openagent's installer tolerates **bun absent** — the five passing hosts all report `command not found` — but not **bun present and failing**. So (a) is the only option that returns macbook-air to the state the rest of the fleet is already verified working in; (b) and (c) would both make it the sole host with a working `bun` on PATH, i.e. fix the symptom by diverging from the fleet. The real bun at `~/.bun/bin/bun` is untouched and `mise ls` is unchanged (`go java node npm:playwright opencode`).
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q96 — interactive/omo-backup-sweep — irreversible-action
+
+**Question:** Delete the 53 `~/.config/opencode/oh-my-openagent.json.backup-*` files scattered across the fleet?
+**Options considered:** delete / keep as historical record
+**Chosen:** Deleted all 53 (23 air, 10 mini-2018, 10 studio, 7 archs, 3 nickel, 0 lume; ~212 KB).
+**Decided-by:** human
+**Justification:** Every one is orphaned: the live `oh-my-openagent.json` is **absent on all six hosts**, checked before deleting, and the newest backup anywhere is 2026-06-26 — upstream stopped writing that filename around 2026-06-25 and moved its config into `opencode.json`, which is the defect Q94 fixed. They back up a file that no longer exists and that nothing reads. Verified `opencode.json` intact on all six afterwards. The parallel `opencode.json.backup-*` litter on the other five hosts is untouched and still accumulating-at-zero now that Q94's gate landed.
+**Outcome:** applied
+**Ref:** (pending)
