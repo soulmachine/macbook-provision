@@ -21,6 +21,36 @@
   changed_when: false
   failed_when: false
 
+# `docker-completion` is deprecated upstream (brew disables it 2027-05-31) because
+# the `docker` formula now ships the very files it owns, so the two collide over
+#
+#   etc/bash_completion.d/docker
+#   share/fish/vendor_completions.d/docker.fish
+#   share/zsh/site-functions/_docker
+#
+# and the upgrade task below dies with `Error: The brew link step did not complete
+# successfully`, leaving docker UNLINKED — /opt/homebrew/bin/docker simply absent.
+# That does not heal on a re-run: the next `brew upgrade` has nothing left to do, so
+# the play reports success over the half-finished link. Measured 2026-09-15 —
+# mac-studio-m3, archs-mac-mini and mac-mini-m2 carried the formula and all three
+# failed here; the four hosts without it converged. (docker stayed usable on all
+# three via Docker Desktop's own /usr/local/bin/docker, so this cost provisioning
+# runs rather than the tool.)
+#
+# Removing it drops nothing this repo asks for — it is absent from the package list
+# below, a leftover from when completions shipped as their own formula. `state:
+# absent` is a no-op where it was never installed, so this converges everywhere.
+- name: Remove the deprecated docker-completion formula
+  community.general.homebrew:
+    name: docker-completion
+    state: absent
+
+- name: Fix docker symlink conflict left by docker-completion
+  ansible.builtin.command:
+    cmd: brew link --overwrite docker
+  changed_when: false
+  failed_when: false
+
 # `brew update` — which the upgrade task below runs — hard-fails when a tapped
 # repo has vanished upstream. Git falls through to a credential prompt that brew
 # has already disabled, so the whole role dies on someone else's deleted repo:

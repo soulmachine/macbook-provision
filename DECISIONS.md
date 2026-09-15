@@ -1099,3 +1099,33 @@ Each check was verified to **fail** on a broken input, in a throwaway copy so th
 **Known ceiling, accepted:** `pre-commit install` writes `.git/hooks/pre-commit`, which git does not carry, so this protects only clones where it has been run. No role was added to install it fleet-wide because commits originate on one machine and the other six only fast-forward — a provisioner role that reaches into one specific repo checkout to install a git hook would be speculative. README documents the one-time command instead.
 **Outcome:** applied
 **Ref:** a04f6f9
+
+## Q105 — interactive/fleet-converge — deviation
+
+**Question:** `hermes update` exits 1 *after* successfully applying an update, and the role's apply task had `changed_when: true` with no `failed_when` — so a successful update failed the play. What should decide that task?
+**Options considered:** `failed_when: false` alone (silently converges over a genuinely failed update) / `retries`/`until` (cannot help: the non-zero exit is deterministic, not flaky) / diff the checkout revision before and after / tolerate one specific error string (`ImportError: cannot import name 'file_signature'`, which pins the role to one upstream bug)
+**Chosen:** Diff the checkout revision. `git rev-parse HEAD` before and after, update runs with `changed_when: false` + `failed_when: false`, `changed_when` on the revision difference, and an explicit `fail` only when the updater errored **and** the revision did not move.
+**Decided-by:** agent
+**Justification:** This is CLAUDE.md §"Self-update tasks: diff state, don't grep output" applied to a task that predated it, using the shape `roles/codex` already uses for `codex update` (`main.yml:15-27`). Root cause, verified 2026-09-15: `hermes update` git-pulls `~/.hermes/hermes-agent` — its own running source — then an atexit hook and a lazy `tools/browser_tool.py` import load the new `hermes_cli/config.py` against the stale `utils` in `sys.modules`. `file_signature` *is* defined at `utils.py:38` on disk and a fresh interpreter imports the module cleanly, so the error is real in the exit code and false in substance.
+
+Measured during a full fleet convergence: this failed the play at task 150 of ~264 on mac-studio-m3, archs-mac-mini and dev-server-frank-lume — every always-on host with an update pending — while macbook-air and mac-mini-2018 passed only because they are portables that skip the `mac_is_always_on`-gated role. It then "passed" on the next run purely because there was nothing left to do, which is what disguised a deterministic failure as a transient. Consequence: the nightly `update-packages` openroutine task broke on four hosts on every hermes release.
+
+Probed with git rather than `hermes --version` because the breakage is in Python imports, so a git probe cannot be taken down by the thing being measured. Both probes carry `failed_when: false` so `--check` on a host without the clone reads as "no change" instead of failing on a missing directory.
+
+Verified on mac-studio-m3 (no hermes gateway there) by deepening the deliberately-shallow agent clone with `git fetch --depth=2`, rewinding one commit to create a real pending update, and running the role: `update --check` reported "1 commit behind", the update applied, the revision task reported CHANGED, the fail task skipped, and the role exited 0 — the exact case that previously failed the play. Side effect accepted: that clone is now depth 2 rather than depth 1.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q106 — interactive/fleet-converge — deviation
+
+**Question:** `brew upgrade` fails with `Error: The brew link step did not complete successfully` because the deprecated `docker-completion` formula owns the three completion files the `docker` formula now ships. Remove the formula, or force the link?
+**Options considered:** `brew link --overwrite docker` alone (leaves the deprecated formula to collide again on its next upgrade) / uninstall `docker-completion` / pin or ignore the error / do nothing and let the upgrade task tolerate failure
+**Chosen:** Uninstall `docker-completion` (`state: absent`), then `brew link --overwrite docker`, both placed before the upgrade task and beside the existing `Fix fd symlink conflict if present`.
+**Decided-by:** agent
+**Justification:** Removing it drops nothing this repo asks for — `docker-completion` is absent from the role's own package list, a leftover from when completions shipped as a separate formula, and brew itself names the replacement (`brew install --formula docker`) and disables the package on 2027-05-31. `state: absent` is a no-op where it was never installed, so the task converges on all seven hosts.
+
+Why it needed fixing rather than tolerating: the collision left docker **unlinked** — `/opt/homebrew/bin/docker` simply absent — and it does **not** self-heal, because the next `brew upgrade` has nothing left to do and reports success over the half-finished link. Measured 2026-09-15: mac-studio-m3, archs-mac-mini and mac-mini-m2 carried the formula and all three failed here on their first pass; the four hosts without it converged. `docker` stayed usable on all three via Docker Desktop's `/usr/local/bin/docker`, so the cost was recurring provisioning failures rather than a broken tool.
+
+Verified on mac-mini-m2, which was in the broken state: before, `docker-completion` installed and `/opt/homebrew/bin/docker` missing; after one role run, the formula gone and the symlink present, with zero task failures.
+**Outcome:** applied
+**Ref:** (pending)
