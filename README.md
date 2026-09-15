@@ -142,12 +142,6 @@ Intel 机器和虚拟机都压根没有 AppleSmartBattery 节点，整棵 ioreg 
 优先级最高——但这只是覆盖手段，日常使用不需要传。
 
 
-### 可选 Roles（未包含在 `main.yml` 中）
-
-| Role | 说明 |
-|------|------|
-| pearcleaner | macOS 应用卸载清理工具 |
-
 ## 致谢
 
 本项目参考了 [hayajo/macbook-provision](https://github.com/hayajo/macbook-provision)。
