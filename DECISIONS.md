@@ -1025,4 +1025,4 @@ configuration to separate a 1-in-3 rate from zero.
 **Decided-by:** human
 **Justification:** The machine owner confirmed an active OpenClaw gateway there, which matches the observed state: LaunchAgent `com.archauto.openclaw-invoice-watcher` running as PID 56069 (uptime 3h49m at the time of check), a node process out of `~/github.com/ArchAuto-Tech/openclaw-invoice-watcher` under user `archiebot`, whose `src/config.js:11` resolves `join(homedir(), '.openclaw', 'openclaw.json')`. The directory holds 6.3 GB of live gateway state — `credentials`, `identity`, `devices`, `locks`, `flows`, `gateway-supervisor-restart-handoff.json` — not the empty `skills`-only shell Q91 removed elsewhere. This does **not** reopen the repo prohibition in CLAUDE.md: archs-mac-mini has no `/Applications/OpenClaw.app` and no `openclaw` on PATH, so the cask and npm globals removed on 2026-09-08 are still gone; what remains is one third-party application's data directory, and no role in this repo installs, updates or references it. Closes the item Q90 escalated to the machine owner.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 094b473
