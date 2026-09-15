@@ -932,4 +932,4 @@ configuration to separate a 1-in-3 rate from zero.
 **`archs-mac-mini` is a deliberate exception, and not an incomplete purge.** Its `~/.openclaw` is 6.3 GB across 67,046 files (credentials, identity, memory, workspace, tasks) and a loaded LaunchAgent `com.archauto.openclaw-invoice-watcher` runs a **third-party production service** (`ArchAuto-Tech/openclaw-invoice-watcher`, user `archiebot`, not the repo owner) whose `src/config.js:11` reads `join(homedir(), '.openclaw', 'openclaw.json')`. Deleting the directory would break that service. The OpenClaw data itself is dormant (newest write 2026-09-09, sqlite open by no process), but the config file is a live dependency. Removing it needs the machine owner's decision, not a fleet sweep — and the repo can no longer help either way, since the removal role was deleted in `79c33bc` on 2026-09-10.
 **Caveat for the record:** CLAUDE.md states the removal role was retired "once all seven hosts verified clean of its npm packages, cask and LaunchAgents". That verification did not cover the **data directory**, which is why this survived unnoticed on every host.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** e1b0ca9
