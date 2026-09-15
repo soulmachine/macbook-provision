@@ -1057,5 +1057,5 @@ configuration to separate a 1-in-3 rate from zero.
 **Decided-by:** human
 **Justification:** The hold was about authority, not mechanics, and the owner gave the word; the command is byte-identical to the one Q100 ran on the other five. Preserving settings mattered more here than anywhere else on the fleet: `/Users/archiebot/Library/Application Support/JetBrains` is **226 MB**, the largest such directory on any host, and it is still present and unchanged afterwards — app bundles and casks both report 0 remaining. Checked the one live service on that box before and after, since it is not the user's machine: LaunchAgent `com.archauto.openclaw-invoice-watcher` is still running as the same PID 56069 and `~/.openclaw` is still 6.3 GB, so Q98's exception is intact and nothing about the invoice watcher was disturbed. A cask uninstall only quits the bundle identifiers in its own `uninstall` stanza (`com.jetbrains.WebStorm`, `com.jetbrains.pycharm`), so there was no path by which it could have touched that service.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** e408618
 **Supersedes:** Q100 — scope only; Q100's five-host uninstall stands, and only its "archs-mac-mini pending the machine owner" hold is resolved here.
