@@ -12,14 +12,14 @@
 - name: Locate the Homebrew repository (for the tap path)
   ansible.builtin.command:
     cmd: brew --repository
-  register: _brew_repo
+  register: moshi_brew_repo
   changed_when: false
   check_mode: false # read-only probe; run in --check so the tap's creates path is real
 
 - name: Tap rjyo/moshi
   ansible.builtin.command:
     cmd: brew tap rjyo/moshi
-    creates: "{{ _brew_repo.stdout }}/Library/Taps/rjyo/homebrew-moshi"
+    creates: "{{ moshi_brew_repo.stdout }}/Library/Taps/rjyo/homebrew-moshi"
 
 # brew trust rjyo/moshi
 # Homebrew refuses to load formulae from untrusted third-party taps
@@ -45,6 +45,9 @@
   ansible.builtin.command:
     cmd: brew install moshi-hook
   when: _moshi_installed.rc != 0
+  # Gated on the probe above, so reaching this task means moshi-hook is absent
+  # and the install really does change something.
+  changed_when: true
 
 # brew services start moshi-hook
 - name: Check whether the moshi-hook service is running
@@ -61,3 +64,6 @@
   when: >
     (_moshi_service.stdout | default('[]', true) | from_json
      | selectattr('running', 'equalto', true) | list | length) == 0
+  # Gated on the service being stopped, so reaching this task means starting it
+  # really does change something.
+  changed_when: true

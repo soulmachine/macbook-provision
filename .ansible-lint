@@ -1,0 +1,13 @@
+---
+# `role-name` rejects a hyphen in a role directory name (`^[a-z][a-z0-9_]*$`).
+# Twelve roles here are hyphenated — claude-code, host-facts, agent-reach,
+# multica-cli, oh-my-zsh, playwright-cli and the rest — and the names are load
+# bearing: they match the upstream tool each role installs, they appear in
+# main.yml, in every meta/main.yml `dependencies:`, throughout CLAUDE.md, and in
+# the documented ad-hoc form `ansible localhost -m include_role -a name=host-facts`.
+# Renaming twelve directories to satisfy a cosmetic rule would touch all of that
+# for no functional gain, so the rule is skipped rather than obeyed. Every other
+# rule stays on — the point is that `ansible-lint` exits 0 on a clean tree, so a
+# NEW finding is visible instead of being lost among pre-existing ones.
+skip_list:
+  - role-name

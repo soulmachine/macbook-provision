@@ -955,3 +955,18 @@ configuration to separate a 1-in-3 rate from zero.
 **Note:** deleting the role uninstalls nothing. Any host that *did* install scrapy, berkeley-db, bsddb3 or scrapy-deltafetch keeps them; this only stops the repo from managing them. No removal role was written, since nothing on the fleet appears to carry them.
 **Outcome:** applied
 **Ref:** 9261c50
+
+## Q93 — interactive/lint-to-zero — tradeoff
+
+**Question:** `ansible-lint` reported 22 failures, so the check was useless as a gate — a new problem would be invisible among the pre-existing ones. Fix all 22, or silence the rules?
+**Options considered:** fix every finding / skip the noisy rules / leave lint failing
+**Chosen:** Split by whether the rule was telling the truth. Skipped **one** rule repo-wide (`role-name`), silenced **one task** with an explained `noqa` (`risky-shell-pipe`), and genuinely fixed the other nine. `ansible-lint` now reports `Passed: 0 failure(s)` and meets the **`production`** profile, up from `min`.
+**Decided-by:** agent
+**Justification:** Three groups, decided separately rather than with one blanket action.
+**(a) `role-name`, 12 findings — skipped in a new `.ansible-lint`.** The rule rejects a hyphen in a role directory name. The twelve hyphenated names match the upstream tool each role installs and appear in `main.yml`, in `meta/main.yml` dependencies, throughout CLAUDE.md, and in the documented ad-hoc form `ansible localhost -m include_role -a name=host-facts`. Renaming twelve directories to satisfy a cosmetic rule would touch all of that for no functional gain.
+**(b) `risky-shell-pipe`, 1 finding — `noqa` with the reason inline, deliberately NOT fixed.** Adding `pipefail` to the `ioreg | awk` battery probe would be a behavior change, not a fix: the absent case (Intel Macs and VMs publish no AppleSmartBattery node) is a designed-for outcome that must yield empty stdout so the verdict withholds the always-on roles. Under `pipefail`, a future macOS returning non-zero for a missing class would abort the entire play instead — converting "skip this host" into "fail every host". Fail-closed here means withholding roles, not failing the run.
+**(c) the remaining 9 — really fixed.** Five `var-naming[no-role-prefix]` renames (`_brew_repo` → `moshi_brew_repo`; `omo_*` → `opencode_omo_*`), audited first so every usage moved with the declaration, not just the register line. Three `no-changed-when` got `changed_when: true`, which is honest rather than a silencer in all three cases: each task is already gated so it only executes when it really changes something — the homebrew untap loops over `_homebrew_dead_taps.stdout_lines`, empty on a healthy machine, and both moshi tasks are gated on their own probes. One `yaml[empty-lines]` trailing blank line in `main.yml`.
+**Verified, not assumed:** `--syntax-check` passes; `host-facts`, `opencode` and `moshi` run back-to-back at `changed=0` both passes; `host-facts` still classifies this host `mac_is_always_on: true` after the `noqa` edit.
+**Ceiling:** a skipped rule is a standing decision, not a one-off. If the hyphenated names are ever regularised, drop the `skip_list` entry with them.
+**Outcome:** applied
+**Ref:** (pending)

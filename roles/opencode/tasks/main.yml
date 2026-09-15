@@ -28,12 +28,12 @@
 
 - name: Set oh-my-openagent config path
   ansible.builtin.set_fact:
-    omo_config_path: "{{ lookup('env', 'HOME') }}/.config/opencode/oh-my-openagent.json"
+    opencode_omo_config_path: "{{ lookup('env', 'HOME') }}/.config/opencode/oh-my-openagent.json"
 
 - name: Capture oh-my-openagent config checksum before install
   ansible.builtin.stat:
-    path: "{{ omo_config_path }}"
-  register: omo_config_before
+    path: "{{ opencode_omo_config_path }}"
+  register: opencode_omo_config_before
 
 - name: Install and configure oh-my-openagent for OpenCode (non-interactive)
   ansible.builtin.command: >-
@@ -45,19 +45,19 @@
     --openai=no
     --gemini=no
     --copilot=no
-  register: omo_install
+  register: opencode_omo_install
   changed_when: false # real change is reported by the checksum-diff task below
 
 - name: Capture oh-my-openagent config checksum after install
   ansible.builtin.stat:
-    path: "{{ omo_config_path }}"
-  register: omo_config_after
+    path: "{{ opencode_omo_config_path }}"
+  register: opencode_omo_config_after
 
 - name: Report oh-my-openagent configuration change
   ansible.builtin.debug:
     msg: >-
       oh-my-openagent configuration
-      {{ 'updated' if omo_config_changed else 'already up to date' }}
+      {{ 'updated' if opencode_omo_config_changed else 'already up to date' }}
   vars:
-    omo_config_changed: "{{ (omo_config_before.stat.checksum | default('')) != (omo_config_after.stat.checksum | default('')) }}"
-  changed_when: omo_config_changed
+    opencode_omo_config_changed: "{{ (opencode_omo_config_before.stat.checksum | default('')) != (opencode_omo_config_after.stat.checksum | default('')) }}"
+  changed_when: opencode_omo_config_changed

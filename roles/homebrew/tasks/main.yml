@@ -81,6 +81,9 @@
   environment:
     TAP: "{{ item }}"
   loop: "{{ _homebrew_dead_taps.stdout_lines }}"
+  # Honest rather than a lint silencer: the loop is empty on a healthy machine,
+  # so the task only ever executes when there really is a dead tap to remove.
+  changed_when: true
 
 # brew update && brew upgrade: refresh metadata first so the install tasks
 # below see current versions, then upgrade everything already installed —

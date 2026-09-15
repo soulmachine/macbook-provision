@@ -78,7 +78,15 @@
 
 # `ioreg` exits 0 whether or not the class matches, so the absent case
 # arrives as empty stdout rather than an error.
-- name: Read whether a battery is installed
+#
+# `noqa: risky-shell-pipe` — setting `pipefail` here would be a behavior change,
+# not a fix. The absent case (Intel Macs, VMs: no AppleSmartBattery node at all)
+# is a NORMAL, designed-for outcome that must yield empty stdout so the verdict
+# below withholds the always-on roles. With `pipefail`, a future macOS that made
+# `ioreg` exit non-zero on a missing class would abort the whole play instead —
+# turning "skip this host" into "fail every host". Fail-closed here means
+# withholding roles, not failing the run.
+- name: Read whether a battery is installed # noqa: risky-shell-pipe
   ansible.builtin.shell:
     cmd: ioreg -c AppleSmartBattery -r -d 1 | awk -F'= ' '/"BatteryInstalled"/ {print $2; exit}'
   register: mac_batt
