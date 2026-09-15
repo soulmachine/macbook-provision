@@ -1098,4 +1098,4 @@ Each check was verified to **fail** on a broken input, in a throwaway copy so th
 
 **Known ceiling, accepted:** `pre-commit install` writes `.git/hooks/pre-commit`, which git does not carry, so this protects only clones where it has been run. No role was added to install it fleet-wide because commits originate on one machine and the other six only fast-forward — a provisioner role that reaches into one specific repo checkout to install a git hook would be speculative. README documents the one-time command instead.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** a04f6f9
