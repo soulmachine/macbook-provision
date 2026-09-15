@@ -149,7 +149,6 @@ Intel 机器和虚拟机都压根没有 AppleSmartBattery 节点，整棵 ioreg 
 | pearcleaner | macOS 应用卸载清理工具 |
 | pycharm | PyCharm IDE |
 | webstorm | WebStorm IDE（依赖 nodejs） |
-| scrapy | Scrapy 网络爬虫框架 |
 
 ## 致谢
 
