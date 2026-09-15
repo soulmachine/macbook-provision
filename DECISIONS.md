@@ -984,4 +984,4 @@ configuration to separate a 1-in-3 rate from zero.
 **Also corrected:** the role's comment cited oh-my-openagent 4.9.2; npm `latest` is 4.19.4.
 **Ceiling:** the 81 pre-existing backup files are left on disk — the fix stops them accumulating but deletes nothing, since they are the user's files and removing them is a separate call.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 92c7d2d
