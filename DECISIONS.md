@@ -1059,3 +1059,13 @@ configuration to separate a 1-in-3 rate from zero.
 **Outcome:** applied
 **Ref:** e408618
 **Supersedes:** Q100 — scope only; Q100's five-host uninstall stands, and only its "archs-mac-mini pending the machine owner" hold is resolved here.
+
+## Q102 — interactive/doc-drift-fixes — tradeoff
+
+**Question:** Three verified-stale doc claims to fix. The third — `README.md:93-96`, where `gpg`/`docker`/`vscode`/`sublime-text` sat in a `| Role | 说明 |` table despite commit `6b672be` having folded those roles into `roles/homebrew` — could be fixed by deleting the four rows or by re-attributing them.
+**Options considered:** delete the four rows / rewrite each to say "installed by homebrew" / replace all four with one `homebrew` row naming what it installs
+**Chosen:** Replaced the four with a single `homebrew` row listing the role's actual packages and casks, placed after `host-facts` to match `main.yml` order. The other two fixes were literal: deleted `CLAUDE.md`'s `playbook.yml` entry (the file was removed in April 2026 by commit `911df5a`), and corrected "79 places across 25 roles" to the measured 87 across 24, adding "(counted 2026-09-15)" so the next drift is visible rather than silent — house style already dates its measurements.
+**Decided-by:** agent
+**Justification:** Deleting the four rows would have fixed the false attribution by destroying true information: the software is still installed, just by a different role. Re-writing each row in place would have kept four entries for something that is one role. The single row does both jobs — it removes four things that are not roles from a role table, and it documents `homebrew`, which was itself undocumented despite installing more than any other role. **This lowers the headline coverage number from 18/41 to 15/41, and that is the point:** four of the old eighteen were not roles, so the previous figure overstated coverage. 15 is the first honest count. Package list read from the role rather than copied from the old rows, so it reflects the `pycharm` removal in Q99. Verified: all 15 rows resolve to a real `roles/` directory, `ansible-lint` still 0 failures at `production`.
+**Outcome:** applied
+**Ref:** (pending)

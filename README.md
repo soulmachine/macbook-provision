@@ -83,6 +83,7 @@ ansible-playbook main.yml --check
 | Role | 说明 |
 |------|------|
 | host-facts | 机器判定（`mac_family` / `mac_battery_installed` / `mac_is_vm` / `mac_is_always_on`）；不装任何软件 |
+| homebrew | 通用 Homebrew 包与 GUI 应用：git、curl、wget、jq、ripgrep、fd、tree、htop、docker、ffmpeg、gh、gnupg、tmux；cask 含 claude、gemini、pearcleaner、sublime-text、visual-studio-code，Apple Silicon 另加 chatgpt |
 | oh-my-zsh | Zsh 框架及插件管理 |
 | direnv | 目录级环境变量管理 |
 | go | Go 语言（通过 mise 安装） |
@@ -90,10 +91,6 @@ ansible-playbook main.yml --check
 | bun | Bun JavaScript 运行时 |
 | rust | Rust 工具链（通过官方 rustup 安装；额外含 rust-src、rust-analyzer 组件） |
 | jdk | JDK（通过 mise 安装） |
-| gpg | GnuPG 加密工具 |
-| docker | Docker CLI |
-| vscode | Visual Studio Code |
-| sublime-text | Sublime Text 编辑器 |
 | intellij-idea | IntelliJ IDEA（依赖 jdk） |
 | claude-code | Claude Code CLI 及插件（依赖 nodejs） |
 | codex | OpenAI Codex CLI（依赖 nodejs） |

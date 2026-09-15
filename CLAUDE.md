@@ -30,7 +30,6 @@ ssh -o BatchMode=yes -o ConnectTimeout=15 <host> \
   first entry is `host-facts`, which classifies the machine into `mac_family` /
   `mac_battery_installed` / `mac_is_vm` / `mac_is_always_on`; see
   "Always-on-only roles" below.
-- **playbook.yml** — Legacy playbook (not actively used). Defines packages inline with Japanese comments.
 - **bootstrap.sh** — Bootstrap script. Prepares a fresh Mac for Ansible. Also configures **passwordless sudo** so the playbook's sudo subprocesses (Homebrew casks, `pkgutil`/`rm` cleanup, Ansible `become`) run unattended: it installs a `/etc/sudoers.d/<user>-nopasswd` drop-in (`<user> ALL=(ALL) NOPASSWD: ALL`, mode 0440), validated with `visudo -cf` and rolled back if validation fails. The first `sudo` call prompts once on a fresh Mac (to write the drop-in); every `sudo` after — both in the rest of bootstrap and in the playbook — is passwordless, so no `SUDO_ASKPASS` helper or `sudo -A -v` priming is needed anywhere (and `ansible.cfg` uses plain `become_flags = -H`). The script is idempotent — it skips the sudoers setup if the drop-in already exists (`[[ -f ... ]]`, no sudo required to check). It also runs a no-op `osascript` against System Events to trigger the macOS Automation (AppleEvents) consent dialog for the host terminal (e.g. Ghostty) on first run; later runs no longer prompt. This pre-authorizes the terminal so headless osascript calls (e.g. `brew uninstall --cask`'s `tell app to quit`) don't hang on a dialog nobody is around to click.
 - **`.env` / `.envrc`** — Optional, gitignored, and **per-machine**. `.envrc` runs `dotenv_if_exists .env` so direnv loads `.env` into the shell — but direnv is hooked from `~/.zshrc`, so that only ever happens in an **interactive** shell. The `dotenv` role covers every other kind by exporting the same `.env` into `~/.zshenv` inside a managed block; see "Dotenv role specifics" below. The `tailscale` role reads `TAILSCALE_AUTH_KEY` (to auto-run `tailscale up`) and optionally a `devices:core`-scoped OAuth client as `TAILSCALE_OAUTH_CLIENT_ID` + `TAILSCALE_OAUTH_CLIENT_SECRET` (to disable node-key expiry); the `github` and `bun` roles read `GITHUB_TOKEN`, plus an optional `GITHUB_SSH_KEY` (unset across the fleet; see `.env.example`). Values legitimately differ across the fleet — a Tailscale auth key is tailnet-scoped, so hosts on different tailnets must carry different ones, and a host may deliberately carry no `GITHUB_TOKEN` at all. That divergence is correct, not drift to reconcile. New roles that need secrets should follow the same pattern — gate the task on `lookup('env', 'VAR') | length > 0` and document the var in `.env.example`.
 - **inventory** — Holds only `127.0.0.1 ansible_connection=local`, deliberately. Do NOT add remote hosts to it. See "Runs per-host only, never from a control node" below.
@@ -45,7 +44,8 @@ do not fan this playbook out.** The `--limit 127.0.0.1` above is belt-and-braces
 the current inventory it changes nothing, and it keeps the rule true if an entry is ever
 added back.
 
-The roles read `lookup('env', 'HOME')` in 79 places across 25 roles, with zero uses of
+The roles read `lookup('env', 'HOME')` in 87 places across 24 roles (counted
+2026-09-15), with zero uses of
 `ansible_env.HOME`, and pull the `.env` secrets the same way. Ansible evaluates every
 `lookup()` on the **control node**, not the target. Fan this out and one machine's
 `$HOME` and `.env` reach all of them: provisioning `mac-studio-m3` (home
