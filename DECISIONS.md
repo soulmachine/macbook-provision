@@ -970,3 +970,18 @@ configuration to separate a 1-in-3 rate from zero.
 **Ceiling:** a skipped rule is a standing decision, not a one-off. If the hyphenated names are ever regularised, drop the `skip_list` entry with them.
 **Outcome:** applied
 **Ref:** 6ac10a3
+
+## Q94 — interactive/opencode-omo-gate — deviation
+
+**Question:** The `opencode` role ran `npx --yes oh-my-openagent install` on every play and reported its result by checksumming `~/.config/opencode/oh-my-openagent.json` — a file that does not exist on any fleet host. Was the change detection wrong, the path wrong, or both?
+**Options considered:** leave it (it did keep config correct) / fix the path only / fix the path and gate the installer
+**Chosen:** Both. The checksum now watches `opencode.json`, which upstream actually writes, and the installer is gated on a version stamp diffed against npm's `latest`.
+**Decided-by:** agent
+**Justification:** Two defects, each confirmed by evidence rather than inference.
+**(a) Wrong path — change detection had been dead since ~2026-06-25.** Upstream moved its config into `opencode.json` (as `plugin: ["oh-my-openagent@latest"]`, beside this repo's gateway provider block and MCP servers, which it preserves). The dating is from the backup trail: `oh-my-openagent.json.backup-*` stops at 2026-06-25 while `opencode.json.backup-*` runs to the present. With the watched file absent, the before/after checksums compared `''` to `''`, so the report said "already up to date" on every run whatever happened — a gate that could never fire, the inverse of the freeze bug the `skills` role was fixed for.
+**(b) Ungated — one network fetch and one junk file per play.** Each `npx --yes` run rewrote `opencode.json` and left a new `opencode.json.backup-<ts>`. **81 had accumulated (384 KB)** by 2026-09-15, and the four most recent were byte-identical to the live file, so almost all of that work was a no-op. The gate is a stamp file (`.oh-my-openagent-version`) diffed against `npm view oh-my-openagent version`, the claude-mem role's shape — state, not stdout, per CLAUDE.md "Self-update tasks". A failed or offline npm lookup yields an empty string, which cannot satisfy the version test, so a spent registry skips the installer rather than triggering it. The stamp is written only after a successful run, so a failure retries next play.
+**Crucially the gate is not a freeze**, which is the risk this repo has been bitten by before. Four paths were each exercised on mac-mini-m2: no stamp → runs; converged → skips (`changed=0 skipped=2`, backups 83 → 83 across two passes); stamp staled to `4.0.0` → runs and re-stamps to 4.19.4; `oh-my-openagent` stripped from `opencode.json` → runs, reports `installed/updated — opencode.json changed`, and restores the file **byte-identical** to its pre-test checksum with the CLIPROXY block and both MCP servers intact. `--check` passes. `ansible-lint` stays at 0.
+**Also corrected:** the role's comment cited oh-my-openagent 4.9.2; npm `latest` is 4.19.4.
+**Ceiling:** the 81 pre-existing backup files are left on disk — the fix stops them accumulating but deletes nothing, since they are the user's files and removing them is a separate call.
+**Outcome:** applied
+**Ref:** (pending)
