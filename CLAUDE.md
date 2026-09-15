@@ -332,7 +332,7 @@ wrong:
 
 Every role has `tasks/main.yml`. Some also have:
 - `vars/main.yml` — Data (e.g., npm package lists in `nodejs`)
-- `meta/main.yml` — Dependencies (e.g., `intellij-idea` depends on `jdk`, `webstorm` depends on `nodejs`)
+- `meta/main.yml` — Dependencies (e.g., `intellij-idea` depends on `jdk`)
 
 ### Common Task Patterns
 

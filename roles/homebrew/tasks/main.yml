@@ -136,7 +136,6 @@
       # was dropped. This cask is unrelated and stays.
       - gemini
       - pearcleaner
-      - pycharm
       - sublime-text
       - visual-studio-code
     state: present

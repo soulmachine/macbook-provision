@@ -147,8 +147,6 @@ Intel 机器和虚拟机都压根没有 AppleSmartBattery 节点，整棵 ioreg 
 | Role | 说明 |
 |------|------|
 | pearcleaner | macOS 应用卸载清理工具 |
-| pycharm | PyCharm IDE |
-| webstorm | WebStorm IDE（依赖 nodejs） |
 
 ## 致谢
 
