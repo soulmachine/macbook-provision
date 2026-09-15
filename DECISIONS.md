@@ -1048,3 +1048,14 @@ configuration to separate a 1-in-3 rate from zero.
 **archs-mac-mini is excluded and this is a hold, not a decision.** It is the one fleet host that is not the user's own — the 2026-09-08 OpenClaw removal excluded it on exactly that ground, and Q98 preserved its `~/.openclaw` for a live service belonging to someone else. It carries JetBrains settings under user `archiebot`, which indicates active use, and uninstalling a working IDE out from under another person is not recoverable by re-running a playbook. Pending the machine owner's word.
 **Outcome:** applied
 **Ref:** afeb3a0
+
+## Q101 — interactive/jetbrains-uninstall-archs — irreversible-action
+
+**Question:** Q100 held archs-mac-mini back from the WebStorm/PyCharm uninstall pending the machine owner. Proceed there too?
+**Options considered:** run the same plain uninstall / leave it as a permanent exception
+**Chosen:** Ran the identical plain `brew uninstall --cask webstorm pycharm` — no `--zap` — on archs-mac-mini. All six hosts that carried the two IDEs are now clear.
+**Decided-by:** human
+**Justification:** The hold was about authority, not mechanics, and the owner gave the word; the command is byte-identical to the one Q100 ran on the other five. Preserving settings mattered more here than anywhere else on the fleet: `/Users/archiebot/Library/Application Support/JetBrains` is **226 MB**, the largest such directory on any host, and it is still present and unchanged afterwards — app bundles and casks both report 0 remaining. Checked the one live service on that box before and after, since it is not the user's machine: LaunchAgent `com.archauto.openclaw-invoice-watcher` is still running as the same PID 56069 and `~/.openclaw` is still 6.3 GB, so Q98's exception is intact and nothing about the invoice watcher was disturbed. A cask uninstall only quits the bundle identifiers in its own `uninstall` stanza (`com.jetbrains.WebStorm`, `com.jetbrains.pycharm`), so there was no path by which it could have touched that service.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q100 — scope only; Q100's five-host uninstall stands, and only its "archs-mac-mini pending the machine owner" hold is resolved here.
