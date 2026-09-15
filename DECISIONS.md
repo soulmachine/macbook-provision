@@ -943,4 +943,4 @@ configuration to separate a 1-in-3 rate from zero.
 **Justification:** These three differ from Q90's set in history but not in present contents: OpenClaw *was* installed here (the role was gated on `mac_is_always_on`, `c45c12f`) and the 2026-09-08 removal purged it properly, leaving 151/152/129 agentstow symlinks and **zero** regular files. The same guard was applied unchanged — abort unless `openclaw` is absent from PATH and `/Applications`, the only entry is `skills`, and no regular file exists — and all three passed. Verified after, with an `agentstow sync` first: the directory stays gone on all six, 0 dangling links in `.claude`/`.pi`/`.hermes` on every host, and the store counts are unchanged. `archs-mac-mini` re-checked and untouched: 67,046 files, 6.3 GB, `openclaw.json` still readable, invoice-watcher process still running.
 **Supersedes:** Q90 — only its scope. Q90's decision to exclude `archs-mac-mini`, and its reasoning, stand unchanged.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 62a4305
