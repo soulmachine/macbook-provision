@@ -1005,3 +1005,14 @@ configuration to separate a 1-in-3 rate from zero.
 **Justification:** Every one is orphaned: the live `oh-my-openagent.json` is **absent on all six hosts**, checked before deleting, and the newest backup anywhere is 2026-06-26 — upstream stopped writing that filename around 2026-06-25 and moved its config into `opencode.json`, which is the defect Q94 fixed. They back up a file that no longer exists and that nothing reads. Verified `opencode.json` intact on all six afterwards. The parallel `opencode.json.backup-*` litter on the other five hosts is untouched and still accumulating-at-zero now that Q94's gate landed.
 **Outcome:** applied
 **Ref:** 64d27c3
+
+## Q97 — interactive/opencode-backup-sweep — irreversible-action
+
+**Question:** Clear the `~/.config/opencode/opencode.json.backup-*` litter on the rest of the fleet, as already done on mac-mini-m2?
+**Options considered:** delete everywhere / delete only where provably redundant / keep as rollback material
+**Chosen:** Deleted all 236 (44 air, 33 mini-2018, 55 studio, 44 archs, 41 lume, 19 nickel) behind a superset guard, joining the 83 cleared on mac-mini-m2 earlier the same day — 319 files fleet-wide.
+**Decided-by:** human
+**Justification:** These are the litter Q94 diagnosed: every ungated `npx oh-my-openagent install` rewrote `opencode.json` and left a timestamped copy, so the pile measures how often the role ran, not how often anything changed — 44 files collapsing to 6 distinct contents on macbook-air, 55 to 5 on mac-studio-m3. Deleted by script (`/tmp/oc-backup-sweep.py`) that flattens every backup to dotted key paths plus scalar list members (so a dropped plugin or `enabled_providers` entry surfaces as a missing item, not a silent diff), diffs each against the live config, and **aborts the host** on any key present in a backup and absent from the live file, or any backup that fails to parse. Zero missing keys and zero unreadable files on all six, so nothing unique was destroyed. Verified afterwards: 0 backups, `opencode.json` valid JSON, and the role reporting `already up to date — skipped` on every host — Q94's gate holds, so the pile does not start rebuilding.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q96 — scope only; Q96 swept the orphaned `oh-my-openagent.json.backup-*` files and recorded this parallel litter as deliberately untouched. That exclusion no longer holds; Q96's own deletion stands.
