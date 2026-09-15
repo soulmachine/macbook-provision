@@ -175,7 +175,11 @@
 
 - name: Symlink ~/.claude/skills/herdr to ~/.agents/skills/herdr
   ansible.builtin.file:
-    src: "{{ lookup('env', 'HOME') }}/.agents/skills/herdr"
+    # Relative, not absolute: this is agentstow's canonical link form, and it
+    # owns the same path. An absolute target reads as "not in canonical form" in
+    # `agentstow status`, so the two rewrite each other forever — one CHANGED
+    # task per play, and a re-link on every `agentstow sync`.
+    src: "../../.agents/skills/herdr"
     dest: "{{ lookup('env', 'HOME') }}/.claude/skills/herdr"
     state: link
     force: true
