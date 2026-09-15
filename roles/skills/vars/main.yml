@@ -10,7 +10,17 @@ skills_home: "{{ lookup('env', 'HOME') }}"
 # one directory therefore covers every agent's content.
 skills_store: "{{ skills_home }}/.agents/skills"
 
-# Sources the skills CLI owns and re-fetches.
+# Every skill source the CLI owns and re-fetches, declared in one place. A source
+# belongs here rather than in the role for the app it accompanies: this role is
+# source-agnostic, so adding a line costs nothing, while a per-role copy would repeat
+# the fingerprint in tasks/main.yml once per role and report a change in all of them.
+#
+# The bottom three moved here from roles/cmux, roles/cloudflare and roles/obsidian,
+# which installed them behind `creates:` sentinels and so had frozen all 32 at
+# 2026-07-02 — the same freeze this role was fixed for. Those roles keep their app
+# installs. Their upstream URL form (`https://github.com/kepano/obsidian-skills`)
+# normalises to the owner/repo spelling used here; the lock file records the latter for
+# both, so the change adopts the existing entries rather than duplicating them.
 #
 # `soulmachine/skills` is deliberately absent. Its skills reach the store as
 # agentstow symlinks into ~/github.com/soulmachine/skills/ (author in git, `agentstow
@@ -22,3 +32,6 @@ skills_sources:
   - mattpocock/skills
   - mvanhorn/last30days-skill
   - tt-a1i/archify
+  - manaflow-ai/cmux
+  - cloudflare/skills
+  - kepano/obsidian-skills

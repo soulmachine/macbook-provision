@@ -18,7 +18,6 @@
     state: link
     force: true
 
-- name: Install cmux skills for all agents
-  ansible.builtin.command:
-    cmd: npx skills add manaflow-ai/cmux -g -y --all
-    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/cmux"
+# The cmux skills are installed by the `skills` role, which lists manaflow-ai/cmux in
+# skills_sources and re-fetches it every play. They lived here behind a `creates:`
+# sentinel, which froze all 19 at 2026-07-02.

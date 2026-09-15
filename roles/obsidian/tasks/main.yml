@@ -9,7 +9,6 @@
   register: obsidian_defuddle_install
   changed_when: "'added' in obsidian_defuddle_install.stdout"
 
-- name: Install Obsidian skills for all agents
-  ansible.builtin.command:
-    cmd: npx skills add https://github.com/kepano/obsidian-skills --all -g -y
-    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/obsidian-cli"
+# The Obsidian skills are installed by the `skills` role, which lists
+# kepano/obsidian-skills in skills_sources and re-fetches it every play. They lived
+# here behind a `creates:` sentinel, which froze all 5 at 2026-07-02.
