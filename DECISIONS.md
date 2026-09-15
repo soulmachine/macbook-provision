@@ -933,3 +933,14 @@ configuration to separate a 1-in-3 rate from zero.
 **Caveat for the record:** CLAUDE.md states the removal role was retired "once all seven hosts verified clean of its npm packages, cask and LaunchAgents". That verification did not cover the **data directory**, which is why this survived unnoticed on every host.
 **Outcome:** applied
 **Ref:** e1b0ca9
+
+## Q91 — interactive/openclaw-dir-cleanup — irreversible-action
+
+**Question:** Q90 removed `~/.openclaw` only on the three `mac_is_always_on == false` hosts, leaving an empty `skills/`-only shell on mac-mini-m2, mac-studio-m3 and dev-server-frank-lume. Should those go too?
+**Options considered:** remove them as well / keep them, since OpenClaw genuinely was installed on these hosts once
+**Chosen:** Removed on all three. `~/.openclaw` now exists on exactly one host in the fleet, `archs-mac-mini`, which stays for the reason Q90 gives.
+**Decided-by:** human
+**Justification:** These three differ from Q90's set in history but not in present contents: OpenClaw *was* installed here (the role was gated on `mac_is_always_on`, `c45c12f`) and the 2026-09-08 removal purged it properly, leaving 151/152/129 agentstow symlinks and **zero** regular files. The same guard was applied unchanged — abort unless `openclaw` is absent from PATH and `/Applications`, the only entry is `skills`, and no regular file exists — and all three passed. Verified after, with an `agentstow sync` first: the directory stays gone on all six, 0 dangling links in `.claude`/`.pi`/`.hermes` on every host, and the store counts are unchanged. `archs-mac-mini` re-checked and untouched: 67,046 files, 6.3 GB, `openclaw.json` still readable, invoice-watcher process still running.
+**Supersedes:** Q90 — only its scope. Q90's decision to exclude `archs-mac-mini`, and its reasoning, stand unchanged.
+**Outcome:** applied
+**Ref:** (pending)
