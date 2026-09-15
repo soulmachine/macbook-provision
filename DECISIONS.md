@@ -1083,3 +1083,19 @@ Every row was written from the role's own task files, not from the previous tabl
 Verified: table order `diff`s clean against `main.yml`, all 41 rows resolve to a real `roles/` directory, coverage 41/41.
 **Outcome:** applied
 **Ref:** 70677f2
+
+## Q104 — interactive/pre-commit-gates — deviation
+
+**Question:** Every quality gate in this repo was enforced by hand — `ansible-lint` when someone remembered, the `DECISIONS.md` numbering `awk` pasted per session, the README↔`main.yml` order invariant run exactly once. Automate them, and with what?
+**Options considered:** pre-commit with local hooks / a Makefile or `just` target / CI (no forge workflow exists here) / leave by hand
+**Chosen:** `.pre-commit-config.yaml` with three `repo: local` hooks, backed by two new scripts in `scripts/`. `pre-commit` was already installed by this repo's own `python` role and wired to nothing — the one tool it provisions and never uses.
+**Decided-by:** agent
+**Justification:** All three gates pass on a clean tree **today**, which is the whole point of doing this now: a new failure is visible instead of drowning in pre-existing noise, the same reasoning that made `.ansible-lint` skip `role-name` rather than tolerate a permanently red run. `repo: local` throughout because these check this repo's own invariants, have no upstream, and so need no pinned rev and no network fetch. `ansible-lint` is scoped to `\.(ya?ml)$` rather than `always_run`: it measures 8.5s, worth paying when a role changes and not worth paying to edit a paragraph.
+
+Each check was verified to **fail** on a broken input, in a throwaway copy so the real files were never touched — an untested gate is decoration. Renumbering `Q50`→`Q51` produced `line 502: Q51 is entry #50`; deleting README's `ghostty` row produced a `-ghostty` diff line; and swapping `zellij`/`tmux` was caught too, which is the case a set-comparison would pass.
+
+**yamllint was deliberately excluded.** On defaults it reports 336 findings here: 301 `line-length` against a house style of long explanatory prose, 3 inside the gitignored `.serena/`, 31 cosmetic `too few spaces before comment` (several on the `# noqa:` directives ansible-lint itself requires), and exactly 1 substantive — `roles/hermes/tasks/install.yml` is the only tasks file with no `---`. Adopting it would mean a config disabling most of it to surface ~30 nits; ansible-lint already covers the YAML that carries meaning.
+
+**Known ceiling, accepted:** `pre-commit install` writes `.git/hooks/pre-commit`, which git does not carry, so this protects only clones where it has been run. No role was added to install it fleet-wide because commits originate on one machine and the other six only fast-forward — a provisioner role that reaches into one specific repo checkout to install a git hook would be speculative. README documents the one-time command instead.
+**Outcome:** applied
+**Ref:** (pending)

@@ -1,0 +1,42 @@
+---
+# Gates that were previously held by hand. All three pass on a clean tree today,
+# so a NEW failure is visible instead of being lost among pre-existing noise —
+# the same reason `.ansible-lint` skips `role-name` rather than tolerating a
+# permanently red run.
+#
+# Every hook is `repo: local`: these check THIS repo's own invariants and have no
+# upstream. That also means no pinned rev to keep current and no network fetch.
+#
+# `pre-commit install` writes .git/hooks/pre-commit, which git does not carry, so
+# this file alone protects nothing — each clone has to run that once. See README.
+#
+# yamllint is deliberately absent. On its defaults it reports 336 findings here,
+# 301 of them `line-length` against a house style of long explanatory prose, and
+# 3 more inside the gitignored .serena/. Adopting it would mean a config that
+# disables most of it to surface ~30 cosmetic comment-spacing nits. ansible-lint
+# already covers the YAML that carries meaning.
+repos:
+  - repo: local
+    hooks:
+      # Scoped to YAML rather than always_run: it takes ~8.5s, which is worth
+      # paying when a role changes and not worth paying to edit a paragraph.
+      - id: ansible-lint
+        name: ansible-lint (production profile)
+        entry: ansible-lint
+        language: system
+        pass_filenames: false
+        files: \.(yml|yaml)$
+
+      - id: decisions-numbering
+        name: DECISIONS.md numbering is continuous
+        entry: scripts/check-decisions-numbering.sh
+        language: script
+        pass_filenames: false
+        files: ^DECISIONS\.md$
+
+      - id: readme-roles
+        name: README role table matches main.yml
+        entry: scripts/check-readme-roles.sh
+        language: script
+        pass_filenames: false
+        files: ^(README\.md|main\.yml|roles/)

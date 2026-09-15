@@ -76,6 +76,20 @@ ansible-playbook main.yml --check
 
 > `TAILSCALE_API_ACCESS_TOKEN`（个人 API access token）**已不再支持**：它是 fully-permitted（没有 scope）且 90 天后过期。如果某台机器的 `.env` 里还留着它而没有 OAuth client，tailscale role 会带着迁移步骤直接失败，而不是静默跳过。
 
+### 5. 可选：启用 pre-commit 检查
+
+```bash
+pre-commit install
+```
+
+仓库自带三条 `repo: local` 检查，针对的都是本仓库自身的不变量：`ansible-lint`（production profile）、`DECISIONS.md` 编号连续性、README role 表与 `main.yml` 的顺序一致性。三条在干净工作树上都通过，所以新出现的失败是**可见的**，而不会淹没在既有噪音里。
+
+`pre-commit install` 写入的是 `.git/hooks/pre-commit`，**git 不携带这个文件**，所以每个 clone 都要各自执行一次。想手工跑一遍全部检查：
+
+```bash
+pre-commit run --all-files
+```
+
 ## 包含的 Roles
 
 ### Playbook 中的 Roles（`main.yml`）
