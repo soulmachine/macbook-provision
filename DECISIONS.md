@@ -969,4 +969,4 @@ configuration to separate a 1-in-3 rate from zero.
 **Verified, not assumed:** `--syntax-check` passes; `host-facts`, `opencode` and `moshi` run back-to-back at `changed=0` both passes; `host-facts` still classifies this host `mac_is_always_on: true` after the `noqa` edit.
 **Ceiling:** a skipped rule is a standing decision, not a one-off. If the hyphenated names are ever regularised, drop the `skip_list` entry with them.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 6ac10a3
