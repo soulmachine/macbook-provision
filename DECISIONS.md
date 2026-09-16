@@ -1214,3 +1214,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** e9269cf
 **Supersedes:** Q112 — only its placement of the failure inside the role. Its message, and the `failed_when: false` that lets one run report every broken pin, both stand.
+
+## Q114 — interactive/claude-code — deviation
+
+**Question:** The `claude-code` role decided `changed` for its six plugins from a NEGATED pair of stdout sentinels, the one shape CLAUDE.md rules out. Convert it to a state diff, and if so against what?
+**Options considered:** leave it (it works today) / add a third sentinel as they appear / diff `gitCommitSha` from `installed_plugins.json`
+**Chosen:** Diff `gitCommitSha` from `~/.claude/plugins/installed_plugins.json` around the update, the same ledger and the same shape the `ponytail` role already uses. The six plugin names moved to a new `roles/claude-code/vars/main.yml`, which also removes the triple duplication across the install, update and enable tasks, and the ledger path with them — the pre-existing `Check installed plugins` slurp now reads the same variable rather than respelling the path, so the role gained no net `lookup('env', 'HOME')` and `scripts/check-home-lookup-count.sh` still reads 89.
+**Decided-by:** human
+**Justification:** The old gate enumerated the two no-op phrasings known when it was written, so any third one — or a failure printing neither — reports a phantom change on all six, and a failed update reads as a change rather than an error. Only `gitCommitSha` is compared, never whole records: `lastUpdated` is rewritten on a no-op update (observed on planning-with-files), so a wholesale comparison would itself be the phantom. Proved the comparison against three fixtures — a moved sha reads changed, a `lastUpdated`-only difference reads unchanged, identical reads unchanged. Two further findings from testing: `claude plugin update` does not rewrite `gitCommitSha` on a no-op, so the gate is quiet on a converged host; and several records in this ledger carry no sha at all, which `default('')` keeps stable rather than treating as drift. Three consecutive runs reported `changed=0` and `--check` was clean.
+**Outcome:** applied
+**Ref:** (pending)

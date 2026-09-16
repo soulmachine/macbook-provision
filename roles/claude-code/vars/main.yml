@@ -1,0 +1,22 @@
+---
+# The Claude Code plugins this role manages, named `plugin@marketplace` the way the CLI and
+# `installed_plugins.json` both spell them. One list because three tasks need exactly the same
+# set — install, update and enable — and they must not drift apart: a plugin added to the
+# install list but not the update list would be installed once and then frozen, which is the
+# freeze the `skills` role had to be rescued from.
+#
+# The marketplaces that carry them are NOT extracted: that list is used once, and the two are
+# not in step — `frontend-design` and `feature-dev` both come from claude-plugins-official.
+claude_code_plugins:
+  - frontend-design@claude-plugins-official
+  - feature-dev@claude-plugins-official
+  - planning-with-files@planning-with-files
+  - claude-mem@thedotmack
+  - swe-workflow@swe-workflow
+  - claude-mermaid@claude-mermaid
+
+# `~/.claude/plugins/installed_plugins.json`, the ledger the update gate diffs. Claude Code
+# stamps a `gitCommitSha` into it per install record, and that moves only when a new upstream
+# commit actually lands — so it is the state to compare, per CLAUDE.md "Self-update tasks:
+# diff state, don't grep output". The same file the `ponytail` role diffs for its own plugin.
+claude_code_plugin_ledger: "{{ lookup('env', 'HOME') }}/.claude/plugins/installed_plugins.json"

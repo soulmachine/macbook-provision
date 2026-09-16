@@ -37,7 +37,7 @@
 
 - name: Check installed plugins
   ansible.builtin.slurp:
-    src: "{{ lookup('env', 'HOME') }}/.claude/plugins/installed_plugins.json"
+    src: "{{ claude_code_plugin_ledger }}"
   register: claude_code_plugins_raw
   failed_when: false
 
@@ -64,33 +64,64 @@
 
 - name: Install plugins
   ansible.builtin.command: claude plugin install {{ item }}
-  loop:
-    - frontend-design@claude-plugins-official
-    - feature-dev@claude-plugins-official
-    - planning-with-files@planning-with-files
-    - claude-mem@thedotmack
-    - swe-workflow@swe-workflow
-    - claude-mermaid@claude-mermaid
+  loop: "{{ claude_code_plugins }}"
   when: "item not in claude_code_plugins_content"
   changed_when: true
 
+# The update below decides `changed` by diffing the ledger around it, not by reading its own
+# stdout. It used to do the latter, with a NEGATED pair of sentinels — unchanged when stdout
+# said "already" or "refreshed from source" — which is the one shape CLAUDE.md rules out:
+# "never a negated one". It enumerates the no-op phrasings known at the time, so a third one,
+# or any failure printing neither, reports a phantom change on all six plugins; and a failed
+# update would surface as a change rather than as an error.
+#
+# `gitCommitSha` is the honest signal: Claude Code stamps it per install record and it moves
+# only when a new upstream commit lands. The `ponytail` role already diffs this same file for
+# its own plugin, so this is that pattern applied to the six here rather than a new idea.
+#
+# `e30=` is base64 `{}`, for the fresh-host and `--check` cases where the ledger does not
+# exist yet — without it `b64decode | from_json` fails on an empty read.
+- name: Read the plugin ledger before updating
+  ansible.builtin.slurp:
+    src: "{{ claude_code_plugin_ledger }}"
+  register: claude_code_ledger_before
+  failed_when: false
+
 - name: Update plugins to the latest version
   ansible.builtin.command: claude plugin update {{ item }}
-  loop:
-    - frontend-design@claude-plugins-official
-    - feature-dev@claude-plugins-official
-    - planning-with-files@planning-with-files
-    - claude-mem@thedotmack
-    - swe-workflow@swe-workflow
-    - claude-mermaid@claude-mermaid
-  register: claude_code_update
-  # Two no-op outcomes: versioned plugins print "already at the latest version";
-  # unversioned ones (version "unknown", e.g. frontend-design/feature-dev) can't
-  # report a version so they always print "refreshed from source" instead. Neither
-  # is a real change — treat both as unchanged so re-runs report changed=0.
-  changed_when:
-    - "'already' not in claude_code_update.stdout"
-    - "'refreshed from source' not in claude_code_update.stdout"
+  loop: "{{ claude_code_plugins }}"
+  changed_when: false
+
+- name: Read the plugin ledger after updating
+  ansible.builtin.slurp:
+    src: "{{ claude_code_plugin_ledger }}"
+  register: claude_code_ledger_after
+  failed_when: false
+
+# Only `gitCommitSha` is compared, never the whole record: `lastUpdated` is rewritten on a
+# no-op update (observed on planning-with-files, 2026-09-16), so comparing records wholesale
+# would report a phantom change on every run — the very thing this replaces.
+#
+# `sort(attribute='key')` makes the comparison independent of the order the CLI happens to
+# write the map in, and `default('')` keeps a record that carries no sha at all — several in
+# this ledger do not — reading as a stable empty string on both sides rather than as drift.
+- name: Check whether any plugin was updated
+  vars:
+    claude_code_shas_before: >-
+      {{ (claude_code_ledger_before.content | default('e30=') | b64decode | from_json).plugins
+         | default({}) | dict2items | selectattr('key', 'in', claude_code_plugins)
+         | sort(attribute='key') | map(attribute='value') | flatten
+         | map(attribute='gitCommitSha', default='') | list }}
+    claude_code_shas_after: >-
+      {{ (claude_code_ledger_after.content | default('e30=') | b64decode | from_json).plugins
+         | default({}) | dict2items | selectattr('key', 'in', claude_code_plugins)
+         | sort(attribute='key') | map(attribute='value') | flatten
+         | map(attribute='gitCommitSha', default='') | list }}
+  ansible.builtin.debug:
+    msg: >-
+      Claude Code plugins
+      {{ 'updated' if claude_code_shas_before != claude_code_shas_after else 'already up to date' }}
+  changed_when: claude_code_shas_before != claude_code_shas_after
 
 # Read the file right before writing it, below every `claude plugin` step. The
 # CLI writes this same file too — `enable` adds to `enabledPlugins`, and the
@@ -187,12 +218,6 @@
 # enabledPlugins map this adds to.
 - name: Enable plugins
   ansible.builtin.command: claude plugin enable {{ item }}
-  loop:
-    - frontend-design@claude-plugins-official
-    - feature-dev@claude-plugins-official
-    - planning-with-files@planning-with-files
-    - claude-mem@thedotmack
-    - swe-workflow@swe-workflow
-    - claude-mermaid@claude-mermaid
+  loop: "{{ claude_code_plugins }}"
   when: "item not in (claude_code_settings.enabledPlugins | default({}))"
   changed_when: true

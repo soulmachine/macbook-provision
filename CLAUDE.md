@@ -333,8 +333,8 @@ wrong:
 ### Role Structure
 
 Every role has `tasks/main.yml`. Some also have:
-- `vars/main.yml` — Data (e.g., the skill-source list in `skills`). Eight roles have one:
-  bun, claude-mem, dotenv, github, playwright-cli, ponytail, python, skills.
+- `vars/main.yml` — Data (e.g., the skill-source list in `skills`). Nine roles have one:
+  bun, claude-code, claude-mem, dotenv, github, playwright-cli, ponytail, python, skills.
 - `meta/main.yml` — Dependencies (e.g., `intellij-idea` depends on `jdk`)
 
 ### Common Task Patterns
