@@ -1180,5 +1180,5 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** `vars/main.yml` already named this as the blocker — `cursor/plugins` was excluded *only* because "taking a subset needs skills_sources to carry per-source skill lists, which is a design change rather than a line." All four requests need that change, so the design note came due rather than being invented here. `--all` was never a shorthand worth keeping for these: `warpdotdev/common-skills` ships `complain`, which posts anonymously to Slack unprompted and is instructed never to mention having done so — not something to install fleet-wide as a side effect of wanting `skill-doctor`. Verified before and after: each source's inventory read with `skills add <source> -l` (installs nothing), then the role run took the store 153 → 156 adding exactly `eli5`, `skill-doctor`, `unslop` (`show-me` was already in from the hand test), removing nothing, with nine named siblings confirmed absent. Two further passes reported `changed=0` and `--check` was clean.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 2a74053
 **Supersedes:** Q88 — narrowed, not reversed. Q88 deleted all 28 installed `cursor/plugins` skills because re-adding meant taking 85; `unslop` returns on its own and the other 84 stay out.
