@@ -1233,7 +1233,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** The two files have different readers and different jobs: CLAUDE.md is agent-facing and explains why each task is shaped the way it is, README is operator-facing and answers "what will this do to my machine and what do I still have to do myself". Duplicating would create a second copy to keep in sync, and this repo has measured form on exactly that failure (Q102's ghost rows, and `scripts/check-home-lookup-count.sh` existing at all). The selection rule was: include it only if a human running the playbook would be surprised or misled without it. Highest-value entry is `~/.pi/agent/settings.json`, overwritten wholesale on every run with no gate, so an in-app `/settings` edit is silently lost.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** a108480
 
 ## Q116 — interactive/skills — deviation
 
@@ -1243,4 +1243,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** The old figure was written when `skills_sources` held four entries and survived every later addition because nothing re-measured it — the same doc-rot this repo builds checkers against. Restating it in user-facing docs would have propagated a number wrong by roughly 7x, and dropping it silently would have discarded the actual justification for having no gate. The cost is real and worth stating plainly: it buys the only mechanism that pulls upstream skill edits down. The comment now records the old figure and why it went stale, so the correction is not itself mistaken for drift later.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** a108480
