@@ -1129,3 +1129,19 @@ Why it needed fixing rather than tolerating: the collision left docker **unlinke
 Verified on mac-mini-m2, which was in the broken state: before, `docker-completion` installed and `/opt/homebrew/bin/docker` missing; after one role run, the formula gone and the symlink present, with zero task failures.
 **Outcome:** applied
 **Ref:** 88f7f75
+
+## Q107 — interactive/doc-drift — tradeoff
+
+**Question:** An audit found eight verified stale claims across CLAUDE.md and README.md, three of them stale *numbers* — and one of those was invalidated by my own commit hours after the number was last corrected. Fix the eight, or also stop the count class of drift recurring?
+**Options considered:** fix the eight only / fix them and drop the precise figures from the prose / fix them and add a pre-commit gate that recomputes the figure
+**Chosen:** Fixed all eight, removed the *duplicate* figure so only one remains, and added `scripts/check-home-lookup-count.sh` as a fourth pre-commit hook.
+**Decided-by:** agent
+**Justification:** The `lookup('env', 'HOME')` count is not decoration — it is the evidence for "never fan this playbook out", since Ansible resolves every lookup on the control node and each one is a place another host's `$HOME` would leak in. It was corrected to 87 in `175f807` and was wrong again the same afternoon: `88f7f75` added two `chdir: "{{ lookup('env', 'HOME') }}"` lines to the hermes role, making it 89. A claim that goes stale within hours of being corrected, and that is only caught by a full audit, is worth a gate — the Q104 reasoning applied to a number instead of a table.
+
+CLAUDE.md carried the figure **twice**, fourteen lines apart, and `175f807` had updated only the first — so the two disagreed (87 vs 79). The second was reworded to carry no figure at all rather than be kept in sync: one source of truth cannot contradict itself. The gate deliberately checks one number, and also asserts the accompanying "zero uses of `ansible_env.HOME`" claim, since the count means nothing if the alternative is in use.
+
+Two of the eight were worse than stale counts and are why this was worth doing at all: README told the reader the Network Extension step would pause and wait for Enter (the role has used `fail` since the pause was removed — `ansible.builtin.pause` only warns on non-interactive stdin and lets the play run on to die somewhere unrelated), and it promised a migration tripwire on a leftover `TAILSCALE_API_ACCESS_TOKEN` that was retired 2026-09-10. One tells you to wait for a prompt that never comes; the other promises a safety net that does not exist.
+
+Verified the gate fails before trusting it — an untested gate is decoration. It was wrong twice on the way: the claim-matching regex expected a character that is not there, and the counting pattern left its parens unescaped, which in ERE is a group and silently matched nothing, reporting "0 lookups" rather than erroring. Both found only by running it. It now passes on the real tree (89 across 24, matching the audit's independent count) and fails on a wrong figure, on an added lookup, and on an introduced `ansible_env.HOME` — each checked in a throwaway copy so the real files were never touched.
+**Outcome:** applied
+**Ref:** (pending)

@@ -52,13 +52,15 @@ ansible-playbook main.yml --check
 
 #### Network Extension 自动检测
 
-在执行 `tailscale up` 之前，role 会用 `systemextensionsctl list` 检查 Tailscale 的 Network Extension 是否处于 `[activated enabled]` 状态。如果没有（包括「尚未启用」「等待用户授权」或「Tailscale.app 从未启动过所以扩展还没注册」三种情况），role 会自动 `open -a Tailscale` 并暂停，提示用户在 GUI 中完成下面这一步：
+在执行 `tailscale up` 之前，role 会用 `systemextensionsctl list` 检查 Tailscale 的 Network Extension 是否处于 `[activated enabled]` 状态。如果没有（包括「尚未启用」「等待用户授权」或「Tailscale.app 从未启动过所以扩展还没注册」三种情况），role 会自动 `open -a Tailscale`（这一步本身就是注册扩展、让开关出现的前提），然后**直接让 play 失败**，并在失败信息里给出下面这一步：
 
 > System Settings → General → Login Items & Extensions → Network Extensions → 把 **Tailscale** 开关打开
 
 如果同时弹出 "Tailscale would like to add VPN configurations" 对话框，点 **Allow** 即可（Touch ID / 密码）。
 
-打开开关后按 Enter 继续。检测以 `systemextensionsctl` 的实时输出为准——没有 marker 文件，下次运行会自动重新探测：扩展已启用则跳过这一步，扩展被关掉则会再次提示。
+打开开关后**重新运行 playbook**。这里刻意用 `fail` 而不是 `pause`：`ansible.builtin.pause` 在非交互 stdin 下只会警告一句 "Not waiting for response to prompt" 就继续往下跑，于是 play 会在几个 task 之后死在看似无关的地方（`tailscale up` 报 `No such file or directory: b'tailscale'`）。`fail` 在交互和 headless 下行为一致。
+
+检测以 `systemextensionsctl` 的实时输出为准——没有 marker 文件，下次运行会自动重新探测：扩展已启用则跳过这一步，扩展被关掉则会再次提示。
 
 #### 环境变量
 
@@ -66,15 +68,16 @@ ansible-playbook main.yml --check
 
 | 变量 | 作用 | 必填 |
 |------|------|------|
-| `TAILSCALE_AUTH_KEY` | 自动执行 `sudo tailscale up --accept-dns --operator=$USER --auth-key=...` 把本机加入 tailnet。在 https://login.tailscale.com/admin/settings/keys 创建一个 **Reusable** key 即可。 | 否（不设则需手工 `tailscale up`） |
+| `TAILSCALE_AUTH_KEY` | 自动执行 `sudo tailscale up --accept-dns --accept-routes --operator=$USER --auth-key=...` 把本机加入 tailnet。在 https://login.tailscale.com/admin/settings/keys 创建一个 **Reusable** key 即可。 | 否（不设则需手工 `tailscale up`） |
 | `TAILSCALE_OAUTH_CLIENT_ID` + `TAILSCALE_OAUTH_CLIENT_SECRET` | 通过 Tailscale REST API 关闭本机 node-key 过期（避免节点定期下线）。在 https://login.tailscale.com/admin/settings/trust-credentials 创建 OAuth client，勾选 `devices:core` 写权限即可——该 scope 的 endpoint 列表正好包含 `POST /api/v2/device/{id}/key`。client secret **不过期**，归属于 tailnet 而非个人，使用记录会进入 configuration audit log。两个变量要么都设，要么都不设；只设一个会让 play 直接失败。 | 否 |
 
 `tailscale up` flag 说明：
 
 - `--accept-dns`：启用 MagicDNS（需提前在 https://login.tailscale.com/admin/dns 的 tailnet 层面启用一次）。
+- `--accept-routes`：接受其它节点广播的 subnet route。这个 flag 是**必须写全**的——`tailscale up` 不允许悄悄丢掉上一次带过的非默认 flag，要么 `--reset`，要么把每个非默认 flag 重新写一遍，所以 role 里必须原样列出。
 - `--operator=$USER`：把当前用户登记为 operator，之后跑 `tailscale status`、`tailscale set` 等命令不再需要 `sudo`。
 
-> `TAILSCALE_API_ACCESS_TOKEN`（个人 API access token）**已不再支持**：它是 fully-permitted（没有 scope）且 90 天后过期。如果某台机器的 `.env` 里还留着它而没有 OAuth client，tailscale role 会带着迁移步骤直接失败，而不是静默跳过。
+> `TAILSCALE_API_ACCESS_TOKEN`（个人 API access token）**已不再支持**：它是 fully-permitted（没有 scope）且 90 天后过期。role 现在**根本不读这个变量**：`.env` 里留着它不会报错，但也不会有任何作用——node key 照样会过期。曾经有一个迁移 tripwire 会在这种情况下让 play 失败，在全部七台机器确认清理干净后于 2026-09-10 撤掉了。请改配上面的 OAuth client。
 
 ### 5. 可选：启用 pre-commit 检查
 
@@ -166,6 +169,7 @@ pre-commit run --all-files
 | franks-mac-studio | `Mac15,14`（M3） | Mac Studio | `No` | **安装** |
 | dev-server-frank-lume | `VirtualMac2,1` | Apple Virtual Machine 1 | 不存在 | **安装**（虚拟机例外） |
 | franks-macbook-air | `Mac16,12`（M4） | MacBook Air | `Yes` | 跳过（便携机） |
+| macbook-pro-nickel | `Mac17,2`（M5） | MacBook Pro | `Yes` | 跳过（便携机） |
 | franks-mac-mini-2018 | `Macmini8,1`（Intel） | Mac mini | 不存在 | 跳过 |
 
 Intel 机器和虚拟机都压根没有 AppleSmartBattery 节点，整棵 ioreg 树里都找不到

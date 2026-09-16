@@ -40,3 +40,13 @@ repos:
         language: script
         pass_filenames: false
         files: ^(README\.md|main\.yml|roles/)
+
+      # Added after the count in CLAUDE.md went stale twice in one day — corrected to
+      # 87, then invalidated hours later by a hermes fix that added two `chdir:` lookups.
+      # It is the evidence for "never fan this playbook out", so it is worth checking.
+      - id: home-lookup-count
+        name: CLAUDE.md lookup('env', 'HOME') count is accurate
+        entry: scripts/check-home-lookup-count.sh
+        language: script
+        pass_filenames: false
+        files: ^(CLAUDE\.md|main\.yml|roles/)

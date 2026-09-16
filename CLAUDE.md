@@ -44,8 +44,8 @@ do not fan this playbook out.** The `--limit 127.0.0.1` above is belt-and-braces
 the current inventory it changes nothing, and it keeps the rule true if an entry is ever
 added back.
 
-The roles read `lookup('env', 'HOME')` in 87 places across 24 roles (counted
-2026-09-15), with zero uses of
+The roles read `lookup('env', 'HOME')` in 89 places across 24 roles (counted
+2026-09-16; `scripts/check-home-lookup-count.sh` keeps this honest), with zero uses of
 `ansible_env.HOME`, and pull the `.env` secrets the same way. Ansible evaluates every
 `lookup()` on the **control node**, not the target. Fan this out and one machine's
 `$HOME` and `.env` reach all of them: provisioning `mac-studio-m3` (home
@@ -58,9 +58,9 @@ Ad-hoc fleet fan-out (`ansible all -m ping`) is therefore not available from thi
 inventory, by design. Reach other hosts over ssh instead, or keep a separate inventory
 file outside this repo.
 
-Making the playbook control-node-safe is a project, not a flag: convert all 79 lookups to
-`ansible_env.HOME`, move the `.env` secrets into `host_vars` under `ansible-vault`, and
-re-test every role against a remote target.
+Making the playbook control-node-safe is a project, not a flag: convert every one of
+those lookups to `ansible_env.HOME`, move the `.env` secrets into `host_vars` under
+`ansible-vault`, and re-test every role against a remote target.
 
 #### Remote runs need a login shell
 
@@ -161,8 +161,10 @@ Three details that are easy to get wrong:
   `include_role`, and a parameterless role **de-duplicates**, so `host-facts` runs
   exactly once per play however many roles pull it in. Both properties were verified
   directly; neither is obvious. Caveat when checking dedup: `--list-tasks` prints the
-  *un-deduplicated* graph (host-facts appears five times), while an actual run shows
-  its four tasks once — assert on the run, not the listing.
+  *un-deduplicated* graph (host-facts appears four times — `main.yml`, `hermes`'s meta,
+  `ponytail`'s meta, and `ponytail`→`hermes`→`host-facts`; the fifth went with
+  `openclaw`), while an actual run shows its four tasks once — assert on the run, not
+  the listing.
 
 A single-role run needs no extra vars — the `host-facts` dependency classifies the
 machine itself:
@@ -331,7 +333,8 @@ wrong:
 ### Role Structure
 
 Every role has `tasks/main.yml`. Some also have:
-- `vars/main.yml` — Data (e.g., npm package lists in `nodejs`)
+- `vars/main.yml` — Data (e.g., the skill-source list in `skills`). Eight roles have one:
+  bun, claude-mem, dotenv, github, playwright-cli, ponytail, python, skills.
 - `meta/main.yml` — Dependencies (e.g., `intellij-idea` depends on `jdk`)
 
 ### Common Task Patterns
