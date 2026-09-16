@@ -1170,4 +1170,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** Memory recall is relevance-ranked and not guaranteed; the runbook is read every run, so the durable instruction belongs there. Dropping the polling was never open — it is what keeps the Run from reading as idle, and an idle Run is killed at `idle_timeout`, which is the entire reason step 1 detaches. Both branches were verified against the live fleet before committing: the happy path printed seven per-host lines and `ALL-DONE` in 3s against last night's recaps, and the unreachable path dropped a bogus host after exactly three strikes and terminated. The `pgrep` bracket is hardening, not a bug fix — the unbracketed form was measured NOT to self-match on either the remote or local branch, but only by an accident of when the shell execs, and the local branch runs concurrently with `ssh` processes that carry the pattern in their argv. `[a]nsible-playbook` matches the real process and cannot match a literal copy of itself.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 9f6196f
