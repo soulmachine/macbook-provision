@@ -20,8 +20,12 @@
 #   * Gating on per-agent link counts. Wrong premise: universal agents never get links
 #     (see vars/main.yml), so their empty directories read as permanent drift.
 #
-# Running unconditionally costs one network fetch per source — 20s for all four,
-# measured — which is why no gate is needed to keep a converged run cheap.
+# Running unconditionally costs one network fetch per source. That is not cheap and is
+# accepted deliberately: 136s for the whole role — all 14 sources plus the two fingerprint
+# scans — measured on mac-mini-m2 2026-09-16. (This line read "20s for all four" until then,
+# a figure left over from when `skills_sources` held four entries; it survived every later
+# addition because nothing re-measured it.) The cost buys the only mechanism that pulls
+# upstream edits down, so it is paid on every play rather than gated away.
 
 - name: Fingerprint the skill store before installing
   ansible.builtin.find:

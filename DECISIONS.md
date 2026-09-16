@@ -1224,3 +1224,23 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The old gate enumerated the two no-op phrasings known when it was written, so any third one — or a failure printing neither — reports a phantom change on all six, and a failed update reads as a change rather than an error. Only `gitCommitSha` is compared, never whole records: `lastUpdated` is rewritten on a no-op update (observed on planning-with-files), so a wholesale comparison would itself be the phantom. Proved the comparison against three fixtures — a moved sha reads changed, a `lastUpdated`-only difference reads unchanged, identical reads unchanged. Two further findings from testing: `claude plugin update` does not rewrite `gitCommitSha` on a no-op, so the gate is quiet on a converged host; and several records in this ledger carry no sha at all, which `default('')` keeps stable rather than treating as drift. Three consecutive runs reported `changed=0` and `--check` was clean.
 **Outcome:** applied
 **Ref:** 3cf0048
+
+## Q115 — interactive/readme — tradeoff
+
+**Question:** The README's agent-CLI roles had only one-line table rows. What prose belongs in README, given CLAUDE.md already documents several of the same roles in depth?
+**Options considered:** translate CLAUDE.md's role sections into Chinese / write README prose only for what a human operator needs and leave agent-facing detail in CLAUDE.md / leave the table as-is
+**Chosen:** A new `### Agent CLI 与技能` section covering six things the one-line rows actively mislead about — differing install channels, config files overwritten every run, the skills store and its fan-out, expected output that reads like errors, steps the roles cannot perform, and kimi-code never upgrading. Deliberately NOT a translation of CLAUDE.md.
+**Decided-by:** human
+**Justification:** The two files have different readers and different jobs: CLAUDE.md is agent-facing and explains why each task is shaped the way it is, README is operator-facing and answers "what will this do to my machine and what do I still have to do myself". Duplicating would create a second copy to keep in sync, and this repo has measured form on exactly that failure (Q102's ghost rows, and `scripts/check-home-lookup-count.sh` existing at all). The selection rule was: include it only if a human running the playbook would be surprised or misled without it. Highest-value entry is `~/.pi/agent/settings.json`, overwritten wholesale on every run with no gate, so an in-app `/settings` edit is silently lost.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q116 — interactive/skills — deviation
+
+**Question:** `roles/skills/tasks/main.yml` justified running its installers ungated with "20s for all four, measured". The list now holds 14 sources. Restate the figure, or re-measure it?
+**Options considered:** quote the existing figure in the README / drop the number from both / re-measure and correct both
+**Chosen:** Re-measured the whole role on mac-mini-m2, 2026-09-16: **136s**, not 20s. Corrected the role comment and cited the new figure in the README.
+**Decided-by:** agent
+**Justification:** The old figure was written when `skills_sources` held four entries and survived every later addition because nothing re-measured it — the same doc-rot this repo builds checkers against. Restating it in user-facing docs would have propagated a number wrong by roughly 7x, and dropping it silently would have discarded the actual justification for having no gate. The cost is real and worth stating plainly: it buys the only mechanism that pulls upstream skill edits down. The comment now records the old figure and why it went stale, so the correction is not itself mistaken for drift later.
+**Outcome:** applied
+**Ref:** (pending)

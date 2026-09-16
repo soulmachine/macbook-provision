@@ -121,7 +121,7 @@ pre-commit run --all-files
 | kimi-code | Kimi Code CLI（通过官方 code.kimi.com 脚本安装） |
 | omp | oh-my-pi：bun 全局 `@oh-my-pi/pi-coding-agent`（依赖 bun） |
 | pi | pi coding agent：bun 全局 `@earendil-works/pi-coding-agent`，并下发 `~/.pi/agent/settings.json`（依赖 bun） |
-| skills | 用 `npx skills@latest add` 安装十个技能源，并扇出到各 agent 的 skills 目录（依赖 claude-code、codex） |
+| skills | 用 `npx skills@latest add` 安装十个整源 + 四个只取指定技能的源，并扇出到各 agent 的 skills 目录；详见下文「Agent CLI 与技能」（依赖 claude-code、codex） |
 | agent-reach | 多渠道触达工具；上游只提供面向 AI agent 的安装文档，故由 `claude -p` 按文档驱动安装（依赖 claude-code、python） |
 | playwright | 浏览器自动化：npm 全局 `playwright@latest`（依赖 nodejs） |
 | playwright-cli | Playwright CLI：npm 全局 `@playwright/cli@latest`，并安装其 skill（依赖 playwright） |
@@ -184,6 +184,111 @@ Intel 机器和虚拟机都压根没有 AppleSmartBattery 节点，整棵 ioreg 
 需要**覆盖**硬件判定时用 `-e mac_is_always_on=true`（或 `=false`），extra vars
 优先级最高——但这只是覆盖手段，日常使用不需要传。
 
+### Agent CLI 与技能
+
+`main.yml` 里有十来个 role 装的是各家 coding agent 的 CLI 和它们共用的技能
+（skills）。上面的表格每个 role 只有一行，而这一块恰恰有几处「一行说不清、说清了
+反而容易误解」的地方，集中写在这里。
+
+#### 安装渠道各不相同
+
+这一组没有统一的安装方式，排查问题时先看清楚该用哪个包管理器：
+
+| 工具 | 安装渠道 | 落地位置 / 命令名 |
+|------|----------|-------------------|
+| claude-code | 官方 `install.sh` | `~/.local/bin/claude` |
+| codex | Homebrew **cask** | 命令 `codex`；`codex update` 会自己转调 `brew upgrade --cask codex` |
+| opencode | npm 全局 `opencode-ai` | 命令 `opencode` |
+| kimi-code | 官方 `install.sh`（curl \| bash） | `~/.kimi-code/bin/kimi`，命令是 **`kimi`** 而不是 `kimi-code` |
+| omp | bun 全局 `@oh-my-pi/pi-coding-agent` | `~/.bun/bin/omp`，命令是 **`omp`** |
+| pi | bun 全局 `@earendil-works/pi-coding-agent` | `~/.bun/bin/pi` |
+| claude-mem | `npx -y claude-mem install` | 不是独立命令，而是 Claude Code 插件，同时接线 codex-cli 和 opencode |
+| cc-switch | tap `farion1231/ccswitch` + **cask** | GUI 应用 |
+| agent-reach | **没有包管理器**，见下 | 由 `claude -p` 按上游文档安装 |
+
+`codex` 用 cask 而不是 npm 是刻意的：npm 全局包会装进当前 node 版本的 prefix 里，
+而 node 由 mise 管理，一换版本这个包就静默消失了。role 表里的「依赖 nodejs」指的是
+运行期依赖，不是安装渠道。
+
+#### 每次运行都会被覆盖的配置文件
+
+**`~/.pi/agent/settings.json` 每次 play 都会被仓库里的版本整个覆盖。** `pi` role 用
+`copy: src=agent/ dest=~/.pi/agent/` 下发整个目录，没有任何 gate，所以在 pi 里通过
+`/settings` 改的东西会在下一次 provisioning 时被抹掉。要让改动活下来，得改
+`roles/pi/files/agent/` 里的文件。同一份 payload 还带着 `models.json`、主题和
+`extensions/`。
+
+这是一次**合并**而不是同步：`~/.pi/agent/` 下面没被 payload 覆盖到的东西（尤其是
+`skills` role 维护的 `~/.pi/agent/skills/`，以及 pi 自己的运行时状态）不受影响。
+
+另一处是 `~/.config/opencode/opencode.json`，由 `npx oh-my-openagent` 重写，每次重写
+都会留下一个 `opencode.json.backup-<时间戳>`（2026-09-15 清理前累计了 81 个）。这一步
+有 gate——配置里没有 `oh-my-openagent` 字样，或者 npm 上的版本与
+`~/.config/opencode/.oh-my-openagent-version` 记录的不一致时才跑——所以正常情况下它并
+不会每次都动。
+
+#### 技能：一个存储 + 符号链接扇出
+
+所有技能只存在一份，在 `~/.agents/skills/`。`skills` role 用
+`npx skills@latest add` 安装十个「整源」和四个「只取其中某几个技能」的源，然后由 CLI
+扇出到各 agent。
+
+关键在于**不是每个 agent 都拿符号链接**：Claude Code、pi、Hermes 的技能目录是指回存储
+的符号链接农场；而 Codex、OpenCode、Kimi Code、Cursor、Gemini 属于 CLI 所说的
+「universal agent」，它们**直接读 `~/.agents/skills/`**，永远不会收到链接。所以
+`~/.codex/skills/` 里没有链接是正常的，不是掉了东西——本仓库从不往那里写。（那个目录
+里如果有真实子目录，那是别的安装器留下的 per-agent 副本，与本 role 无关。）
+
+这个 role **故意不加 gate**，每次 play 都重新跑一遍安装器：这是唯一能把上游改动拉下来
+的机制。`changed` 由前后对 `~/.agents/skills/` 做校验和指纹比对得出。代价是每个源一次网
+络请求：十四个源加上前后两次指纹扫描，**实测 136 秒**（mac-mini-m2，2026-09-16），是整
+个 playbook 里最慢的 role 之一——单独跑一次 `ansible-playbook` 时值得预期。
+另外 `skills add` **从不删除**任何东西，上游下架的技能会作为孤儿目录留在存储里。
+
+#### 看起来像报错、其实是预期输出
+
+这一组 role 在正常运行时会打印几段很像错误的东西，事先知道能省很多排查时间：
+
+- **每个技能源都会报两个 per-agent 失败**（Eve 和 PromptScript 拒绝全局安装）。每个源
+  都这样，属于正常噪音。
+- **Hermes 拒绝安装 ponytail**，理由是插件扫描器给出 `dangerous` 判定（`--force` 也压不
+  住）。role 把这一种失败明确放行并打印补救办法，其它任何错误仍然会让 play 失败。要接受
+  这些发现，得自己在 `~/.hermes/config.yaml` 里设 `plugins.scan_on_install: false`——这
+  是安全姿态的选择，role 不替你做。
+- **claude-mem 每次都报 changed。** 它的安装器无论有没有实际动作都会退出 0 并打印
+  "installed successfully"，自己说不清有没有变，所以 role 直接写死 `changed_when: true`。
+- 万一某个「只取几个技能」的源里的技能被上游改名或下架，CLI 会退出 1 并打印
+  `● Available skills:` 加一整份清单——**读起来像帮助信息，其实是错误**。这时用
+  `npx skills@latest add <源> -l` 看上游现在到底有什么（`-l` 只列不装），然后改
+  `roles/skills/vars/main.yml`。这类失败被**推迟到整个 play 的末尾**才抛出，这样一个技能改名
+  不会挡住它后面的二十个 role，但 PLAY RECAP 里依然是 `failed=1`。
+
+#### role 代劳不了、需要人工的步骤
+
+- **Codex 的 hook 信任**是一次性的、每台机器各做一次：跑 `codex`、打开 `/hooks`，
+  审核并信任 ponytail 的三个生命周期 hook（SessionStart、UserPromptSubmit、
+  SubagentStart），然后开一个新 thread。role 只负责提醒——替你写入信任就等于预先信任了
+  上游下次推送的任何内容，而这正是这道审核存在的意义。
+- **opencode 的 provider 认证**没有做：安装器带的是 `--skip-auth`。
+- **agent-reach 只配好了零配置的渠道。** 其余渠道要 cookie 或点一下浏览器扩展，headless
+  的 `claude -p` 回答不了文档里「你要哪些渠道」这个问题。要补齐就自己交互式跑一次
+  `agent-reach doctor`。
+- **`claude-mem` 的模型 id 要手工升级。** `roles/claude-mem/vars/main.yml` 里的
+  `claude_mem_model` 目前是 `claude-opus-4-8`。claude-mem 不接受 `opus` 这类别名（尽管它
+  自己的文档在用），只认完整 id，而且可用集合每次发版都在缩小——id 一旦下架就是一个硬
+  错误 `Fatal error: Unknown Claude model`，**会让 play 失败**。
+
+#### kimi-code 只装不升
+
+`kimi-code` 的安装整个挂在 `creates: ~/.kimi-code/bin/kimi` 后面，而且这个 role 里没有
+任何 update 任务，所以**它装好之后就再也不会升级**。要升级就把那个二进制删掉再跑一次
+playbook。这一点和同组其它 role 不一样——`pi`、`omp`、`codex`、`claude-code` 都会每次
+play 调一次各自的 updater。
+
+顺带一提，`pi`、`omp`、`agent-reach` 三家的 updater **在任何情况下都退出 0**，包括被
+GitHub 限流的时候。所以前两个是靠比对 `--version` 来判断有没有变，agent-reach 则是匹配
+一个**肯定式**的中文标记 `有更新`（不能反过来匹配「已是最新」，因为限流和「仓库没有
+release」两条分支也都不含那句话，一反就会每次都白跑一整轮 agent）。
 
 ## 致谢
 
