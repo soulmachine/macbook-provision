@@ -1253,7 +1253,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** It is currently harmless only by accident — every line in the post_tasks block fails the later `^[a-z][a-z0-9-]*$` filter. Demonstrated the latent failure rather than arguing it: with one bare lowercase token planted inside post_tasks, the old parser yields **42** role names and the new one 41, so the check would have demanded a README row for something that is not a role and blamed the table, which is the one part that was correct. This is a guard whose whole value is being trustworthy, and a guard that can fail confusingly is worse than one that fails loudly. Verified it still reports 41 roles and still passes.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 4eb3240
 
 ## Q118 — interactive/journal — gate-resolution
 
@@ -1263,4 +1263,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** The question was overtaken rather than answered: Q52 deleted `roles/openclaw` and ponytail's OpenClaw half, and Q54 removed the data directories fleet-wide. Verified against the tree, not inferred — `roles/openclaw` is absent and `roles/ponytail/tasks/` has no `openclaw.yml`. There is no longer a role that could perform the repair Q50 asked about, and CLAUDE.md records that re-adding one needs a fresh decision. Closing it by appending preserves the append-only invariant; the alternative, editing Q50's `Outcome`, would rewrite history to claim a decision nobody made. Note one deliberate exception outside this: `archs-mac-mini` still runs a live OpenClaw gateway and its `~/.openclaw` is left alone (Q98).
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 4eb3240
