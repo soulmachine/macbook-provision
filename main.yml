@@ -58,3 +58,22 @@
       tags: [terminal-multiplexer]
     - role: herdr
       tags: [terminal-multiplexer]
+
+  # Failures that should be loud without being obstructive land here, after every role has
+  # had its run. The `skills` role is 21st of 41, so a `fail` inside it stops the 20 that
+  # follow — including `tailscale`, which carries the OAuth key-expiry maintenance. A skill
+  # renamed upstream is not worth that, and tolerating it silently is not an option either:
+  # the nightly sweep's only success test is `failed=0` in the PLAY RECAP, so anything that
+  # does not fail the play is invisible to it by construction. Deferring to post_tasks keeps
+  # the recap honest and lets the rest of the play finish.
+  post_tasks:
+    - name: Fail when a pinned skill could not be installed
+      ansible.builtin.fail:
+        msg: >-
+          `skills add` could not install every pinned skill:
+          {{ skills_partial_failures | join('; ') }}.
+          The usual cause is a rename or withdrawal upstream. List what the source actually
+          ships with `npx skills@latest add <source> -l` — it installs nothing — then correct
+          the name in roles/skills/vars/main.yml, or drop the entry if the skill is gone for
+          good.
+      when: skills_partial_failures | default([]) | length > 0
