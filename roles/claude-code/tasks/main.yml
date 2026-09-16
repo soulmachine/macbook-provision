@@ -54,7 +54,7 @@
 # Same ledger-diff shape as the plugin update below, for the same reason: the old gate here
 # read `'already' not in stdout`, a NEGATED sentinel. `claude plugin marketplace add` has
 # more than one no-op phrasing and prints nothing at all on some failure paths, so that gate
-# reports a phantom change on all five — or reads a failure as a change.
+# reports a phantom change on all four — or reads a failure as a change.
 - name: Read the known marketplaces before adding
   ansible.builtin.slurp:
     src: "{{ claude_code_marketplace_ledger }}"
@@ -65,7 +65,6 @@
   ansible.builtin.command: claude plugin marketplace add {{ item }}
   loop:
     - anthropics/claude-plugins-official # https://claude.com/plugins
-    - OthmanAdi/planning-with-files
     - thedotmack/claude-mem
     - swe-workflow/swe-workflow
     - veelenga/claude-mermaid
@@ -102,12 +101,12 @@
 # stdout. It used to do the latter, with a NEGATED pair of sentinels — unchanged when stdout
 # said "already" or "refreshed from source" — which is the one shape CLAUDE.md rules out:
 # "never a negated one". It enumerates the no-op phrasings known at the time, so a third one,
-# or any failure printing neither, reports a phantom change on all six plugins; and a failed
+# or any failure printing neither, reports a phantom change on every plugin; and a failed
 # update would surface as a change rather than as an error.
 #
 # `gitCommitSha` is the honest signal: Claude Code stamps it per install record and it moves
 # only when a new upstream commit lands. The `ponytail` role already diffs this same file for
-# its own plugin, so this is that pattern applied to the six here rather than a new idea.
+# its own plugin, so this is that pattern applied to the list here rather than a new idea.
 #
 # `e30=` is base64 `{}`, for the fresh-host and `--check` cases where the ledger does not
 # exist yet — without it `b64decode | from_json` fails on an empty read.
@@ -129,8 +128,9 @@
   failed_when: false
 
 # Only `gitCommitSha` is compared, never the whole record: `lastUpdated` is rewritten on a
-# no-op update (observed on planning-with-files, 2026-09-16), so comparing records wholesale
-# would report a phantom change on every run — the very thing this replaces.
+# no-op update (observed 2026-09-16 on planning-with-files, dropped from this list the same
+# day), so comparing records wholesale would report a phantom change on every run — the very
+# thing this replaces.
 #
 # `sort(attribute='key')` makes the comparison independent of the order the CLI happens to
 # write the map in, and `default('')` keeps a record that carries no sha at all — several in
