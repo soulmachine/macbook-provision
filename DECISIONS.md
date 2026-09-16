@@ -1144,4 +1144,4 @@ Two of the eight were worse than stale counts and are why this was worth doing a
 
 Verified the gate fails before trusting it — an untested gate is decoration. It was wrong twice on the way: the claim-matching regex expected a character that is not there, and the counting pattern left its parens unescaped, which in ERE is a group and silently matched nothing, reporting "0 lookups" rather than erroring. Both found only by running it. It now passes on the real tree (89 across 24, matching the audit's independent count) and fails on a wrong figure, on an added lookup, and on an introduced `ansible_env.HOME` — each checked in a throwaway copy so the real files were never touched.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 397f7f8
