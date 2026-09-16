@@ -17,8 +17,18 @@ order=$(mktemp) || exit 1
 table=$(mktemp) || exit 1
 trap 'rm -f "$order" "$table"' EXIT
 
-# roles: block of main.yml, unwrapping `- role: x` as well as `- x`
-awk '/^  roles:/ { f = 1; next } f && /^[^ ]/ { exit } f' main.yml \
+# roles: block of main.yml, unwrapping `- role: x` as well as `- x`.
+#
+# Two exit rules, not one. `/^[^ ]/` ends the block at a top-level key, but `roles:` is
+# itself indented, so a SIBLING key under the play — `post_tasks:`, `vars:`, `handlers:` —
+# never matches it and the walk runs past the roles into that block and on to EOF. Today
+# that is harmless only by luck: every line in main.yml's post_tasks fails the
+# `^[a-z][a-z0-9-]*$` filter below. One post_task line that happened to render as a bare
+# lowercase token would be read as a role name, and this check would then demand a README
+# row for something that is not a role — pointing the blame at the table, which is correct.
+# `/^  [a-z_]+:/` stops at the sibling key instead. Role entries are indented four spaces
+# (`    - host-facts`), so they cannot match it.
+awk '/^  roles:/ { f = 1; next } f && /^[^ ]/ { exit } f && /^  [a-z_]+:/ { exit } f' main.yml \
   | sed -E 's/^[[:space:]]*-[[:space:]]*(role:[[:space:]]*)?//' \
   | grep -E '^[a-z][a-z0-9-]*$' > "$order"
 
