@@ -44,7 +44,7 @@ do not fan this playbook out.** The `--limit 127.0.0.1` above is belt-and-braces
 the current inventory it changes nothing, and it keeps the rule true if an entry is ever
 added back.
 
-The roles read `lookup('env', 'HOME')` in 89 places across 24 roles (counted
+The roles read `lookup('env', 'HOME')` in 91 places across 25 roles (counted
 2026-09-16; `scripts/check-home-lookup-count.sh` keeps this honest), with zero uses of
 `ansible_env.HOME`, and pull the `.env` secrets the same way. Ansible evaluates every
 `lookup()` on the **control node**, not the target. Fan this out and one machine's
@@ -288,8 +288,9 @@ wrong:
   `enabled: true` with default features, so running it unconditionally would undo a
   manual `omp plugin disable` on every play.
 - **Idempotency markers are the hosts' own records**: `[marketplaces.ponytail]` and
-  `[plugins."ponytail@ponytail"]` in `~/.codex/config.toml`, `installed_plugins.json`
-  and `enabledPlugins` for Claude Code, the pi checkout directory (`creates:`), the
+  `[plugins."ponytail@ponytail"]` in `~/.codex/config.toml`, `known_marketplaces.json`,
+  `installed_plugins.json` and `enabledPlugins` for Claude Code, the pi checkout
+  directory (`creates:`), the
   Hermes plugin directory (a `stat` gate — see below for why not `creates:`).
 - **The pi package entry lives in `roles/pi/files/agent/settings.json`.** The pi role
   copies that file over `~/.pi/agent/settings.json` every run; `pi install` records the

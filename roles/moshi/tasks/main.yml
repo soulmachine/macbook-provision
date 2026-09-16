@@ -23,14 +23,25 @@
 
 # brew trust rjyo/moshi
 # Homebrew refuses to load formulae from untrusted third-party taps
-# (HOMEBREW_REQUIRE_TAP_TRUST), so this must run before install. `brew trust
-# --tap` is idempotent (rc=0 whether or not already trusted); keying changed_when
-# off its output reports changed only on the run that adds the tap.
+# (HOMEBREW_REQUIRE_TAP_TRUST), so this must run before install.
+#
+# Gated on the trust ledger that `brew trust --json v1` prints, not on the command's
+# wording — see roles/cc-switch/tasks/main.yml for the full reasoning. The old gate was a
+# negated stdout sentinel, the shape CLAUDE.md rules out.
+- name: Read the trusted Homebrew entries
+  ansible.builtin.command: brew trust --json v1
+  register: _moshi_trusted
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
 - name: Trust rjyo/moshi
   ansible.builtin.command:
     cmd: brew trust --tap rjyo/moshi
-  register: _moshi_trust
-  changed_when: "'Already trusted tap' not in _moshi_trust.stdout"
+  when: >-
+    'rjyo/moshi' not in
+    ((_moshi_trusted.stdout | default('{}', true) | from_json).taps | default([]))
+  changed_when: true
 
 # brew install moshi-hook
 - name: Check whether moshi-hook is installed

@@ -19,10 +19,24 @@
   ansible.builtin.set_fact:
     ponytail_claude_plugins_content: "{{ ponytail_claude_plugins_raw.content | default('') | b64decode }}"
 
+# Gated on the marketplace ledger, not on the command's wording — the old gate read
+# `'already' not in stdout`, the negated shape CLAUDE.md rules out. Unlike the claude-code
+# role, which diffs the whole key set because it adds five whose names it cannot derive,
+# this adds exactly one whose name is known (`ponytail`, from the repo's
+# .claude-plugin/marketplace.json), so a presence check is enough and skips the call once
+# registered.
+- name: Read the known Claude Code marketplaces
+  ansible.builtin.slurp:
+    src: "{{ ponytail_home }}/.claude/plugins/known_marketplaces.json"
+  register: ponytail_claude_mp_raw
+  failed_when: false
+
 - name: Add the ponytail Claude Code marketplace
   ansible.builtin.command: claude plugin marketplace add {{ ponytail_repo }}
-  register: ponytail_claude_mp
-  changed_when: "'already' not in ponytail_claude_mp.stdout"
+  when: >-
+    ponytail_claude_plugin.split('@')[1] not in
+    (ponytail_claude_mp_raw.content | default('e30=') | b64decode | from_json)
+  changed_when: true
 
 - name: Install the ponytail Claude Code plugin
   ansible.builtin.command: claude plugin install {{ ponytail_claude_plugin }}

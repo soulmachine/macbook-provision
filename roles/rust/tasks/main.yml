@@ -21,13 +21,31 @@
     - rust-src
     - rust-analyzer
 
+# The enabled plugins ARE the `plugins=(...)` array in ~/.zshrc, so read that rather than
+# the enable command's wording — per CLAUDE.md, "diff state, don't grep output". The old
+# gate gave `changed` from `'already enabled' not in stdout+stderr`, a negated sentinel
+# that reports a phantom change on any rewording or any path printing neither string.
+#
+# Parsed into a list rather than substring-matched, so a differently-named plugin that
+# merely CONTAINS this one's name (`rustup`, say) cannot read as already enabled.
+- name: Read the enabled oh-my-zsh plugins
+  ansible.builtin.command: grep -m1 '^plugins=' {{ lookup('env', 'HOME') }}/.zshrc
+  register: rust_omz_current
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
 # `omz` is a zsh function defined when ~/.zshrc sources oh-my-zsh (guaranteed
 # by the meta dependency), so it needs an interactive zsh (-i), not a binary
-# lookup. Enabling exits 0 with "plugins enabled: rust."; when already enabled
-# it exits 1 with "plugin 'rust' is already enabled." — that's the converged
-# state, not a failure, so failed_when whitelists it.
+# lookup. It exits 0 with "plugins enabled: rust."; when already enabled it
+# exits 1 with "plugin 'rust' is already enabled." — that is the converged
+# state, not a failure, so failed_when still whitelists it. Matching a string to
+# tolerate a KNOWN failure is fine; matching one to decide `changed` is not.
 - name: Enable rust oh-my-zsh plugin in .zshrc
   ansible.builtin.command: zsh -ic 'omz plugin enable rust'
+  when: >-
+    'rust' not in (rust_omz_current.stdout | default('')
+    | regex_replace('^plugins=\(', '') | regex_replace('\)\s*$', '') | trim | split(' '))
   register: rust_omz_plugin
-  changed_when: "'already enabled' not in rust_omz_plugin.stdout + rust_omz_plugin.stderr"
+  changed_when: true
   failed_when: rust_omz_plugin.rc != 0 and 'already enabled' not in rust_omz_plugin.stdout + rust_omz_plugin.stderr

@@ -6,14 +6,25 @@
 
 # Homebrew refuses to load formulae from untrusted third-party taps
 # (HOMEBREW_REQUIRE_TAP_TRUST), so the install below fails on a fresh host with
-# "Refusing to load formula ... from untrusted tap" unless the tap is trusted
-# first. `brew trust --tap` is idempotent (rc=0 whether or not already trusted);
-# keying changed_when off its output reports changed only on the run that adds it.
+# "Refusing to load formula ... from untrusted tap" unless the tap is trusted first.
+#
+# Gated on the trust ledger that `brew trust --json v1` prints, not on the command's
+# wording — see roles/cc-switch/tasks/main.yml for the full reasoning. The old gate was a
+# negated stdout sentinel, the shape CLAUDE.md rules out.
+- name: Read the trusted Homebrew entries
+  ansible.builtin.command: brew trust --json v1
+  register: _multica_trusted
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
 - name: Trust multica-ai/tap
   ansible.builtin.command:
     cmd: brew trust --tap multica-ai/tap
-  register: _multica_trust
-  changed_when: "'Already trusted tap' not in _multica_trust.stdout"
+  when: >-
+    'multica-ai/tap' not in
+    ((_multica_trusted.stdout | default('{}', true) | from_json).taps | default([]))
+  changed_when: true
 
 - name: Install multica CLI
   community.general.homebrew:

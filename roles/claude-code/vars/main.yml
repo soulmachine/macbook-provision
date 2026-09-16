@@ -20,3 +20,12 @@ claude_code_plugins:
 # commit actually lands — so it is the state to compare, per CLAUDE.md "Self-update tasks:
 # diff state, don't grep output". The same file the `ponytail` role diffs for its own plugin.
 claude_code_plugin_ledger: "{{ lookup('env', 'HOME') }}/.claude/plugins/installed_plugins.json"
+
+# `~/.claude/plugins/known_marketplaces.json`, the ledger the marketplace gate diffs. Derived
+# from the path above rather than spelled out again, so the ledger directory is named once.
+#
+# Its keys are marketplace NAMES, which are not derivable from the `owner/repo` the CLI is
+# given: `thedotmack/claude-mem` registers as `thedotmack` while `veelenga/claude-mermaid`
+# registers as `claude-mermaid` — the name comes from the marketplace's own manifest. That is
+# why the gate diffs the whole key set around the loop instead of looking up each source.
+claude_code_marketplace_ledger: "{{ claude_code_plugin_ledger | dirname }}/known_marketplaces.json"

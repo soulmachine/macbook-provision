@@ -7,13 +7,29 @@
 # Homebrew refuses to load casks/formulae from untrusted third-party taps
 # (HOMEBREW_REQUIRE_TAP_TRUST), so the install below fails on a fresh host with
 # "Refusing to load ... from untrusted tap" unless the tap is trusted first.
-# `brew trust --tap` is idempotent (rc=0 whether or not already trusted); keying
-# changed_when off its output reports changed only on the run that adds the tap.
+#
+# Gated on the trust ledger, not on the command's wording. `brew trust` documents its own
+# state file (`$XDG_CONFIG_HOME/homebrew/trust.json`, else `~/.homebrew/trust.json`) and
+# `--json v1` prints it, so the trusted taps are readable directly — per CLAUDE.md, "diff
+# state, don't grep output". The old gate matched `'Already trusted tap' not in stdout`,
+# a NEGATED sentinel: any rewording upstream, or any path printing nothing, reports a
+# phantom change forever.
+- name: Read the trusted Homebrew entries
+  ansible.builtin.command: brew trust --json v1
+  register: _ccswitch_trusted
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+# `changed_when: true` is honest here because the command runs only when the tap is
+# absent from the ledger — i.e. only on the run that actually adds it.
 - name: Trust farion1231/ccswitch
   ansible.builtin.command:
     cmd: brew trust --tap farion1231/ccswitch
-  register: _ccswitch_trust
-  changed_when: "'Already trusted tap' not in _ccswitch_trust.stdout"
+  when: >-
+    'farion1231/ccswitch' not in
+    ((_ccswitch_trusted.stdout | default('{}', true) | from_json).taps | default([]))
+  changed_when: true
 
 - name: Install cc-switch
   community.general.homebrew_cask:

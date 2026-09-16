@@ -51,6 +51,16 @@
     state: directory
     mode: "0755"
 
+# Same ledger-diff shape as the plugin update below, for the same reason: the old gate here
+# read `'already' not in stdout`, a NEGATED sentinel. `claude plugin marketplace add` has
+# more than one no-op phrasing and prints nothing at all on some failure paths, so that gate
+# reports a phantom change on all five — or reads a failure as a change.
+- name: Read the known marketplaces before adding
+  ansible.builtin.slurp:
+    src: "{{ claude_code_marketplace_ledger }}"
+  register: claude_code_mp_before
+  failed_when: false
+
 - name: Add plugin marketplaces
   ansible.builtin.command: claude plugin marketplace add {{ item }}
   loop:
@@ -59,8 +69,28 @@
     - thedotmack/claude-mem
     - swe-workflow/swe-workflow
     - veelenga/claude-mermaid
-  register: claude_code_mp
-  changed_when: "'already' not in claude_code_mp.stdout"
+  changed_when: false
+
+- name: Read the known marketplaces after adding
+  ansible.builtin.slurp:
+    src: "{{ claude_code_marketplace_ledger }}"
+  register: claude_code_mp_after
+  failed_when: false
+
+# Compares the key set only — the marketplace names — not the records, which carry
+# per-fetch metadata that moves on its own. `e30=` is base64 `{}`, for the fresh-host and
+# `--check` cases where the ledger does not exist yet.
+- name: Check whether any marketplace was added
+  vars:
+    claude_code_mp_names_before: >-
+      {{ (claude_code_mp_before.content | default('e30=') | b64decode | from_json).keys() | sort }}
+    claude_code_mp_names_after: >-
+      {{ (claude_code_mp_after.content | default('e30=') | b64decode | from_json).keys() | sort }}
+  ansible.builtin.debug:
+    msg: >-
+      Claude Code marketplaces
+      {{ 'added' if claude_code_mp_names_before != claude_code_mp_names_after else 'already registered' }}
+  changed_when: claude_code_mp_names_before != claude_code_mp_names_after
 
 - name: Install plugins
   ansible.builtin.command: claude plugin install {{ item }}
