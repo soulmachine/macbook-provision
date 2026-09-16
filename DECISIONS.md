@@ -1160,4 +1160,4 @@ Verified before trusting the prose: both hosts answer `ssh -o BatchMode=yes`, bo
 
 The task file lives outside this repo (`~/coworker/.openroutine/update-packages.cron.md`), so this entry is the only record in the repo whose playbook it runs. Its embedded restatement of the never-fan-out rule also carried the stale `79 places across 25 roles` figure and was corrected to `89 across 24` in the same edit; note that copy is not covered by `scripts/check-home-lookup-count.sh`, which only reads this repo's CLAUDE.md. `openroutine reload` was run so the daemon re-read the file; next tick 02:00.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 20f2ddb
