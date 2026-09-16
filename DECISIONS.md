@@ -1182,3 +1182,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** 2a74053
 **Supersedes:** Q88 — narrowed, not reversed. Q88 deleted all 28 installed `cursor/plugins` skills because re-adding meant taking 85; `unslop` returns on its own and the other 84 stay out.
+
+## Q111 — interactive/skills — deviation
+
+**Question:** Adding `eli5` to the skill store left Claude Code with two copies — the store skill and the hand-installed `eli5@claude-community` plugin. Q110 kept both; the user asked to drop the plugin. Which copy goes, and how far does the removal reach?
+**Options considered:** drop the plugin, keep the store skill / drop the store skill, keep the plugin / keep both
+**Chosen:** Uninstalled the `eli5@claude-community` plugin and deregistered the `claude-community` marketplace it left orphaned. The store skill stays.
+**Decided-by:** human
+**Justification:** The store copy is strictly the more useful of the two — it reaches every agent, where the plugin reached only Claude Code. Surveyed before acting: the plugin existed on mac-mini-m2 alone, was hand-installed on 2026-08-28, appears in no role, and neither it nor its marketplace is referenced anywhere in this repo, so no role change was needed and no other host was touched. Removing it took the entry out of both `installed_plugins.json` and `settings.json`'s `enabledPlugins`, leaving the marketplace with zero plugins and a 3.8M clone Claude Code would have gone on pulling, so that was removed too. Verified after: marketplace deregistered, clone gone, the other 14 plugins untouched, and `~/.agents/skills/eli5/SKILL.md` still readable.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q110 — only its decision to keep both copies of eli5. The rest of Q110, including `skills_sources_partial` and the eli5 store entry, stands.

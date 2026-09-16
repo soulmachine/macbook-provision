@@ -72,11 +72,13 @@ skills_sources:
 # failures (Eve and PromptScript reject a global install) that every source already reports.
 # So it needs no `failed_when`, for the same reason the task above does not have one.
 skills_sources_partial:
-  # This marketplace also ships eli5 as a Claude Code *plugin*, installed by hand here on
-  # 2026-08-28 as `eli5@claude-community`. Taking it as a skill as well is deliberate, not a
-  # duplicate to clean up: the plugin reaches only Claude Code, the store reaches every agent.
-  # Claude Code consequently sees two copies, as it already does for last30days and
-  # swe-workflow. 31 skills upstream.
+  # This marketplace also ships eli5 as a Claude Code *plugin*, and mac-mini-m2 carried it —
+  # hand-installed 2026-08-28 as `eli5@claude-community`, never in any role, never on another
+  # host. Taking eli5 into the store made Claude Code see it twice, so the plugin was
+  # uninstalled on 2026-09-16 and its now-orphaned marketplace deregistered with it. The store
+  # copy is the one to keep: it reaches every agent, where the plugin reached only Claude Code.
+  # Nothing in this repo referenced either, so there is no role change behind that. 31 skills
+  # upstream. See DECISIONS.md Q111.
   - source: anthropics/claude-plugins-community
     skills: [eli5]
   - source: humanlayer/skills
