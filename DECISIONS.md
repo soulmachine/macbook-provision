@@ -1193,3 +1193,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** f1c5892
 **Supersedes:** Q110 — only its decision to keep both copies of eli5. The rest of Q110, including `skills_sources_partial` and the eli5 store entry, stands.
+
+## Q112 — interactive/skills — deviation
+
+**Question:** Q110's partial-install task can fail in a way the `--all` task cannot — a pinned skill renamed or withdrawn upstream. It was shipped with no `failed_when`, so it failed the play with the CLI's own output. Is that failure good enough as it stands?
+**Options considered:** leave it / make the failure legible, keeping the play-failing semantics / tolerate the failure and report it as a debug
+**Chosen:** Kept the play failing, but moved the failure into an explicit `fail` task that names every source and skill that could not be installed and gives the remedy. `failed_when: false` on the install task defers rather than tolerates.
+**Decided-by:** agent
+**Justification:** The state was already safe — measured, a missing skill exits 1, installs nothing and leaves the store undamaged — so only the message was wrong, and it was wrong in the place it matters: the CLI prints `● Available skills:` and its inventory, which in the 02:00 iMessage reads as help text rather than an error and never names the broken pin. This preserves today's behaviour rather than choosing between failing and tolerating, so that question stays open and is still a one-line change. `failed_when: false` earns its place separately: without it the loop aborts on the first bad pin and hides the rest, so one run now reports every broken entry. Verified by injecting two broken pins at once — all four loop entries completed, then a single failure named both, with the remedy — then restoring the file and confirming a clean `changed=0` run.
+**Outcome:** applied
+**Ref:** (pending)

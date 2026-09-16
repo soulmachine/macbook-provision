@@ -48,7 +48,38 @@
   loop: "{{ skills_sources_partial }}"
   loop_control:
     label: "{{ item.source }} → {{ item.skills | join(' ') }}"
+  register: skills_partial_install
   changed_when: false
+  # Not a tolerated failure — the task below still fails the play. This only defers it, so
+  # that one broken pin does not stop the loop and hide the state of the entries after it:
+  # a single run now reports every source that failed, not just the first.
+  failed_when: false
+
+# Naming a skill is what makes this list worth having, and it is also the one thing that can
+# break in it: a skill renamed or withdrawn upstream stops matching. `--all` cannot hit this,
+# so this task exists only for the partial list.
+#
+# The CLI reports it badly — exit 1, and a stdout opening `● Available skills:` followed by
+# the whole inventory. Left to surface on its own that is what lands in the 02:00 iMessage,
+# where it reads as help text rather than as an error and never says which source or which
+# skill broke. Measured 2026-09-16: exit 1, nothing installed, store undamaged — so the state
+# is safe and only the message needed fixing.
+#
+# `selectattr('rc', 'defined')` is load-bearing for `--check`: command tasks are skipped
+# there, leaving results with no `rc` at all rather than with `rc: 0`.
+- name: Fail when a pinned skill could not be installed
+  vars:
+    skills_partial_failures: >-
+      {{ skills_partial_install.results | default([])
+         | selectattr('rc', 'defined') | selectattr('rc', 'ne', 0)
+         | map(attribute='item') | map('to_json') | list }}
+  ansible.builtin.fail:
+    msg: >-
+      `skills add` could not install every pinned skill: {{ skills_partial_failures | join('; ') }}.
+      The usual cause is a rename or withdrawal upstream. List what the source actually ships
+      with `npx skills@latest add <source> -l` — it installs nothing — then correct the name in
+      roles/skills/vars/main.yml, or drop the entry if the skill is gone for good.
+  when: skills_partial_failures | length > 0
 
 # Ceiling: this fingerprints content, not the per-agent symlink farms, so a link
 # restored in ~/.claude/skills reports no change even though the run repaired it. The
