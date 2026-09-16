@@ -1,8 +1,24 @@
 ---
+# The old gate read `'added' in stdout or 'updated' in stdout`, which is never true:
+# `npm install -g` prints `changed N packages in <time>` on a converged run and on a real
+# upgrade alike (measured 2026-09-16), so this role reported `ok` through every CLI upgrade
+# it performed. The skill comparison below already diffs state; this is the same rule
+# applied to the package that carries it. An absent package prints `{"name": "lib"}` and
+# exits 1, hence `failed_when: false` on the read, so a first install reads as a change.
+- name: Read the installed Playwright CLI version
+  ansible.builtin.command: npm ls -g --depth=0 --json @playwright/cli
+  register: playwright_cli_before
+  changed_when: false
+  failed_when: false
+
 - name: Install Playwright CLI globally
   ansible.builtin.command: npm install -g @playwright/cli@latest
-  register: playwright_cli_install
-  changed_when: "'added' in playwright_cli_install.stdout or 'updated' in playwright_cli_install.stdout"
+  changed_when: false
+
+- name: Check whether the Playwright CLI changed
+  ansible.builtin.command: npm ls -g --depth=0 --json @playwright/cli
+  register: playwright_cli_after
+  changed_when: playwright_cli_after.stdout != playwright_cli_before.stdout
 
 # `playwright-cli install --skills --global` lands the bundled skill in
 # ~/.claude/skills/playwright-cli with a recursive `fs.cp` over whatever is

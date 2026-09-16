@@ -1,8 +1,25 @@
 ---
+# The old gate read `'added' in stdout or 'updated' in stdout`, which is never true here:
+# `npm install -g` prints `changed N packages in <time>` on a converged run *and* on a real
+# upgrade alike — measured 2026-09-16, a 0.19.2 → 0.19.3 upgrade of another package was
+# indistinguishable from a no-op. So this role reported `ok` through every Playwright
+# upgrade it performed. Diff the installed version instead, per CLAUDE.md "Self-update
+# tasks: diff state, don't grep output". An absent package prints `{"name": "lib"}` and
+# exits 1, hence `failed_when: false` on the read, so a first install reads as a change.
+- name: Read the installed Playwright version
+  ansible.builtin.command: npm ls -g --depth=0 --json playwright
+  register: playwright_npm_before
+  changed_when: false
+  failed_when: false
+
 - name: Install Playwright globally
   ansible.builtin.command: npm install -g playwright@latest
-  register: playwright_npm
-  changed_when: "'added' in playwright_npm.stdout or 'updated' in playwright_npm.stdout"
+  changed_when: false
+
+- name: Check whether Playwright changed
+  ansible.builtin.command: npm ls -g --depth=0 --json playwright
+  register: playwright_npm_after
+  changed_when: playwright_npm_after.stdout != playwright_npm_before.stdout
 
 # `playwright install` locks the shared browser cache (__dirlock in
 # ~/Library/Caches/ms-playwright) at the top of its install(), *before* it checks
@@ -57,4 +74,11 @@
   until: playwright_install.rc == 0
   retries: 2
   delay: 30
-  changed_when: "'downloading' in (playwright_install.stdout | default('') | lower)"
+  # `changed_when: true`, not a stdout match. This task runs only when the check above
+  # found a component with no INSTALLATION_COMPLETE marker, so reaching it at all means
+  # something was genuinely missing and a successful run installed it. The old gate read
+  # `'downloading' in stdout`, which adds a second, weaker test on top of the `when:` that
+  # already decided this: Playwright can unpack a component it already has in the browser
+  # cache without printing that word, and the role would then have installed a browser and
+  # reported nothing. A failure still fails the task — this only labels the success.
+  changed_when: true

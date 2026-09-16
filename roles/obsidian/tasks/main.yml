@@ -4,10 +4,32 @@
     name: obsidian
     state: present
 
+# `npm install -g` says the same thing whether or not it changed anything, so the old
+# gate here — `'added' in stdout` — was never true and this role reported `ok` through
+# every upgrade it performed. Measured 2026-09-16 on mac-mini-m2: a converged run prints
+# `changed 27 packages in 542ms`, and a genuine 0.19.2 → 0.19.3 upgrade prints
+# `changed 27 packages in 550ms`. Neither says "added" or "updated"; the word only shows
+# up on a first install. That is the inverse of the usual phantom — a real change
+# reported as nothing — and it is invisible in a recap by construction.
+#
+# `npm ls -g --depth=0 --json` is the state to diff, per CLAUDE.md "Self-update tasks:
+# diff state, don't grep output". It carries the installed version and degrades cleanly
+# on a fresh machine: an absent package prints `{"name": "lib"}` and exits 1, hence
+# `failed_when: false` on the read below, so the first install reads as a change.
+- name: Read the installed Defuddle version
+  ansible.builtin.command: npm ls -g --depth=0 --json defuddle
+  register: obsidian_defuddle_before
+  changed_when: false
+  failed_when: false
+
 - name: Install Defuddle CLI # noqa: command-instead-of-module
   ansible.builtin.command: npm install -g defuddle
-  register: obsidian_defuddle_install
-  changed_when: "'added' in obsidian_defuddle_install.stdout"
+  changed_when: false
+
+- name: Check whether Defuddle changed
+  ansible.builtin.command: npm ls -g --depth=0 --json defuddle
+  register: obsidian_defuddle_after
+  changed_when: obsidian_defuddle_after.stdout != obsidian_defuddle_before.stdout
 
 # The Obsidian skills are installed by the `skills` role, which lists
 # kepano/obsidian-skills in skills_sources and re-fetches it every play. They lived
