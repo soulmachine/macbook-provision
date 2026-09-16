@@ -1202,4 +1202,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** The state was already safe — measured, a missing skill exits 1, installs nothing and leaves the store undamaged — so only the message was wrong, and it was wrong in the place it matters: the CLI prints `● Available skills:` and its inventory, which in the 02:00 iMessage reads as help text rather than an error and never names the broken pin. This preserves today's behaviour rather than choosing between failing and tolerating, so that question stays open and is still a one-line change. `failed_when: false` earns its place separately: without it the loop aborts on the first bad pin and hides the rest, so one run now reports every broken entry. Verified by injecting two broken pins at once — all four loop entries completed, then a single failure named both, with the remedy — then restoring the file and confirming a clean `changed=0` run.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** fd55c2f
