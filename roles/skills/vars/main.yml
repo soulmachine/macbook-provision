@@ -92,3 +92,14 @@ skills_sources_partial:
   # returns on its own — not the other 84. Q88 is narrowed here, not reversed.
   - source: cursor/plugins
     skills: [unslop]
+
+# Partial sources that a DIFFERENT role installs. The orphan detector below groups the lock
+# by source and flags anything no source accounts for, so without this every such skill reads
+# as "no source in this role installs it" on every host, on every run, forever — and a report
+# that always carries a known-benign line trains you to skim past the real ones. Same shape as
+# `skills_sources_partial`, kept separate so this role does not appear to own them.
+skills_sources_foreign:
+  # roles/herdr/tasks/main.yml runs `npx skills add herdrdev/herdr --skill herdr` itself,
+  # because the skill has to land in the same task flow that installs the CLI it documents.
+  - source: herdrdev/herdr
+    skills: [herdr]

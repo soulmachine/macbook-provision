@@ -141,7 +141,7 @@
       {{ {'store': skills_store,
           'lock': skills_home ~ '/.agents/.skill-lock.json',
           'whole': skills_sources,
-          'partial': skills_sources_partial} | to_json }}
+          'partial': skills_sources_partial + skills_sources_foreign} | to_json }}
   register: skills_orphans
   changed_when: false
   # Read-only, so running it under `--check` is safe and is what makes the report below mean
