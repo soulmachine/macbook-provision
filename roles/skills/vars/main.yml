@@ -28,7 +28,7 @@ skills_store: "{{ skills_home }}/.agents/skills"
 # them changes nothing but who refreshes them. `lavish-design` stays behind as an orphan
 # store directory: it is in the lock but no longer shipped, and `skills add` never deletes.
 #
-# Three sources are deliberately NOT here, all verified with `skills add <source> -l`,
+# Two sources are deliberately NOT here, both verified with `skills add <source> -l`,
 # which lists what upstream ships **without installing**. Check adoption that way rather
 # than against the lock file, which records what was once asked for — the same stale-lock
 # trap as DECISIONS.md Q7 and Q84:
@@ -44,10 +44,6 @@ skills_store: "{{ skills_home }}/.agents/skills"
 #     were deleted fleet-wide on 2026-09-15 (Q88), so a line here would *install* those
 #     four rather than adopt anything. Claude's `plannotator-annotate`/`-last`/`-review`
 #     survive as per-agent variants and are not managed by this role.
-#   * `cursor/plugins` — its 28 skills were deleted fleet-wide the same day (Q88). The
-#     installers run `--all` (`--skill '*'`), so re-adding is all-or-nothing: 88 upstream
-#     against the 28 that were installed. Taking a subset needs skills_sources to carry
-#     per-source skill lists, which is a design change rather than a line.
 skills_sources:
   - jimliu/baoyu-skills
   - mattpocock/skills
@@ -59,3 +55,38 @@ skills_sources:
   - swe-workflow/log-decisions
   - vercel-labs/skills
   - kunchenguid/lavish-axi
+
+# Sources where only SOME skills are wanted. `skills_sources` above installs with `--all`,
+# which is shorthand for `--skill '*' --agent '*' -y`; these name the skills instead, so a
+# source shipping 85 of them contributes exactly the one asked for. Until this list existed,
+# a source was all-or-nothing and `cursor/plugins` sat in the exclusions above for that
+# reason alone.
+#
+# **Repeated `--skill` flags, never a comma-separated list.** Measured 2026-09-16:
+# `--skill a,b` is read as one skill literally named `a,b`, which matches nothing — the CLI
+# then exits 1 and prints the available-skills listing, which reads like help rather than
+# like an error. `--skill a --skill b` installs both. The task below builds the repeated
+# form; do not "simplify" it to a join.
+#
+# Otherwise this form behaves exactly like `--all`: exit 0, and the same two per-agent
+# failures (Eve and PromptScript reject a global install) that every source already reports.
+# So it needs no `failed_when`, for the same reason the task above does not have one.
+skills_sources_partial:
+  # This marketplace also ships eli5 as a Claude Code *plugin*, installed by hand here on
+  # 2026-08-28 as `eli5@claude-community`. Taking it as a skill as well is deliberate, not a
+  # duplicate to clean up: the plugin reaches only Claude Code, the store reaches every agent.
+  # Claude Code consequently sees two copies, as it already does for last30days and
+  # swe-workflow. 31 skills upstream.
+  - source: anthropics/claude-plugins-community
+    skills: [eli5]
+  - source: humanlayer/skills
+    skills: [show-me]
+  # 27 upstream, and not a set to take blindly: `complain` posts anonymously to Slack
+  # unprompted and is instructed never to mention having done so.
+  - source: warpdotdev/common-skills
+    skills: [skill-doctor]
+  # Q88 deleted all 28 of this source's installed skills fleet-wide on 2026-09-15, because
+  # re-adding meant taking 85. That constraint is exactly what this list lifts, so `unslop`
+  # returns on its own — not the other 84. Q88 is narrowed here, not reversed.
+  - source: cursor/plugins
+    skills: [unslop]

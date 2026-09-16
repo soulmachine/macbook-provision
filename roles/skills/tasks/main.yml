@@ -37,6 +37,19 @@
   loop: "{{ skills_sources }}"
   changed_when: false
 
+# Same installer, naming the skills rather than taking `--all`. A second task rather than one
+# conditional command string: the two lists mean different things, and `--all` is not simply
+# `--skill` with a wildcard argument — it also implies `--agent '*' -y`, which this form has
+# to restate. See vars/main.yml on why the flag is repeated instead of comma-joined.
+- name: Install the partial skill sources for every agent
+  ansible.builtin.command: >-
+    npx skills@latest add {{ item.source }} -g -y --agent '*'
+    {% for s in item.skills %}--skill {{ s }} {% endfor %}
+  loop: "{{ skills_sources_partial }}"
+  loop_control:
+    label: "{{ item.source }} → {{ item.skills | join(' ') }}"
+  changed_when: false
+
 # Ceiling: this fingerprints content, not the per-agent symlink farms, so a link
 # restored in ~/.claude/skills reports no change even though the run repaired it. The
 # repair still happens — `skills add` runs regardless — and agentstow maintains those
