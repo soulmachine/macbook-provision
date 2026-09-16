@@ -1191,5 +1191,5 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** The store copy is strictly the more useful of the two — it reaches every agent, where the plugin reached only Claude Code. Surveyed before acting: the plugin existed on mac-mini-m2 alone, was hand-installed on 2026-08-28, appears in no role, and neither it nor its marketplace is referenced anywhere in this repo, so no role change was needed and no other host was touched. Removing it took the entry out of both `installed_plugins.json` and `settings.json`'s `enabledPlugins`, leaving the marketplace with zero plugins and a 3.8M clone Claude Code would have gone on pulling, so that was removed too. Verified after: marketplace deregistered, clone gone, the other 14 plugins untouched, and `~/.agents/skills/eli5/SKILL.md` still readable.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** f1c5892
 **Supersedes:** Q110 — only its decision to keep both copies of eli5. The rest of Q110, including `skills_sources_partial` and the eli5 store entry, stands.
