@@ -1223,4 +1223,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** The old gate enumerated the two no-op phrasings known when it was written, so any third one — or a failure printing neither — reports a phantom change on all six, and a failed update reads as a change rather than an error. Only `gitCommitSha` is compared, never whole records: `lastUpdated` is rewritten on a no-op update (observed on planning-with-files), so a wholesale comparison would itself be the phantom. Proved the comparison against three fixtures — a moved sha reads changed, a `lastUpdated`-only difference reads unchanged, identical reads unchanged. Two further findings from testing: `claude plugin update` does not rewrite `gitCommitSha` on a no-op, so the gate is quiet on a converged host; and several records in this ledger carry no sha at all, which `default('')` keeps stable rather than treating as drift. Three consecutive runs reported `changed=0` and `--check` was clean.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 3cf0048
