@@ -1161,3 +1161,13 @@ Verified before trusting the prose: both hosts answer `ssh -o BatchMode=yes`, bo
 The task file lives outside this repo (`~/coworker/.openroutine/update-packages.cron.md`), so this entry is the only record in the repo whose playbook it runs. Its embedded restatement of the never-fan-out rule also carried the stale `79 places across 25 roles` figure and was corrected to `89 across 24` in the same edit; note that copy is not covered by `scripts/check-home-lookup-count.sh`, which only reads this repo's CLAUDE.md. `openroutine reload` was run so the daemon re-read the file; next tick 02:00.
 **Outcome:** applied
 **Ref:** 20f2ddb
+
+## Q109 — interactive/fleet-coverage — deviation
+
+**Question:** The nightly `update-packages` runbook prescribed a step-2 poll loop the agent cannot actually run: the harness blocks foreground `sleep`, and a single Monitor event carrying all seven hosts is truncated. The 2026-09-16 Run improvised around both and recorded the workaround as a memory. Fix the runbook, or leave the memory to carry it?
+**Options considered:** leave it to the memory / rewrite step 2 to prescribe the shape that works / drop the polling requirement
+**Chosen:** Rewrote step 2. The loop now goes to `/tmp/fleet-poll.sh` and runs under Monitor, emits one event line per host, drops hosts as they finish, and leaves a host after three consecutive ssh failures. Also bracketed the `pgrep` pattern to `[a]nsible-playbook main.yml`.
+**Decided-by:** human
+**Justification:** Memory recall is relevance-ranked and not guaranteed; the runbook is read every run, so the durable instruction belongs there. Dropping the polling was never open — it is what keeps the Run from reading as idle, and an idle Run is killed at `idle_timeout`, which is the entire reason step 1 detaches. Both branches were verified against the live fleet before committing: the happy path printed seven per-host lines and `ALL-DONE` in 3s against last night's recaps, and the unreachable path dropped a bogus host after exactly three strikes and terminated. The `pgrep` bracket is hardening, not a bug fix — the unbracketed form was measured NOT to self-match on either the remote or local branch, but only by an accident of when the shell execs, and the local branch runs concurrently with `ssh` processes that carry the pattern in their argv. `[a]nsible-playbook` matches the real process and cannot match a literal copy of itself.
+**Outcome:** applied
+**Ref:** (pending)
