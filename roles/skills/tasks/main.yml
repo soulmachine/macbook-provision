@@ -118,3 +118,41 @@
   changed_when: >-
     (skills_after.files | map(attribute='checksum') | sort)
     != (skills_before.files | map(attribute='checksum') | sort)
+
+# `skills add` never deletes. So a skill that leaves this role's reach — withdrawn upstream,
+# dropped from `skills_sources`, or hand-installed from a source that was never there —
+# keeps its store directory forever, reaching every agent as a skill nothing maintains. It
+# accumulates silently and diverges hosts: measured 2026-09-16, 2 on dev-server-frank-lume
+# against 24 on macbook-pro-nickel.
+#
+# Detection only, on purpose. Deleting a store directory is irreversible and not this role's
+# call to make unattended — CLAUDE.md's rule about catastrophic actions — and the list needs
+# a human eye anyway: `soulmachine/skills` entries show up here as real directories, which is
+# not junk to sweep but a git-backed skill shadowed by a CLI copy (DECISIONS.md Q82).
+#
+# The rule is in files/find-orphans.py because it branches three ways and the whole-source
+# branch has a trap worth asserting against: within one run a source's skills are stamped
+# milliseconds apart, so a naive `updatedAt < max` reported 43 of mattpocock's 45 as orphans.
+# `--self-test` covers that and runs in pre-commit.
+- name: Find store directories the role no longer refreshes
+  ansible.builtin.command:
+    cmd: python3 {{ role_path }}/files/find-orphans.py
+    stdin: >-
+      {{ {'store': skills_store,
+          'lock': skills_home ~ '/.agents/.skill-lock.json',
+          'whole': skills_sources,
+          'partial': skills_sources_partial} | to_json }}
+  register: skills_orphans
+  changed_when: false
+  # Read-only, so running it under `--check` is safe and is what makes the report below mean
+  # anything in a dry run — the same reason host-facts forces its two probes.
+  check_mode: false
+
+# Never `changed`: an orphan persists until someone deletes it by hand, so reporting one as a
+# change would be a phantom on every run from now until then — the failure this role's own
+# fingerprint gate exists to avoid. A `debug` that skips when clean, matching the pinned-skill
+# report above.
+- name: Report store directories the role no longer refreshes
+  ansible.builtin.debug:
+    msg: "{{ skills_orphans.stdout_lines }}"
+  when: skills_orphans.stdout | default('') | length > 0

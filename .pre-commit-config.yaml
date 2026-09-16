@@ -50,3 +50,16 @@ repos:
         language: script
         pass_filenames: false
         files: ^(CLAUDE\.md|main\.yml|roles/)
+
+      # The orphan rule branches three ways and its whole-source branch compares
+      # timestamps with a tolerance, because one run stamps a source's skills
+      # milliseconds apart — an exact comparison called 43 of mattpocock's 45
+      # skills orphans. The self-test pins that and the two no-false-positive
+      # properties; it is pure arithmetic on fixtures, so it needs no network and
+      # runs in well under a second.
+      - id: skills-orphan-rule
+        name: skills orphan rule self-test
+        entry: python3 roles/skills/files/find-orphans.py --self-test
+        language: system
+        pass_filenames: false
+        files: ^roles/skills/
