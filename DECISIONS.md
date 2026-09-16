@@ -1145,3 +1145,19 @@ Two of the eight were worse than stale counts and are why this was worth doing a
 Verified the gate fails before trusting it — an untested gate is decoration. It was wrong twice on the way: the claim-matching regex expected a character that is not there, and the counting pattern left its parens unescaped, which in ERE is a group and silently matched nothing, reporting "0 lookups" rather than erroring. Both found only by running it. It now passes on the real tree (89 across 24, matching the audit's independent count) and fails on a wrong figure, on an added lookup, and on an introduced `ansible_env.HOME` — each checked in a throwaway copy so the real files were never touched.
 **Outcome:** applied
 **Ref:** 397f7f8
+
+## Q108 — interactive/fleet-coverage — gate-resolution
+
+**Question:** The nightly `update-packages` openroutine sweep provisioned five of the seven fleet hosts, leaving `macbook-air` and `macbook-pro-nickel` to drift until someone ran the playbook by hand. Add them, and if so, how should an unreachable laptop be reported?
+**Options considered:** add both best-effort (unreachable = skip) / add both strictly (unreachable = error) / record the exclusion as deliberate and leave the sweep at five
+**Chosen:** Added both as a second, best-effort tier. Unreachable is a SKIP for those two and stays an ERROR for the five always-on hosts. A portable that answers is held to exactly the same standard as any other host.
+**Decided-by:** human
+**Justification:** The drift was measurable, not theoretical: in the 2026-09-15 fleet convergence nickel came in at `changed=12`, the largest on the fleet, against 0-6 on the five swept hosts. Q78 added nickel to the fleet's documented membership without changing any behaviour; this is the behaviour half, for both portables.
+
+Two tiers rather than one because the sweep's value is that silence means success — it fires at 02:00 and only iMessages on error. Laptops are asleep, shut, or off-tailnet most nights, so treating them strictly would page on most mornings for the expected case, which trains the reader to ignore the alert that matters. Best-effort is scoped narrowly to *reachability at 02:00*: once a portable's ssh succeeds, a failed `git pull`, a failed launch, a non-zero `failed=`/`unreachable=` or a `STOPPED-NO-RECAP` is a real error and goes in the message.
+
+Verified before trusting the prose: both hosts answer `ssh -o BatchMode=yes`, both do a non-interactive `git fetch origin main` (so the sweep's `git pull` will work — they hold their own deploy keys), and `ansible-playbook` resolves on each one's non-interactive PATH, which is what lets the task call it unqualified.
+
+The task file lives outside this repo (`~/coworker/.openroutine/update-packages.cron.md`), so this entry is the only record in the repo whose playbook it runs. Its embedded restatement of the never-fan-out rule also carried the stale `79 places across 25 roles` figure and was corrected to `89 across 24` in the same edit; note that copy is not covered by `scripts/check-home-lookup-count.sh`, which only reads this repo's CLAUDE.md. `openroutine reload` was run so the daemon re-read the file; next tick 02:00.
+**Outcome:** applied
+**Ref:** (pending)
