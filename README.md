@@ -109,6 +109,7 @@ pre-commit run --all-files
 | dotenv | 不装任何软件；把 `.env` 以托管块写入 `~/.zshenv`，让非交互式 shell（`ssh host 'cmd'`、git hook、launchd）也能读到其中的变量 |
 | uv | Python 包与工具管理器（通过官方 astral.sh 脚本安装） |
 | python | 用 uv 安装 Python 命令行工具：yamllint、ansible-lint、ruff、pre-commit、httpie；Apple Silicon 另加 openai-whisper、whisper-ctranslate2（依赖 uv） |
+| mise | 运行时版本管理器（由 bootstrap.sh 独立安装）；本 role 用 `mise self-update` 保持其最新，go、nodejs、jdk 都建立在它之上 |
 | go | Go 语言（通过 mise 安装） |
 | nodejs | Node.js（通过 mise 安装） |
 | bun | Bun JavaScript 运行时 |
