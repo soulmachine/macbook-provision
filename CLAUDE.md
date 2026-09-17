@@ -44,7 +44,7 @@ do not fan this playbook out.** The `--limit 127.0.0.1` above is belt-and-braces
 the current inventory it changes nothing, and it keeps the rule true if an entry is ever
 added back.
 
-The roles read `lookup('env', 'HOME')` in 91 places across 25 roles (counted
+The roles read `lookup('env', 'HOME')` in 93 places across 25 roles (counted
 2026-09-16; `scripts/check-home-lookup-count.sh` keeps this honest), with zero uses of
 `ansible_env.HOME`, and pull the `.env` secrets the same way. Ansible evaluates every
 `lookup()` on the **control node**, not the target. Fan this out and one machine's
