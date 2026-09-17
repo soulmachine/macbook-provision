@@ -88,10 +88,15 @@ skills_sources_partial:
   - source: warpdotdev/common-skills
     skills: [skill-doctor]
   # Q88 deleted all 28 of this source's installed skills fleet-wide on 2026-09-15, because
-  # re-adding meant taking 85. That constraint is exactly what this list lifts, so `unslop`
-  # returns on its own — not the other 84. Q88 is narrowed here, not reversed.
+  # re-adding meant taking 85. That constraint is exactly what this list lifts, so these two
+  # are named on their own — not the other 83. Q88 is narrowed here, not reversed.
+  #
+  # `thermo-nuclear-code-quality-review` carries `disable-model-invocation: true`, so it only
+  # ever runs when asked for by name. Its sibling `thermos` fans out to two *subagents* that
+  # live in the plugin, not in the skill — outside what `skills add` installs — so only this
+  # one, which is a single self-contained SKILL.md, is taken.
   - source: cursor/plugins
-    skills: [unslop]
+    skills: [unslop, thermo-nuclear-code-quality-review]
 
 # Partial sources that a DIFFERENT role installs. The orphan detector below groups the lock
 # by source and flags anything no source accounts for, so without this every such skill reads
