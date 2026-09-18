@@ -97,6 +97,12 @@ skills_sources_partial:
   # one, which is a single self-contained SKILL.md, is taken.
   - source: cursor/plugins
     skills: [unslop, thermo-nuclear-code-quality-review]
+  # Ships exactly one skill today, so this pin filters nothing — `--all` would fetch the same
+  # thing. It is here rather than in `skills_sources` to keep that true: a one-skill source that
+  # grows later would hand `--all` the additions unreviewed, which is the trap the
+  # `warpdotdev/common-skills` note above describes. Verified with `-l` on 2026-09-18.
+  - source: typesafe-ai/skills
+    skills: [typesafe-ai]
 
 # Partial sources that a DIFFERENT role installs. The orphan detector below groups the lock
 # by source and flags anything no source accounts for, so without this every such skill reads
