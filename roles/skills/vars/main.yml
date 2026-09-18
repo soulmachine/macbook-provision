@@ -145,3 +145,27 @@ skills_agents:
   - claude-code # ~/.claude/skills
   - pi # ~/.pi/agent/skills
   - hermes-agent # ~/.hermes/skills
+
+# The instruction states that mean an agent actually reaches the Commons. Anything else is a
+# failure — see the survey tasks at the end of tasks/main.yml.
+#
+# An ALLOWLIST, not a blocklist of bad states, and that direction is the whole point: a state
+# agent-sync adds in a future release lands outside this list and fails loudly, rather than
+# slipping through a blocklist written before it existed. Same fail-closed posture as the
+# `mac_is_always_on` battery gate, which demands an affirmative "No" rather than "anything that
+# isn't Yes".
+#
+# Why these two and no others. agent-sync's instruction survey has seven states. `missing`,
+# `import` and `legacy` are what `sync` repairs, so reaching the check still in one of them means
+# the repair above did not take. `conflict` and `foreign` are the states `sync` CANNOT repair —
+# `instructions::apply()` ends `_ => Ok(())`, commented "Conflicts and Foreign links are no-ops"
+# — and, worse, they exit 0 from `agent-sync status`, so nothing else on this machine reports
+# them. They are the reason this check exists; neither belongs here.
+#
+# `foreign` does occur on this fleet, but only under `mcp` (xapi, serena, node_repl,
+# computer-use — "not in the Commons — left alone"), never under `instructions`. The survey task
+# reads the `instructions` array alone, which is what keeps those out of it. Measured 2026-09-18:
+# all seven hosts report 8 instruction items, every one `linked` or `imported`.
+skills_wiring_ok_states:
+  - linked # a symlink resolving to the Commons (codex, pi, oh-my-pi, windsurf, roo)
+  - imported # an import line or JSON include entry naming it (claude, opencode, gemini)

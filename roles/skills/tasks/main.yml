@@ -78,7 +78,7 @@
 # there, leaving results with no `rc` at all rather than with `rc: 0`.
 #
 # This records the failure; `main.yml`'s post_tasks is what fails the play on it. The two are
-# split deliberately. This role is 21st of 41, so failing here would stop the 20 roles after
+# split deliberately. This role is 23rd of 43, so failing here would stop the 20 roles after
 # it — `tailscale` and its key-expiry maintenance, `hermes`, `ponytail`, `claude-mem` among
 # them — on every host, every night, until someone edited one line. That inverts the
 # priorities: a renamed skill is a small problem, and it should not be able to halt network
@@ -265,3 +265,71 @@
   ansible.builtin.command: agent-sync sync
   when: skills_sync_status.rc != 0
   changed_when: true
+
+# The sync above repairs what it can. This asserts the result, because `agent-sync status`'s exit
+# code does NOT cover the whole survey: of its seven instruction states, only `missing`, `import`
+# and `legacy` are "actionable" and lift the code to 2. `conflict` and `foreign` exit 0 —
+# upstream pins that deliberately in `tests/instructions.rs`,
+# `a_conflict_does_not_keep_the_machine_permanently_dirty`.
+#
+# Those two are exactly the states that mean an agent has STOPPED reaching the Commons: gemini's
+# settings.json edited into invalid JSON, `context.fileName` retyped to a non-list, the Commons
+# entry slid to index 0 where gemini writes its own memories, or a real file/foreign symlink
+# occupying codex's `~/.codex/AGENTS.md`. Every one leaves the agent loading nothing, and
+# `agent-sync status` says 0. The nightly sweep's only success test is `failed=0` in the PLAY
+# RECAP, so a state that exits 0 is invisible to the fleet by construction.
+#
+# `sync` cannot fix them either — `instructions::apply()` ends `_ => Ok(())`, commented
+# "Conflicts and Foreign links are no-ops" — so this is a detector, not a second repair, and the
+# post_task's message is a hand-fix rather than "re-run the play".
+#
+# Ceiling: the verdict is measured here at role 23 of 43, so a break caused by a LATER role —
+# claude-mem (28th) or ponytail (31st), both of which write agent config — is not caught until the
+# next run. Accepted rather than surveyed twice; a second pass in post_tasks would not report at
+# all under the standalone `include_role` form.
+- name: Check the instruction wiring after the fan-out
+  ansible.builtin.command: agent-sync status --json
+  register: skills_wiring
+  changed_when: false
+  # rc is deliberately ignored, not just tolerated. `status` returns 1 for an unreadable
+  # third-party mcp or hooks file while still emitting a complete, valid instructions array, so
+  # gating on rc would throw away a good survey. The JSON is the signal; the exit code is not.
+  failed_when: false
+  check_mode: false # read-only probe; run in --check so the report below is real
+
+# Two `set_fact` tasks because one cannot reference a key it defines in the same task — the same
+# reason host-facts splits its classification. `default('{}', true)` because a Commons fault makes
+# `status` return 1 with EMPTY stdout rather than `{}`, which would otherwise break `from_json`.
+- name: Read the instruction survey
+  ansible.builtin.set_fact:
+    skills_wiring_items: >-
+      {{ (skills_wiring.stdout | default('{}', true) | from_json).instructions | default([], true) }}
+
+- name: Record any agent whose instruction wiring is not intact
+  ansible.builtin.set_fact:
+    skills_wiring_broken: >-
+      {{ skills_wiring_items | rejectattr('state', 'in', skills_wiring_ok_states)
+         | map('to_json') | list }}
+
+# An empty survey is NOT a failure, and that asymmetry is deliberate. agent-sync returns no
+# instruction items at all when `~/.agents/AGENTS.md` is absent, and nothing creates that file:
+# not agent-sync (no `fs::write` of `commons::INSTRUCTIONS` anywhere in its source, `init` only
+# makes directories) and no role here. It arrives on this fleet from the openroutine sync, so a
+# freshly built host legitimately has none for a while. Failing would make every new host red
+# forever; naming the absence out loud is this role's convention for exactly that case, the same
+# as the self-authored-skills report above.
+- name: Report that no instruction wiring was surveyed
+  ansible.builtin.debug:
+    msg: >-
+      agent-sync surveyed no instruction wiring on this host. The usual cause is a missing
+      ~/.agents/AGENTS.md, which nothing provisions — `agent-sync doctor` prints whether it is
+      present. Until it exists, no agent loads the shared instructions.
+  when: skills_wiring_items | length == 0
+
+# Duplicates the post_task message below because post_tasks never run under
+# `ansible localhost -m include_role -a name=skills`, the form the ansible-idempotency-check skill
+# uses — the same reason the pinned-skill report above duplicates its own.
+- name: Report agents whose instruction wiring is not intact
+  ansible.builtin.debug:
+    msg: "{{ skills_wiring_broken }}"
+  when: skills_wiring_broken | length > 0
