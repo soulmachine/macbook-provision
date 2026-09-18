@@ -78,7 +78,7 @@
 # there, leaving results with no `rc` at all rather than with `rc: 0`.
 #
 # This records the failure; `main.yml`'s post_tasks is what fails the play on it. The two are
-# split deliberately. This role is 23rd of 43, so failing here would stop the 20 roles after
+# split deliberately. This role is 24th of 44, so failing here would stop the 20 roles after
 # it — `tailscale` and its key-expiry maintenance, `hermes`, `ponytail`, `claude-mem` among
 # them — on every host, every night, until someone edited one line. That inverts the
 # priorities: a renamed skill is a small problem, and it should not be able to halt network
@@ -351,7 +351,7 @@
 # "Conflicts and Foreign links are no-ops" — so this is a detector, not a second repair, and the
 # post_task's message is a hand-fix rather than "re-run the play".
 #
-# Ceiling: the verdict is measured here at role 23 of 43, so a break caused by a LATER role —
+# Ceiling: the verdict is measured here at role 24 of 44, so a break caused by a LATER role —
 # claude-mem (28th) or ponytail (31st), both of which write agent config — is not caught until the
 # next run. Accepted rather than surveyed twice; a second pass in post_tasks would not report at
 # all under the standalone `include_role` form.

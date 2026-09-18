@@ -44,7 +44,7 @@ do not fan this playbook out.** The `--limit 127.0.0.1` above is belt-and-braces
 the current inventory it changes nothing, and it keeps the rule true if an entry is ever
 added back.
 
-The roles read `lookup('env', 'HOME')` in 93 places across 25 roles (counted
+The roles read `lookup('env', 'HOME')` in 94 places across 26 roles (counted
 2026-09-16; `scripts/check-home-lookup-count.sh` keeps this honest), with zero uses of
 `ansible_env.HOME`, and pull the `.env` secrets the same way. Ansible evaluates every
 `lookup()` on the **control node**, not the target. Fan this out and one machine's
@@ -334,8 +334,9 @@ wrong:
 ### Role Structure
 
 Every role has `tasks/main.yml`. Some also have:
-- `vars/main.yml` — Data (e.g., the skill-source list in `skills`). Nine roles have one:
-  bun, claude-code, claude-mem, dotenv, github, playwright-cli, ponytail, python, skills.
+- `vars/main.yml` — Data (e.g., the skill-source list in `skills`). Ten roles have one:
+  bun, claude-code, claude-mem, dotenv, github, playwright-cli, ponytail, python, skills,
+  typesafe.
 - `meta/main.yml` — Dependencies (e.g., `intellij-idea` depends on `jdk`)
 
 ### Common Task Patterns
@@ -343,6 +344,40 @@ Every role has `tasks/main.yml`. Some also have:
 - CLI tools: `community.general.homebrew` with `state: latest`
 - GUI apps: `community.general.homebrew_cask` with `state: present`
 - Complex setup (oh-my-zsh, direnv): shell commands, git clone, sed modifications
+
+#### Typesafe role specifics
+
+`typesafe` installs the two Claude Code plugins built on TypeSafe's Jev model —
+`fast-jev-compaction@fast-jev-compaction` (a function-hook plugin that replaces the compaction
+summary with per-tool-call Jev keep/drop decisions) and `claude-jev@claude-jev` (an MCP-server
+plugin: five `jev_*` tools plus `/jev-review`, `/jev-pick`, `/jev-why`, `/jev-ask`). The
+official `typesafe-ai` *skill* is not this role's — `roles/skills` pins it (DECISIONS Q141).
+
+- **One `env` entry serves both plugins.** Each declares a `sensitive` `apiKey` userConfig
+  and falls back to `TYPESAFE_API_KEY` in Claude Code's process environment when it is unset:
+  the hook runs in-process, the MCP server is a child that inherits it. So the role leaves
+  every userConfig option alone (all the others have defaults) and writes
+  `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1` + `TYPESAFE_API_KEY` into `~/.claude/settings.json`'s
+  `env` map — upstream's own install step — with the same read-merge-write and
+  `recursive=true` combine the `claude-code` role uses, and *before* the plugin install so
+  function hooks are on the first time fast-jev loads. Not the keychain: it is locked in the
+  non-interactive ssh sessions the fleet is provisioned from, and a value set through an
+  install-time flag cannot be rotated by re-running.
+- **The whole role gates on the key.** `TYPESAFE_API_KEY` comes from the repo `.env`, so it
+  reaches a non-interactive run only through the `dotenv` role's `~/.zshenv` block. Empty,
+  the role reports why and installs nothing — a plugin that can never reach Jev is noise —
+  which also means a host gets the plugins only after its `.env` carries the key.
+- **`settings.json` is written 0600, by this role and by `claude-code`.** The file now holds
+  a credential, and Claude Code itself keeps it at 0600 (measured 2026-09-18); the
+  `claude-code` role's write was 0644 until then and would have loosened it on every changed
+  run. The two tasks that carry the key (`set_fact` merge, `copy`) are `no_log`.
+- **Every gate reads a ledger, none reads stdout** — the ponytail role's `claude-code.yml`
+  generalised to a list: marketplace add gated on the *name* in `known_marketplaces.json`
+  (Q154), install on the id in `installed_plugins.json`, update on `gitCommitSha` diffed
+  around the call, enable on `enabledPlugins` key absence so a manual `/plugin` disable
+  survives. Marketplace names (`fast-jev-compaction`, `claude-jev`) come from each repo's
+  `.claude-plugin/marketplace.json` and are not derivable from `owner/repo`, hence both are
+  carried in `vars/main.yml`.
 
 #### Self-update tasks: diff state, don't grep output
 

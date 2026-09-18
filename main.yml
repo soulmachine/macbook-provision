@@ -28,6 +28,7 @@
     - jdk
     - claude-code
     - claude-extras
+    - typesafe
     - codex
     - opencode
     - kimi-code
@@ -62,7 +63,7 @@
       tags: [terminal-multiplexer]
 
   # Failures that should be loud without being obstructive land here, after every role has
-  # had its run. The `skills` role is 23rd of 43, so a `fail` inside it stops the 20 that
+  # had its run. The `skills` role is 24th of 44, so a `fail` inside it stops the 20 that
   # follow — including `tailscale`, which carries the OAuth key-expiry maintenance. A skill
   # renamed upstream is not worth that, and tolerating it silently is not an option either:
   # the nightly sweep's only success test is `failed=0` in the PLAY RECAP, so anything that

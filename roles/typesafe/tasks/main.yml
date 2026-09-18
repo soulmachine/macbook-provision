@@ -1,0 +1,174 @@
+---
+# typesafe — the Claude Code plugins built on TypeSafe's Jev model. Two plugins, one
+# key; see vars/main.yml for what each is. The plugin steps are the ponytail role's
+# claude-code.yml generalised to a list, and every gate reads a ledger rather than the
+# CLI's wording — CLAUDE.md "Self-update tasks: diff state, don't grep output".
+#
+# Deliberately absent: a Claude Code version assert (the claude-code dependency runs
+# `claude update` on every play, so the fleet is always on the latest build, well past
+# the 2.1.274 function-hooks floor), and `--config` values (every userConfig option has a
+# default except `apiKey`, which is meant to stay unset so the env var is used).
+
+# Say so rather than skipping in silence: "no key on this host" and "ran from a shell
+# that never loaded .env" look identical in the recap, and only the second is a mistake.
+- name: Report that there is no TypeSafe API key to provision against
+  ansible.builtin.debug:
+    msg: >-
+      TYPESAFE_API_KEY is empty — skipping the typesafe role. Add it to the repo .env
+      (see .env.example), then re-run; the dotenv role exports it to ~/.zshenv so
+      non-interactive runs see it too.
+  when: typesafe_api_key | length == 0
+
+- name: Install the Jev plugins into Claude Code
+  when: typesafe_api_key | length > 0
+  block:
+    # --- settings.json env -------------------------------------------------------
+    # Upstream's own install step: both vars go in the settings `env` map, where Claude
+    # Code exports them into its process. Written BEFORE the plugin install so function
+    # hooks are already enabled the first time fast-jev-compaction loads. Same read-merge-
+    # write shape as the claude-code role, and `recursive=true` for the same reason: the
+    # `env` map already carries CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION and must gain keys,
+    # not be replaced.
+    - name: Read Claude Code settings
+      ansible.builtin.slurp:
+        src: "{{ typesafe_settings }}"
+      register: typesafe_settings_raw
+      failed_when: false
+
+    - name: Parse Claude Code settings
+      ansible.builtin.set_fact:
+        typesafe_settings_before: >-
+          {{ (typesafe_settings_raw.content | b64decode | from_json)
+             if (typesafe_settings_raw.content | default('') | b64decode | trim | length > 0)
+             else {} }}
+
+    # no_log on the two tasks that carry the key: the merged document and the file write.
+    # A `-v` or `--diff` would otherwise print it.
+    - name: Merge the Jev env into the settings
+      ansible.builtin.set_fact:
+        typesafe_settings_merged: >-
+          {{ typesafe_settings_before | combine(typesafe_settings_managed, recursive=true) }}
+      vars:
+        typesafe_settings_managed:
+          env:
+            # Function hooks are early access; without this the fast-jev hook never loads.
+            CLAUDE_CODE_ENABLE_FUNCTION_HOOKS: "1"
+            TYPESAFE_API_KEY: "{{ typesafe_api_key }}"
+      no_log: true
+
+    # Gate on the merge changing something, not on copy's content diff: to_nice_json and
+    # Claude Code's own writer format the file differently, so a bare copy would flip it
+    # between the two on every run. 0600 because the file now holds a credential — and it
+    # is what Claude Code itself keeps the file at (measured 2026-09-18: -rw-------).
+    - name: Apply the Jev env to the settings
+      ansible.builtin.copy:
+        dest: "{{ typesafe_settings }}"
+        content: "{{ typesafe_settings_merged | to_nice_json }}\n"
+        mode: "0600"
+      when: typesafe_settings_merged != typesafe_settings_before
+      no_log: true
+      register: typesafe_settings_write
+
+    - name: Report the settings env outcome
+      ansible.builtin.debug:
+        msg: >-
+          Claude Code settings env
+          {{ 'updated' if typesafe_settings_write is changed else 'already current' }}:
+          CLAUDE_CODE_ENABLE_FUNCTION_HOOKS, TYPESAFE_API_KEY
+
+    # --- marketplaces ------------------------------------------------------------
+    # Gated on the NAME being absent from the ledger, never run unconditionally: a re-add
+    # is a no-op at best and, after an upstream org rename, a permanent failure (Q154).
+    # `e30=` is base64 `{}`, for the fresh-host and --check cases with no ledger yet.
+    - name: Read the known Claude Code marketplaces
+      ansible.builtin.slurp:
+        src: "{{ typesafe_marketplace_ledger }}"
+      register: typesafe_mp_raw
+      failed_when: false
+
+    - name: Add the Jev plugin marketplaces
+      ansible.builtin.command: claude plugin marketplace add {{ item.source }}
+      loop: "{{ typesafe_marketplaces }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: >-
+        item.name not in
+        (typesafe_mp_raw.content | default('e30=') | b64decode | from_json)
+      changed_when: true
+
+    # --- install -----------------------------------------------------------------
+    # Neither plugin's userConfig prompt fires here: measured 2026-09-18 on Claude Code
+    # 2.1.276, both installs completed under Ansible (no TTY) with no prompt and no
+    # `pluginConfigs` written, leaving every option at its default and `apiKey` unset.
+    - name: Read the installed Claude Code plugins
+      ansible.builtin.slurp:
+        src: "{{ typesafe_plugin_ledger }}"
+      register: typesafe_installed_raw
+      failed_when: false
+
+    - name: Install the Jev plugins
+      ansible.builtin.command: claude plugin install {{ item }}
+      loop: "{{ typesafe_plugins }}"
+      when: item not in (typesafe_installed_raw.content | default('') | b64decode)
+      changed_when: true
+
+    # --- update ------------------------------------------------------------------
+    # `claude plugin update` exits 0 on every path, so the verdict is the ledger's
+    # `gitCommitSha` per plugin, diffed around the call. Only the sha, never the whole
+    # record: `lastUpdated` moves on a no-op update.
+    - name: Read the plugin ledger before updating
+      ansible.builtin.slurp:
+        src: "{{ typesafe_plugin_ledger }}"
+      register: typesafe_ledger_before
+      failed_when: false
+
+    - name: Update the Jev plugins
+      ansible.builtin.command: claude plugin update {{ item }}
+      loop: "{{ typesafe_plugins }}"
+      changed_when: false
+
+    - name: Read the plugin ledger after updating
+      ansible.builtin.slurp:
+        src: "{{ typesafe_plugin_ledger }}"
+      register: typesafe_ledger_after
+      failed_when: false
+
+    - name: Check whether any Jev plugin was updated
+      vars:
+        typesafe_shas_before: >-
+          {{ (typesafe_ledger_before.content | default('e30=') | b64decode | from_json).plugins
+             | default({}) | dict2items | selectattr('key', 'in', typesafe_plugins)
+             | sort(attribute='key') | map(attribute='value') | flatten
+             | map(attribute='gitCommitSha', default='') | list }}
+        typesafe_shas_after: >-
+          {{ (typesafe_ledger_after.content | default('e30=') | b64decode | from_json).plugins
+             | default({}) | dict2items | selectattr('key', 'in', typesafe_plugins)
+             | sort(attribute='key') | map(attribute='value') | flatten
+             | map(attribute='gitCommitSha', default='') | list }}
+      ansible.builtin.debug:
+        msg: >-
+          Jev plugins
+          {{ 'updated' if typesafe_shas_before != typesafe_shas_after else 'already up to date' }}
+      changed_when: typesafe_shas_before != typesafe_shas_after
+
+    # --- enable ------------------------------------------------------------------
+    # Only enabled plugins load. On 2.1.276 `claude plugin install` already wrote both
+    # into `enabledPlugins` (this loop skipped on the first run), where earlier builds did
+    # not — so this is a safety net for the older behaviour, not dead code. Re-read the
+    # settings here rather than reusing the snapshot above: the plugin steps between
+    # rewrite the file. Gate on key absence, not value, so a manual `/plugin` disable
+    # survives re-runs.
+    - name: Re-read Claude Code settings
+      ansible.builtin.slurp:
+        src: "{{ typesafe_settings }}"
+      register: typesafe_settings_now_raw
+      failed_when: false
+
+    - name: Enable the Jev plugins
+      ansible.builtin.command: claude plugin enable {{ item }}
+      loop: "{{ typesafe_plugins }}"
+      when: >-
+        item not in
+        ((typesafe_settings_now_raw.content | default('e30=') | b64decode | from_json).enabledPlugins
+         | default({}))
+      changed_when: true

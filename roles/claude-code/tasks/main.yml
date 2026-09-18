@@ -239,11 +239,15 @@
 # `to_nice_json` emits 4-space, key-sorted JSON while Claude Code rewrites the
 # file in its own 2-space order whenever it saves a setting, so a bare `copy`
 # would flip the file between the two formats on every run.
+#
+# 0600, not 0644: the `typesafe` role puts TYPESAFE_API_KEY into this file's `env`
+# map, and Claude Code itself keeps the file at 0600 (measured 2026-09-18), so a
+# 0644 write here would loosen it again on every changed run.
 - name: Apply the managed Claude Code settings
   ansible.builtin.copy:
     dest: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
     content: "{{ claude_code_settings_merged | to_nice_json }}\n"
-    mode: "0644"
+    mode: "0600"
   when: claude_code_settings_merged != claude_code_settings
 
 # `claude plugin install` adds a plugin to ~/.claude/plugins/installed_plugins.json
