@@ -36,18 +36,23 @@
   register: skills_before
   changed_when: false
 
+# `--all` is shorthand for `--skill '*' --agent '*' -y`; the agent half is spelled out from
+# `skills_agents` instead, so this installs every skill in the source to the agents this fleet
+# actually has. See vars/main.yml for why `'*'` is not what it looks like.
 - name: Install the skill sources for every agent
-  ansible.builtin.command: "npx skills@latest add {{ item }} -g -y --all"
+  ansible.builtin.command: >-
+    npx skills@latest add {{ item }} -g -y --skill '*'
+    {% for a in skills_agents %}--agent {{ a }} {% endfor %}
   loop: "{{ skills_sources }}"
   changed_when: false
 
-# Same installer, naming the skills rather than taking `--all`. A second task rather than one
-# conditional command string: the two lists mean different things, and `--all` is not simply
-# `--skill` with a wildcard argument — it also implies `--agent '*' -y`, which this form has
-# to restate. See vars/main.yml on why the flag is repeated instead of comma-joined.
+# Same installer, naming the skills rather than taking every skill in the source. A second task
+# rather than one conditional command string: the two lists mean different things. Both now name
+# the same explicit agent set; see vars/main.yml on why the flag is repeated, not comma-joined.
 - name: Install the partial skill sources for every agent
   ansible.builtin.command: >-
-    npx skills@latest add {{ item.source }} -g -y --agent '*'
+    npx skills@latest add {{ item.source }} -g -y
+    {% for a in skills_agents %}--agent {{ a }} {% endfor %}
     {% for s in item.skills %}--skill {{ s }} {% endfor %}
   loop: "{{ skills_sources_partial }}"
   loop_control:
@@ -134,21 +139,35 @@
       register: skills_sourced_before
       changed_when: false
 
+    # Keyed on SKILL.md, NOT on "every directory in the repo". A directory is not a skill:
+    # `git mv`-ing a skill out to its own repo leaves the empty parent behind (git does not
+    # delete directories), and adopting that husk asks agent-sync to repoint the Commons away
+    # from wherever the skill really lives now — which it refuses, with a non-zero exit that
+    # failed the whole play. That is exactly what `herdr-advisor` did after upstream commit
+    # 5b3d509 "herdr-advisor: moved to OpenSWE/herdr-advisor" left
+    # `soulmachine/skills/herdr-advisor/.claude` behind while the Commons link correctly pointed
+    # at `OpenSWE/herdr-advisor/skills/herdr-advisor`. Q142's claim that no name collision
+    # existed was true when written and stopped being true when the skill moved.
+    #
+    # A collision between two REAL skills of the same name still fails the play, and should:
+    # that is ambiguity a human has to resolve, not a husk to skip.
     - name: Find the self-authored skills that live in git
       ansible.builtin.find:
         paths: "{{ skills_selfauthored_repo }}"
-        file_type: directory
-        recurse: false
+        patterns: SKILL.md
+        file_type: file
+        recurse: true
+        depth: 2
       register: skills_selfauthored
       changed_when: false
 
     # Looped rather than diffed first because `adopt` is idempotent and cheap; an
     # already-Sourced path is a no-op that exits 0.
     - name: Adopt each self-authored skill
-      ansible.builtin.command: "agent-sync adopt {{ item.path }}"
+      ansible.builtin.command: "agent-sync adopt {{ item.path | dirname }}"
       loop: "{{ skills_selfauthored.files }}"
       loop_control:
-        label: "{{ item.path | basename }}"
+        label: "{{ item.path | dirname | basename }}"
       changed_when: false
 
     - name: Check whether any skill was newly adopted

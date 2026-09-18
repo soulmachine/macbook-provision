@@ -118,3 +118,30 @@ skills_sources_foreign:
   # because the skill has to land in the same task flow that installs the CLI it documents.
   - source: herdrdev/herdr
     skills: [herdr]
+
+# The agents this fleet fans skills out to, named rather than taken as `--agent '*'`.
+#
+# `'*'` is not "every installed agent" — the CLI expands it to **every agent in its registry**
+# (`targetAgents = validAgents`), 78 of them as of 2026-09-18, and it `mkdir`s each directory it
+# links into. That is what kept resurrecting `~/.openclaw/skills` on hosts with no OpenClaw since
+# Q52-Q54 (DECISIONS Q134, Q143), and what makes `eve` and `promptscript` fail on every run: both
+# declare `globalSkillsDir: void 0`, so a `-g` install has no target to write to.
+#
+# `universal` is load-bearing and must stay first in spirit if not in order: it IS the store
+# (`.agents/skills`), and its `detectInstalled` is hardcoded `false`, so it is reached ONLY by being
+# named or by `'*'`. Drop it and the store stops being populated, which breaks every agent that
+# reads it natively (codex, opencode, oh-my-pi) as well as the symlink farms below.
+#
+# The flag is repeated per agent rather than comma-joined, for the same reason `--skill` is:
+# measured 2026-09-18, `--agent a,b` is parsed as the single name `a,b` ("Invalid agents: a,b"),
+# while repeating the flag yields two ("Invalid agents: a, b").
+#
+# agent-sync is NOT a second source of the OpenClaw farm: its `Agent::detected()` is
+# `root_path(home).is_dir()`, so it fans out only into roots that already exist and never creates
+# one. Leaving `~/.openclaw` in place on archs-mac-mini therefore keeps that host's farm populated,
+# which is the user's standing exception.
+skills_agents:
+  - universal # the store itself, ~/.agents/skills
+  - claude-code # ~/.claude/skills
+  - pi # ~/.pi/agent/skills
+  - hermes-agent # ~/.hermes/skills
