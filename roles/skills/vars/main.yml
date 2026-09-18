@@ -10,6 +10,10 @@ skills_home: "{{ lookup('env', 'HOME') }}"
 # one directory therefore covers every agent's content.
 skills_store: "{{ skills_home }}/.agents/skills"
 
+# The self-authored skills, whose truth lives in git rather than in the store. Adopted by the
+# task below with `agent-sync adopt`, NOT by `skills add` — see the exclusion note further down.
+skills_selfauthored_repo: "{{ skills_home }}/github.com/soulmachine/skills"
+
 # Every skill source the CLI owns and re-fetches, declared in one place. A source
 # belongs here rather than in the role for the app it accompanies: this role is
 # source-agnostic, so adding a line costs nothing, while a per-role copy would repeat

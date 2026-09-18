@@ -100,12 +100,73 @@
       roles/skills/vars/main.yml, or drop the entry if the skill is gone for good.
   when: skills_partial_failures | length > 0
 
+# `soulmachine/skills` is deliberately absent from `skills_sources` — `skills add` would replace
+# each git-backed symlink with a CLI-managed copy (Q82) — but nothing put those skills in the
+# store either, so adoption stayed per-host and manual. Measured 2026-09-18: the same 30 upstream
+# directories, from clones all sitting on the same commit, were adopted 6/8/9/14/17/21/23 times
+# across the seven hosts, so a skill committed to git was simply absent on most of them. That is
+# the gap this closes, and it does not reopen Q82: `adopt` is a different verb from `skills add`
+# — a path inside a git repo becomes a Sourced entry, a symlink out to the repo, so the truth
+# stays in git.
+- name: Check for the self-authored skills repo
+  ansible.builtin.stat:
+    path: "{{ skills_selfauthored_repo }}"
+  register: skills_selfauthored_clone
+
+- name: Report that the self-authored skills are absent from this host
+  ansible.builtin.debug:
+    msg: >-
+      No clone at {{ skills_selfauthored_repo }}, so its skills are not adopted here. This is a
+      legitimate state for a host that does not carry them — clone it and re-run if it should.
+  when: not skills_selfauthored_clone.stat.exists
+
+- name: Adopt the self-authored skills into the Commons
+  when: skills_selfauthored_clone.stat.exists
+  block:
+    # The verdict comes from the store's links before and after, never from `adopt`'s stdout:
+    # it is idempotent and prints "already Sourced … nothing to do" on every converged run, so
+    # matching that phrase would report a change forever. Same rule as the fingerprint below.
+    - name: Record the Commons links before adopting
+      ansible.builtin.find:
+        paths: "{{ skills_store }}"
+        file_type: link
+        recurse: false
+      register: skills_sourced_before
+      changed_when: false
+
+    - name: Find the self-authored skills that live in git
+      ansible.builtin.find:
+        paths: "{{ skills_selfauthored_repo }}"
+        file_type: directory
+        recurse: false
+      register: skills_selfauthored
+      changed_when: false
+
+    # Looped rather than diffed first because `adopt` is idempotent and cheap; an
+    # already-Sourced path is a no-op that exits 0.
+    - name: Adopt each self-authored skill
+      ansible.builtin.command: "agent-sync adopt {{ item.path }}"
+      loop: "{{ skills_selfauthored.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      changed_when: false
+
+    - name: Check whether any skill was newly adopted
+      ansible.builtin.find:
+        paths: "{{ skills_store }}"
+        file_type: link
+        recurse: false
+      register: skills_sourced_after
+      changed_when: >-
+        (skills_sourced_after.files | map(attribute='path') | sort)
+        != (skills_sourced_before.files | map(attribute='path') | sort)
+
 # Ceiling: this fingerprints content, not the per-agent symlink farms, so a link
 # restored in ~/.claude/skills reports no change even though the run repaired it. The
-# repair still happens — `skills add` runs regardless — and agentstow maintains those
+# repair still happens — `skills add` runs regardless — and agent-sync maintains those
 # same three directories, so the verdict is the only thing affected.
 #
-# `recurse` does not follow symlinks, so the 17 agentstow skills symlinked into
+# `recurse` does not follow symlinks, so the 30 agent-sync skills symlinked into
 # ~/github.com/soulmachine/skills are not traversed. That is deliberate: their content
 # belongs to git, and including it would report a change whenever one is edited there.
 - name: Check whether any skill changed
