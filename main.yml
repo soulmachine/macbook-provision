@@ -33,6 +33,7 @@
     - kimi-code
     - omp
     - pi
+    - agent-sync
     - skills
     - agent-reach
     - playwright

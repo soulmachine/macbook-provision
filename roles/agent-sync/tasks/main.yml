@@ -1,0 +1,68 @@
+---
+# agent-sync — one canonical ~/.agents/ fanned out to every installed agent.
+# Upstream: https://github.com/agent-sync-sh/agent-sync
+#
+# This is the tool the `skills` role's store depends on for its per-agent symlink farms:
+# `skills add` never deletes, so when a store directory goes away, `agent-sync sync` is what
+# prunes the now-dangling links in ~/.claude/skills, ~/.pi/agent/skills and ~/.hermes/skills.
+# Nothing installed it before this role, so a rebuilt host silently lost it (DECISIONS Q130).
+#
+# It was called `agentstow` and installed with `cargo install`. The whole fleet moved to the
+# brew build on 2026-09-17, so this role does NOT carry a `cargo uninstall agentstow` step:
+# that would be dead weight the moment it converged, and a host rebuilt from this repo never
+# had the cargo binary to begin with.
+#
+# Same tap -> trust -> install shape as roles/moshi, each step gated so the role stays
+# idempotent — bare brew commands re-report `changed` on every pass.
+
+- name: Locate the Homebrew repository (for the tap path)
+  ansible.builtin.command:
+    cmd: brew --repository
+  register: agent_sync_brew_repo
+  changed_when: false
+  check_mode: false # read-only probe; run in --check so the tap's creates path is real
+
+# The tap lives INSIDE the main repo rather than in a separate `homebrew-agent-sync` one, so
+# it has to be tapped by URL. The directory it creates is still the conventional
+# `<owner>/homebrew-<name>` form, which is what `creates:` keys on.
+- name: Tap agent-sync-sh/tap
+  ansible.builtin.command:
+    cmd: brew tap agent-sync-sh/tap https://github.com/agent-sync-sh/agent-sync
+    creates: "{{ agent_sync_brew_repo.stdout }}/Library/Taps/agent-sync-sh/homebrew-tap"
+
+# Homebrew refuses to load formulae from untrusted third-party taps
+# (HOMEBREW_REQUIRE_TAP_TRUST), so this must run before the install.
+- name: Read the trusted Homebrew entries
+  ansible.builtin.command: brew trust --json v1
+  register: _agent_sync_trusted
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+# **The ledger records a URL-tapped tap by its URL, not by its name.** Verified 2026-09-17:
+# `brew trust --json v1` lists `https://github.com/agent-sync-sh/agent-sync`, with no
+# `agent-sync-sh/tap` entry anywhere. Gating on the tap name instead would never match, so the
+# trust command would re-run — and re-report `changed` — on every single play, forever.
+- name: Trust agent-sync-sh/tap
+  ansible.builtin.command:
+    cmd: brew trust agent-sync-sh/tap
+  when: >-
+    'https://github.com/agent-sync-sh/agent-sync' not in
+    ((_agent_sync_trusted.stdout | default('{}', true) | from_json).taps | default([]))
+  changed_when: true
+
+- name: Check whether agent-sync is installed
+  ansible.builtin.command:
+    cmd: brew list --versions agent-sync
+  register: _agent_sync_installed
+  changed_when: false
+  failed_when: false
+  check_mode: false # read-only probe; run in --check so the install guard sees real state
+
+- name: Install agent-sync
+  ansible.builtin.command:
+    cmd: brew install agent-sync
+  when: _agent_sync_installed.rc != 0
+  # Gated on the probe above, so reaching this task means agent-sync is absent and the
+  # install really does change something.
+  changed_when: true
