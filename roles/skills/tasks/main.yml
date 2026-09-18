@@ -178,12 +178,65 @@
 
     # Looped rather than diffed first because `adopt` is idempotent and cheap; an
     # already-Sourced path is a no-op that exits 0.
+    #
+    # `failed_when: false` here defers the verdict, it does not tolerate a failure — the
+    # `set_fact` below still routes a genuine one to a `fail` in main.yml's post_tasks. The same
+    # shape, and the same reason, as the pinned-skill install above: a looped `failed_when`
+    # cannot reference the item's own `rc` in ansible-core 2.21 ("'rc' is undefined", measured),
+    # so the classification has to happen after the loop.
     - name: Adopt each self-authored skill
       ansible.builtin.command: "agent-sync adopt {{ item.path | dirname }}"
       loop: "{{ skills_selfauthored.files }}"
       loop_control:
         label: "{{ item.path | dirname | basename }}"
+      register: skills_adopt
       changed_when: false
+      failed_when: false
+
+    # One refusal is separated out, and only one: "remove the Commons link first", which `adopt`
+    # returns with rc 1 when the Commons already links this NAME at a different path. While a
+    # skill is graduating out of the monorepo both copies exist for as long as a host's clone
+    # lags, and the Commons already points at the right one — measured 2026-09-18, six of seven
+    # hosts sat at `111ac0b` and still carried `soulmachine/skills/herdr-advisor/SKILL.md` while
+    # their Commons link correctly resolved to `OpenSWE/herdr-advisor`, so every one of them
+    # failed this loop. That is a clone wanting a `git pull`, not ambiguity a human must
+    # arbitrate, and failing the play would leave the 20 roles after this one unrun over a link
+    # that is already correct.
+    #
+    # A POSITIVE sentinel, never a negated one: matching "not already Sourced" would swallow
+    # every other failure mode, including the genuine same-name collision this must still fail
+    # on. The same-path no-op prints "nothing to do" and exits 0, so it never reaches here.
+    # `selectattr('rc', 'defined')` is load-bearing under `--check`, where the command is skipped
+    # and the result carries no `rc` at all.
+    - name: Sort the adoption refusals into stale clones and real collisions
+      ansible.builtin.set_fact:
+        skills_adopt_stale: >-
+          {{ skills_adopt.results | default([]) | selectattr('rc', 'defined')
+             | selectattr('rc', 'ne', 0)
+             | selectattr('stderr', 'search', 'remove the Commons link first')
+             | map(attribute='item.path') | map('dirname') | map('basename') | list }}
+        skills_adopt_failed: >-
+          {{ skills_adopt.results | default([]) | selectattr('rc', 'defined')
+             | selectattr('rc', 'ne', 0)
+             | rejectattr('stderr', 'search', 'remove the Commons link first')
+             | map(attribute='item.path') | map('dirname') | list }}
+
+    - name: Report skills whose clone still holds a graduated copy
+      ansible.builtin.debug:
+        msg: >-
+          Already Sourced elsewhere, so not re-adopted: {{ skills_adopt_stale | join(', ') }}.
+          The Commons link is correct; this host's clone still carries a copy the skill has
+          since graduated out of. Refresh it with
+          `git -C {{ skills_selfauthored_repos | first }} pull`.
+      when: skills_adopt_stale | length > 0
+
+    # Duplicated in main.yml's post_tasks for the standalone `include_role` form, exactly as the
+    # pinned-skill report above is.
+    - name: Report skills that could not be adopted
+      ansible.builtin.debug:
+        msg: >-
+          `agent-sync adopt` refused: {{ skills_adopt_failed | join('; ') }}.
+      when: skills_adopt_failed | length > 0
 
     - name: Check whether any skill was newly adopted
       ansible.builtin.find:

@@ -97,3 +97,13 @@
           agent-sync.toml rather than widening skills_wiring_ok_states, which would blind the
           check on every agent at once.
       when: skills_wiring_broken | default([]) | length > 0
+
+    - name: Fail when a self-authored skill could not be adopted
+      ansible.builtin.fail:
+        msg: >-
+          `agent-sync adopt` refused these paths: {{ skills_adopt_failed | join('; ') }}.
+          A clone lagging behind a skill's graduation is handled already and is not this;
+          the usual remaining cause is two REAL skills of the same name in different roots,
+          which is ambiguity only a human can resolve. Run the same `agent-sync adopt` by
+          hand to see the refusal in full.
+      when: skills_adopt_failed | default([]) | length > 0
