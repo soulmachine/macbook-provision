@@ -236,3 +236,32 @@
   ansible.builtin.debug:
     msg: "{{ skills_orphans.stdout_lines }}"
   when: skills_orphans.stdout | default('') | length > 0
+
+# Installing and adopting fills the STORE; nothing so far fans it out. `skills add` writes the
+# per-agent farms as a side effect of the agents it is told about, but the Commons is also fed by
+# `agent-sync adopt` above and by skills retired elsewhere, and only `agent-sync sync` reconciles
+# the farms with it — which is why this repo's own AGENTS.md says to run it "after adding or
+# removing any skill". Until now no role ever did: `roles/agent-sync` taps, trusts and installs the
+# binary and stops there, so a rebuilt host got agent-sync and never invoked it, leaving the
+# symlink farms and the instruction wiring (codex's AGENTS.md symlink, opencode's `instructions`
+# entry, gemini's `context.fileName`) to whoever remembered to run it by hand.
+#
+# Gated on `status`, not on `sync`'s output: `status` exits non-zero when it has pending work and 0
+# when converged, so the exit code IS the state diff — the rule this repo applies to every
+# self-updating tool. `sync` itself prints the same reassuring lines whether or not it changed
+# anything, so a stdout match would report a phantom change forever.
+- name: Check whether the agent farms are in sync with the Commons
+  ansible.builtin.command: agent-sync status
+  register: skills_sync_status
+  changed_when: false
+  # An unconverged host is an expected outcome, not an error — `failed_when: false` rather than
+  # `ignore_errors`, so a routine pending item does not print a red `fatal:` block and train the
+  # reader to skim past red.
+  failed_when: false
+  # Read-only, so it runs under `--check` and makes the gate below mean something in a dry run.
+  check_mode: false
+
+- name: Fan the Commons out to every installed agent
+  ansible.builtin.command: agent-sync sync
+  when: skills_sync_status.rc != 0
+  changed_when: true
