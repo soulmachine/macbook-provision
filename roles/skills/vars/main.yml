@@ -12,7 +12,24 @@ skills_store: "{{ skills_home }}/.agents/skills"
 
 # The self-authored skills, whose truth lives in git rather than in the store. Adopted by the
 # task below with `agent-sync adopt`, NOT by `skills add` — see the exclusion note further down.
-skills_selfauthored_repo: "{{ skills_home }}/github.com/soulmachine/skills"
+#
+# A LIST, not one path, because a skill that outgrows the monorepo graduates to its own repo in
+# the OpenSWE org — `herdr-advisor` and `log-decisions` both have — laid out as
+# `skills/<name>/SKILL.md` so `npx skills add OpenSWE/<name>` and the Claude plugin marketplace
+# each resolve it. Every entry below is a directory that DIRECTLY contains skill directories, so
+# one `find` at depth 2 covers all of them uniformly. Always name the path INSIDE the clone, never
+# the clone itself: that keeps the store entry a Sourced symlink out to the repo, so a `git pull`
+# still ships an edit to a host.
+#
+# Measured 2026-09-18, and the reason this stopped being one path: `herdr-advisor` was a
+# hand-adopted symlink on all seven hosts while appearing in no list here at all — the store
+# equivalent of the gap Q149 closed for the fan-out, so a rebuilt host would simply not have had
+# it. A missing root is skipped by `find` and named by the task below; no role clones these, so a
+# host without one legitimately carries fewer skills.
+skills_selfauthored_repos:
+  - "{{ skills_home }}/github.com/soulmachine/skills" # the monorepo, ~29 skills
+  - "{{ skills_home }}/github.com/OpenSWE/herdr-advisor/skills"
+  - "{{ skills_home }}/github.com/OpenSWE/log-decisions/skills"
 
 # Every skill source the CLI owns and re-fetches, declared in one place. A source
 # belongs here rather than in the role for the app it accompanies: this role is
@@ -32,7 +49,7 @@ skills_selfauthored_repo: "{{ skills_home }}/github.com/soulmachine/skills"
 # them changes nothing but who refreshes them. `lavish-design` stays behind as an orphan
 # store directory: it is in the lock but no longer shipped, and `skills add` never deletes.
 #
-# Two sources are deliberately NOT here, both verified with `skills add <source> -l`,
+# Three sources are deliberately NOT here, each verified with `skills add <source> -l`,
 # which lists what upstream ships **without installing**. Check adoption that way rather
 # than against the lock file, which records what was once asked for — the same stale-lock
 # trap as DECISIONS.md Q7 and Q84:
@@ -42,6 +59,14 @@ skills_selfauthored_repo: "{{ skills_home }}/github.com/soulmachine/skills"
 #     every agent), so the CLI has never installed them, they carry no lock entry, and
 #     `skills add soulmachine/skills` would replace each git-backed symlink with a
 #     CLI-managed copy. See DECISIONS.md Q82.
+#   * `swe-workflow/log-decisions` — listed here until 2026-09-18, when the skill graduated to
+#     its own repo and `skills_selfauthored_repos` took it over. The name still resolves (GitHub
+#     redirects the transfer to `OpenSWE/log-decisions`), so this is not a broken source but a
+#     duplicated one: the CLI copy is a real store directory that a `git pull` cannot reach,
+#     which is precisely what the Sourced symlink exists to avoid. Six of seven hosts already
+#     carried the symlink; only mac-mini-m2 had the CLI copy. Removing the line does not strand
+#     the entry — `adopt` replaces an identical Commons copy with the link, and find-orphans.py
+#     counts real directories only, so the report stops as soon as it becomes a symlink.
 #   * `backnotprop/plannotator` — upstream no longer ships any `plannotator-*` skill; it
 #     ships four for maintaining the plannotator repo itself (`pierre-guard`,
 #     `release-plannotator`, `review-renovate`, `update-deps`). Its six store directories
@@ -56,7 +81,6 @@ skills_sources:
   - manaflow-ai/cmux
   - cloudflare/skills
   - kepano/obsidian-skills
-  - swe-workflow/log-decisions
   - vercel-labs/skills
   - kunchenguid/lavish-axi
 

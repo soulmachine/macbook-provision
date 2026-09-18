@@ -113,20 +113,35 @@
 # the gap this closes, and it does not reopen Q82: `adopt` is a different verb from `skills add`
 # — a path inside a git repo becomes a Sourced entry, a symlink out to the repo, so the truth
 # stays in git.
-- name: Check for the self-authored skills repo
+- name: Check for the self-authored skill repos
   ansible.builtin.stat:
-    path: "{{ skills_selfauthored_repo }}"
-  register: skills_selfauthored_clone
+    path: "{{ item }}"
+  register: skills_selfauthored_clones
+  loop: "{{ skills_selfauthored_repos }}"
+  loop_control:
+    label: "{{ item | regex_replace('^.*/github.com/', '') }}"
 
-- name: Report that the self-authored skills are absent from this host
+# Only the roots that exist are handed to `find`. Passing a missing one is not fatal — `find`
+# skips it with a warning — but the warning would print on every run of every host that does not
+# carry that clone, which is a legitimate state rather than drift, and the debug below says so in
+# words instead.
+- name: Record which self-authored skill roots are present
+  ansible.builtin.set_fact:
+    skills_selfauthored_present: >-
+      {{ skills_selfauthored_clones.results | selectattr('stat.exists')
+         | map(attribute='item') | list }}
+
+- name: Report the self-authored skill roots absent from this host
   ansible.builtin.debug:
     msg: >-
-      No clone at {{ skills_selfauthored_repo }}, so its skills are not adopted here. This is a
-      legitimate state for a host that does not carry them — clone it and re-run if it should.
-  when: not skills_selfauthored_clone.stat.exists
+      No clone at
+      {{ skills_selfauthored_repos | difference(skills_selfauthored_present) | join(', ') }},
+      so those skills are not adopted here. This is a legitimate state for a host that does not
+      carry them — clone and re-run if it should.
+  when: skills_selfauthored_present | length < skills_selfauthored_repos | length
 
 - name: Adopt the self-authored skills into the Commons
-  when: skills_selfauthored_clone.stat.exists
+  when: skills_selfauthored_present | length > 0
   block:
     # The verdict comes from the store's links before and after, never from `adopt`'s stdout:
     # it is idempotent and prints "already Sourced … nothing to do" on every converged run, so
@@ -153,7 +168,7 @@
     # that is ambiguity a human has to resolve, not a husk to skip.
     - name: Find the self-authored skills that live in git
       ansible.builtin.find:
-        paths: "{{ skills_selfauthored_repo }}"
+        paths: "{{ skills_selfauthored_present }}"
         patterns: SKILL.md
         file_type: file
         recurse: true
