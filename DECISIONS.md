@@ -1643,7 +1643,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** Surveyed the ecosystem (upstream docs index, two curated lists) and put the three tiers to the user, who chose the middle one. Both plugins declare a `sensitive` `apiKey` userConfig and fall back to `TYPESAFE_API_KEY` in Claude Code's environment, so they share one credential path; the wider tier would have added per-agent installers (pi, Codex) with their own idempotency stories for community projects with single-digit commits. Verified end to end after install: a `claude -p` session called `jev_ask` and got a typed noul probability back from `jev-1.13.0`, and the debug log shows the fast-jev hooks module registered on `session.compact` and `turn.complete`.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 8808274
 
 ## Q157 — interactive/typesafe-key-in-settings-env — tradeoff
 
@@ -1653,7 +1653,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** The `env` map is what both upstream READMEs instruct and what the `claude-code` role already manages, so it matches the existing pattern; it reaches the in-process hook and the MCP child alike, since Claude Code exports its settings env into its own process (the debug log lists all three keys under `settingsEnv keys`). The keychain path was rejected on this fleet's own constraints: the login keychain is locked in the non-interactive ssh sessions the nightly sweep provisions from (the `-gw` wrappers exist for exactly that), and a value set through an install-time flag has no re-run path to rotate it. `~/.zshenv` alone was rejected because the dotenv role only guarantees the variable for *shells*; a GUI-launched Claude Code sees none of it, while the settings file follows Claude Code everywhere. The key is per-machine `.env` (gitignored, 0600, same as the Tailscale and GitHub secrets), so the role's gate has the same shape as those roles' — a host without a key installs nothing rather than a plugin that fails on every compaction — and the plaintext copy in settings is the same exposure `.env` and `~/.zshenv` already carry. Measured on 2.1.276 under Ansible (no TTY): neither plugin's userConfig prompt fired, no `pluginConfigs` block was written, and `claude plugin install` already set `enabledPlugins`, so the enable loop is a safety net for older builds. Idempotent on the second run (0 CHANGED) and clean under `--check`.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 8808274
 
 ## Q158 — interactive/claude-code-settings-mode-0600 — deviation
 
@@ -1663,4 +1663,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** Measured 2026-09-18: Claude Code itself keeps the file at `-rw-------` (it rewrote it at 06:22 with that mode), so 0644 was already a disagreement with the tool before any credential was involved — the role loosened the file on every changed write and Claude Code tightened it again on its next save. Fixing only the new role would have left that flip-flop in place and, worse, exposed the key for the window between the two writers. Both writes now agree with what the CLI does; nothing else reads the file's mode. Cheap to reverse, and no other host-side consumer of the file was found.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 8808274
