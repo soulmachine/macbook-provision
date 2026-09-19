@@ -250,12 +250,14 @@
     mode: "0600"
   when: claude_code_settings_merged != claude_code_settings
 
-# `claude plugin install` adds a plugin to ~/.claude/plugins/installed_plugins.json
-# but does NOT add it to `enabledPlugins` in ~/.claude/settings.json, and only
-# enabled plugins appear in `/plugin`. So we explicitly enable each one. Gate on
-# key absence (not value), so a user's manual `/plugin` disable is respected on
-# re-runs. Runs after the settings write above so that write can't clobber the
-# enabledPlugins map this adds to.
+# Only enabled plugins appear in `/plugin`. Older Claude Code builds recorded an
+# install in ~/.claude/plugins/installed_plugins.json without touching
+# `enabledPlugins` in ~/.claude/settings.json; 2.1.276 writes both (measured
+# 2026-09-18 — the typesafe role's enable loop skipped on a fresh install). So this
+# is a safety net for the older behaviour, kept because it costs nothing when it
+# skips. Gate on key absence (not value), so a user's manual `/plugin` disable is
+# respected on re-runs. Runs after the settings write above so that write can't
+# clobber the enabledPlugins map this adds to.
 - name: Enable plugins
   ansible.builtin.command: claude plugin enable {{ item }}
   loop: "{{ claude_code_plugins }}"

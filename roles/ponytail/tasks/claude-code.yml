@@ -94,9 +94,10 @@
          if (ponytail_claude_settings_raw.content | default('') | b64decode | trim | length > 0)
          else {} }}
 
-# `claude plugin install` does not add to `enabledPlugins`, and only enabled
-# plugins load. Gate on key absence (not value) so a manual `/plugin` disable
-# is respected on re-runs — the same rule as the claude-code role.
+# Only enabled plugins load. Older Claude Code builds did not add an install to
+# `enabledPlugins`; 2.1.276 does (measured 2026-09-18), so this is a safety net
+# for the older behaviour. Gate on key absence (not value) so a manual `/plugin`
+# disable is respected on re-runs — the same rule as the claude-code role.
 - name: Enable the ponytail Claude Code plugin
   ansible.builtin.command: claude plugin enable {{ ponytail_claude_plugin }}
   when: ponytail_claude_plugin not in (ponytail_claude_settings.enabledPlugins | default({}))
