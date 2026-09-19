@@ -4,6 +4,30 @@
     name: manaflow-ai/cmux
     state: present
 
+# Homebrew 7 loads a third-party tap only when it is trusted, and this role never trusted
+# its own — the other four tap roles (cc-switch, moshi, multica-cli, agent-sync) do. It went
+# unnoticed because brew grandfathers a tap that already has something installed from it:
+# measured 2026-09-18, macbook-air, macbook-pro-nickel and dev-server-frank-lume all carry
+# cmux with the tap absent from trust.json, and last night's sweep still upgraded it there.
+# A fresh host has nothing installed yet, so the cask install below would refuse with
+# "Refusing to load ... from untrusted tap". Same ledger gate as cc-switch: `brew trust
+# --json v1` prints its own state file, so the tap is read from there rather than from the
+# command's wording, and the trust runs only on the play that actually adds it.
+- name: Read the trusted Homebrew entries
+  ansible.builtin.command: brew trust --json v1
+  register: _cmux_trusted
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Trust manaflow-ai/cmux
+  ansible.builtin.command:
+    cmd: brew trust --tap manaflow-ai/cmux
+  when: >-
+    'manaflow-ai/cmux' not in
+    ((_cmux_trusted.stdout | default('{}', true) | from_json).taps | default([]))
+  changed_when: true
+
 - name: Install cmux
   community.general.homebrew_cask:
     name: cmux
