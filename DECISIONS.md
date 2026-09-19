@@ -1683,7 +1683,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** The tap-trust warning in the same log block is a red herring — brew only *ignores* the untrusted taps, and none of the three failed casks lives in one. The failing writes were to the Homebrew download cache on a volume with less free space than one ChatGPT archive plus its extraction, so the disk is the cause, and the cache is the one thing on that volume that is Homebrew's to discard: every file in it is re-downloadable, and the sweep re-fetches whatever it needs. Freed 6.6 GiB (10 GiB free afterwards); the pre-fetch then succeeded for all three and left 9.5 GiB, so tonight's upgrade step has its downloads already in hand. The other caches belong to applications and the rest of the 425 GiB is the user's data, so what fills the disk is reported, not acted on. Note the sweep's failure was invisible by design until read here: the openroutine Run reports it, but the six other hosts' `/tmp/provision.log` files were lost to a macOS 27 reboot this morning, so their results for the same night are unknown.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 110fcf8
 
 ## Q161 — interactive/cmux-role-trusts-its-tap — gate-resolution
 
@@ -1693,4 +1693,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** The fleet is converged only because Homebrew grandfathers a tap that already has something installed from it — the mini's own warning lists exactly the untrusted taps with nothing installed and omits `xdevplatform/tap`, which has xurl. A fresh host has nothing installed, so the cask task would refuse with "Refusing to load ... from untrusted tap", the same failure the cc-switch comment records — a reproducibility gap of the Q149/Q153 kind, correct today only by accident. The gate reads the ledger the command itself documents, per "diff state, don't grep output". Both branches exercised: on the mini, where the tap is trusted, the role ran with 0 changed; on macbook-air, from a scratch copy run outside the repo (a `roles/` beside the working directory shadows `ANSIBLE_ROLES_PATH`, which silently ran the old role on the first attempt), the first run trusted the tap and the second reported 0 changed, with `trust.json` flipping from absent to present. The blanket option was rejected: the remaining untrusted taps (antoniorodr/memo, steipete/tap, yakitrak/yakitrak on the mini; openclaw/tap and openai/tools elsewhere) are hand-added and have nothing installed from them, so whether to trust or untap them is the user's call, not a role's.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 110fcf8
