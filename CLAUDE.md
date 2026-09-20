@@ -350,8 +350,9 @@ Every role has `tasks/main.yml`. Some also have:
 `typesafe` installs the two Claude Code plugins built on TypeSafe's Jev model —
 `fast-jev-compaction@fast-jev-compaction` (a function-hook plugin that replaces the compaction
 summary with per-tool-call Jev keep/drop decisions) and `claude-jev@claude-jev` (an MCP-server
-plugin: five `jev_*` tools plus `/jev-review`, `/jev-pick`, `/jev-why`, `/jev-ask`). The
-official `typesafe-ai` *skill* is not this role's — `roles/skills` pins it (DECISIONS Q141).
+plugin: five `jev_*` tools plus `/jev-review`, `/jev-pick`, `/jev-why`, `/jev-ask`) — plus
+the official `typesafe-ai` skill from `typesafe-ai/skills`, which moved here from
+`roles/skills` on 2026-09-19 (Q165; that role pinned it from Q141).
 
 - **One `env` entry serves both plugins.** Each declares a `sensitive` `apiKey` userConfig
   and falls back to `TYPESAFE_API_KEY` in Claude Code's process environment when it is unset:
@@ -363,10 +364,24 @@ official `typesafe-ai` *skill* is not this role's — `roles/skills` pins it (DE
   function hooks are on the first time fast-jev loads. Not the keychain: it is locked in the
   non-interactive ssh sessions the fleet is provisioned from, and a value set through an
   install-time flag cannot be rotated by re-running.
-- **The whole role gates on the key.** `TYPESAFE_API_KEY` comes from the repo `.env`, so it
-  reaches a non-interactive run only through the `dotenv` role's `~/.zshenv` block. Empty,
-  the role reports why and installs nothing — a plugin that can never reach Jev is noise —
-  which also means a host gets the plugins only after its `.env` carries the key.
+- **The plugins gate on the key; the skill does not.** `TYPESAFE_API_KEY` comes from the repo
+  `.env`, so it reaches a non-interactive run only through the `dotenv` role's `~/.zshenv`
+  block. Empty, the role reports why and installs no plugins — one that can never reach Jev is
+  noise — which also means a host gets them only after its `.env` carries the key. The skill
+  sits outside that gate on purpose: it is guidance for writing code against TypeSafe, worth
+  having before a key exists, and `roles/skills` installed it unconditionally on every host
+  until the move, so gating it would have silently narrowed where it lands.
+- **The skill install is unguarded and diffed by checksum.** No `creates:` — re-running
+  `npx skills@latest add` is the only thing that pulls upstream edits down (the lesson
+  `roles/skills` opens with), so `find … get_checksum` runs either side of the call and the
+  second one carries the `changed_when`, not a `debug` (whose verdict the `minimal` callback
+  swallows). The four agents are named rather than `--agent '*'`, mirroring
+  `skills_agents` — which also makes a single-role run self-sufficient, since the
+  `agent-sync sync` that would otherwise fan the store out lives seven roles later. A pin that
+  stops matching upstream is `failed_when: false` plus a report: failing at role 31 of 44 would
+  stop 13 later roles nightly, the blast radius `roles/skills` refuses for its own pins. Its
+  entry there is now in `skills_sources_foreign`, which keeps that role's orphan detector
+  accounting for a store directory it no longer refreshes.
 - **`settings.json` is written 0600, by this role and by `claude-code`.** The file now holds
   a credential, and Claude Code itself keeps it at 0600 (measured 2026-09-18); the
   `claude-code` role's write was 0644 until then and would have loosened it on every changed

@@ -40,3 +40,28 @@ typesafe_marketplaces:
 typesafe_plugins:
   - fast-jev-compaction@fast-jev-compaction
   - claude-jev@claude-jev
+
+# --- the official typesafe-ai skill ---------------------------------------------------
+# https://github.com/typesafe-ai/skills — one skill, `typesafe-ai` (verified with `-l` on
+# 2026-09-19): how to build with TypeSafe's System One models, so it belongs beside the
+# plugins rather than in the generic skills role, which pinned it from Q141 until now. Its
+# entry there moved to `skills_sources_foreign`, which is what keeps that role's orphan
+# detector accounting for a store directory it no longer refreshes.
+typesafe_skill: typesafe-ai
+typesafe_skill_source: typesafe-ai/skills
+typesafe_skill_dir: "{{ typesafe_home }}/.agents/skills/{{ typesafe_skill }}"
+
+# The agents to fan out to, named rather than taken as `--agent '*'`: that is not "every
+# installed agent" but every agent in the CLI's registry — 78 of them — and it creates each
+# directory it links into, which is what kept resurrecting ~/.openclaw/skills. Naming them
+# here also makes a single-role run self-sufficient: the `agent-sync sync` that would
+# otherwise fan this out lives in the skills role, seven roles later in the play.
+#
+# Same list as `skills_agents` in roles/skills/vars/main.yml, where the full reasoning is.
+# `universal` IS the store (~/.agents/skills) and is reached only by being named, so drop it
+# and every agent that reads the store natively (codex, opencode, oh-my-pi) gets nothing.
+typesafe_skill_agents:
+  - universal
+  - claude-code
+  - pi
+  - hermes-agent

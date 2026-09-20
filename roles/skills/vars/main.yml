@@ -125,12 +125,6 @@ skills_sources_partial:
   # one, which is a single self-contained SKILL.md, is taken.
   - source: cursor/plugins
     skills: [unslop, thermo-nuclear-code-quality-review]
-  # Ships exactly one skill today, so this pin filters nothing — `--all` would fetch the same
-  # thing. It is here rather than in `skills_sources` to keep that true: a one-skill source that
-  # grows later would hand `--all` the additions unreviewed, which is the trap the
-  # `warpdotdev/common-skills` note above describes. Verified with `-l` on 2026-09-18.
-  - source: typesafe-ai/skills
-    skills: [typesafe-ai]
 
 # Partial sources that a DIFFERENT role installs. The orphan detector below groups the lock
 # by source and flags anything no source accounts for, so without this every such skill reads
@@ -142,6 +136,12 @@ skills_sources_foreign:
   # because the skill has to land in the same task flow that installs the CLI it documents.
   - source: herdrdev/herdr
     skills: [herdr]
+  # roles/typesafe/tasks/main.yml installs this one, for the same reason: it documents the
+  # TypeSafe models that role's two Claude Code plugins call, so the whole footprint converges
+  # in one place. It was pinned here from Q141 (2026-09-18) until Q165 (2026-09-19); nothing
+  # about the skill changed, only which role refreshes it.
+  - source: typesafe-ai/skills
+    skills: [typesafe-ai]
 
 # The agents this fleet fans skills out to, named rather than taken as `--agent '*'`.
 #

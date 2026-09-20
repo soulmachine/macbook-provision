@@ -70,7 +70,7 @@ ansible-playbook main.yml --check
 |------|------|------|
 | `TAILSCALE_AUTH_KEY` | 自动执行 `sudo tailscale up --accept-dns --accept-routes --operator=$USER --auth-key=...` 把本机加入 tailnet。在 https://login.tailscale.com/admin/settings/keys 创建一个 **Reusable** key 即可。 | 否（不设则需手工 `tailscale up`） |
 | `TAILSCALE_OAUTH_CLIENT_ID` + `TAILSCALE_OAUTH_CLIENT_SECRET` | 通过 Tailscale REST API 关闭本机 node-key 过期（避免节点定期下线）。在 https://login.tailscale.com/admin/settings/trust-credentials 创建 OAuth client，勾选 `devices:core` 写权限即可——该 scope 的 endpoint 列表正好包含 `POST /api/v2/device/{id}/key`。client secret **不过期**，归属于 tailnet 而非个人，使用记录会进入 configuration audit log。两个变量要么都设，要么都不设；只设一个会让 play 直接失败。 | 否 |
-| `TYPESAFE_API_KEY` | `typesafe` role 用它给 fast-jev-compaction 与 claude-jev 两个 Claude Code 插件授权：写入 `~/.claude/settings.json` 的 `env`（同时写入 `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1`）。在 https://console.typesafe.ai/keys 创建。 | 否（不设则整个 `typesafe` role 跳过） |
+| `TYPESAFE_API_KEY` | `typesafe` role 用它给 fast-jev-compaction 与 claude-jev 两个 Claude Code 插件授权：写入 `~/.claude/settings.json` 的 `env`（同时写入 `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1`）。在 https://console.typesafe.ai/keys 创建。 | 否（不设则跳过这两个插件；`typesafe-ai` skill 仍会安装） |
 
 `tailscale up` flag 说明：
 
@@ -118,7 +118,7 @@ pre-commit run --all-files
 | jdk | JDK（通过 mise 安装） |
 | claude-code | Claude Code CLI 及插件（依赖 nodejs） |
 | claude-extras | Claude Code 周边工具：npm `@inulute/cux`、uv 工具 `claude-swap`（依赖 nodejs、uv、claude-code） |
-| typesafe | 基于 TypeSafe Jev 模型的 Claude Code 插件：fast-jev-compaction（Jev 决策式压缩，需 function hooks）与 claude-jev（MCP，`jev_*` 判断工具）；把 `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` 与 `TYPESAFE_API_KEY` 写入 `~/.claude/settings.json` 的 `env`；`.env` 无 `TYPESAFE_API_KEY` 时整个 role 跳过（依赖 claude-code、nodejs） |
+| typesafe | TypeSafe Jev 模型相关的一切：官方 `typesafe-ai` skill（`npx skills add typesafe-ai/skills`，不需要 key，2026-09-19 从 skills role 移来），以及两个 Claude Code 插件 fast-jev-compaction（Jev 决策式压缩，需 function hooks）与 claude-jev（MCP，`jev_*` 判断工具）；把 `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` 与 `TYPESAFE_API_KEY` 写入 `~/.claude/settings.json` 的 `env`；`.env` 无 `TYPESAFE_API_KEY` 时只跳过插件部分（依赖 claude-code、nodejs） |
 | codex | OpenAI Codex CLI（依赖 nodejs） |
 | opencode | OpenCode CLI（npm `opencode-ai`）；并用 `npx oh-my-openagent` 写入 `~/.config/opencode/opencode.json`，由版本戳门控，避免每次 play 重装（依赖 nodejs） |
 | kimi-code | Kimi Code CLI（通过官方 code.kimi.com 脚本安装） |
