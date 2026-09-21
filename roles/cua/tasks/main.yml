@@ -22,9 +22,12 @@
   check_mode: false # read-only probe; run in --check so the guard below sees real state
 
 - name: Decide whether cua-driver has the permissions jev-use needs
+  vars:
+    _cua_status: "{{ _cua_permissions.stdout | default('{}', true) | from_json }}"
   ansible.builtin.set_fact:
     cua_permissions_granted: >-
-      {{ (_cua_permissions.stdout | default('{}', true) | from_json).status | default('unknown', true) == 'granted' }}
+      {{ (_cua_status.accessibility | default(false, true) | bool)
+         and (_cua_status.screen_recording | default(false, true) | bool) }}
 
 - name: Fail with instructions for granting cua-driver permissions
   ansible.builtin.fail:
