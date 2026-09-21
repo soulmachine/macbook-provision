@@ -1,0 +1,71 @@
+---
+- name: Install cua-driver # noqa: command-instead-of-module risky-shell-pipe
+  ansible.builtin.shell: /bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)"
+  args:
+    creates: "{{ cua_driver_bin }}"
+
+# jev-use (https://github.com/trycua/cua/blob/main/docs/content/docs/how-to-guides/driver/jev-use.mdx)
+# "Step 1: Verify Cua Driver" requires Accessibility AND Screen Recording both
+# granted to CuaDriver.app before anything downstream can drive the desktop.
+# `permissions status` only answers via a running daemon (reports `unknown`
+# otherwise) and never itself prompts; `permissions grant` is cua-driver's own
+# documented, correct way to request them — it launches the app via
+# LaunchServices and drives OS consent dialogs. That's a GUI flow no Ansible
+# task can click through, so — same as the tailscale role's Network Extension
+# gate — this fails the play with the exact remedy command instead of trying
+# to automate it.
+- name: Read cua-driver permissions status
+  ansible.builtin.command: "{{ cua_driver_bin }} permissions status --json"
+  register: _cua_permissions
+  changed_when: false
+  failed_when: false
+  check_mode: false # read-only probe; run in --check so the guard below sees real state
+
+- name: Decide whether cua-driver has the permissions jev-use needs
+  ansible.builtin.set_fact:
+    cua_permissions_granted: >-
+      {{ (_cua_permissions.stdout | default('{}', true) | from_json).status | default('unknown', true) == 'granted' }}
+
+- name: Fail with instructions for granting cua-driver permissions
+  ansible.builtin.fail:
+    msg: |
+
+      ================================================================
+      Manual step required: grant cua-driver Accessibility + Screen Recording
+      ================================================================
+
+      jev-use needs cua-driver's Accessibility and Screen Recording
+      permissions, and `cua-driver permissions status` does not report
+      them granted yet.
+
+      Run this yourself — it launches CuaDriver and walks you through the
+      OS consent dialogs:
+
+        cua-driver permissions grant
+
+      Then re-run: ansible-playbook main.yml
+
+      State reported by `cua-driver permissions status --json`:
+        {{ _cua_permissions.stdout | trim | default('(no output)', true) }}
+      ================================================================
+  when: not (cua_permissions_granted | bool)
+
+- name: Clone the jev-use example # noqa: latest[git]
+  ansible.builtin.git:
+    repo: https://github.com/trycua/cua.git
+    dest: "{{ cua_jevuse_dir }}"
+    version: HEAD
+    depth: 1
+    update: false # pinned example checkout, not a tracked upstream tool
+
+- name: Sync the jev-use example's Python environment
+  ansible.builtin.command: "{{ cua_home }}/.local/bin/uv sync --frozen --python 3.12"
+  args:
+    chdir: "{{ cua_jevuse_example_dir }}"
+    creates: "{{ cua_jevuse_venv }}"
+
+# jev-use's remaining steps — the no-key browser-connection check and the
+# live Jev run — are per-run usage, not install: each needs a fresh
+# --output-dir, and the live run needs an interactively-supplied
+# TYPESAFE_API_KEY. Run those by hand from {{ cua_jevuse_example_dir }} per
+# the doc; they're deliberately not scripted here.

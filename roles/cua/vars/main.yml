@@ -1,0 +1,6 @@
+---
+cua_home: "{{ lookup('env', 'HOME') }}"
+cua_driver_bin: "{{ cua_home }}/.local/bin/cua-driver"
+cua_jevuse_dir: "{{ cua_home }}/cua-jev-use"
+cua_jevuse_example_dir: "{{ cua_jevuse_dir }}/libs/cua-driver/examples/jev-use"
+cua_jevuse_venv: "{{ cua_jevuse_example_dir }}/.venv"

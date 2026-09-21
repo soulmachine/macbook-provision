@@ -39,6 +39,7 @@
     - agent-reach
     - playwright
     - playwright-cli
+    - cua
     - intellij-idea
     - claude-mem
     - cc-switch

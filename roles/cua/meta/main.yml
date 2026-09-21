@@ -1,0 +1,3 @@
+---
+dependencies:
+  - uv # provides ~/.local/bin/uv, needed for `uv sync`
