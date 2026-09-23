@@ -129,6 +129,7 @@ pre-commit run --all-files
 | agent-reach | 多渠道触达工具；上游只提供面向 AI agent 的安装文档，故由 `claude -p` 按文档驱动安装（依赖 claude-code、python） |
 | playwright | 浏览器自动化：npm 全局 `playwright@latest`（依赖 nodejs） |
 | playwright-cli | Playwright CLI：npm 全局 `@playwright/cli@latest`，并安装其 skill（依赖 playwright） |
+| cua | Cua Driver（`cua.ai/driver/install.sh`）+ jev-use；需先授予 Accessibility 与 Screen Recording，未授权时报错并给出 `cua-driver permissions grant` |
 | intellij-idea | IntelliJ IDEA（依赖 jdk） |
 | claude-mem | Claude 记忆插件；`npx -y claude-mem install` 为 claude-code / codex-cli / opencode 三者接线（依赖 nodejs、bun、uv） |
 | cc-switch | Claude 配置切换器：tap `farion1231/ccswitch` + cask `cc-switch`（依赖 claude-code、codex） |
