@@ -32,9 +32,22 @@ fi
 # ── Check scopes ──────────────────────────────────────────────────────────────
 
 CURRENT_SCOPES=$(gh api -i /user 2>/dev/null | grep -i '^x-oauth-scopes:' | cut -d: -f2- || true)
+
+# x-oauth-scopes lists only what was granted, never the children a parent scope
+# implies: a PAT holding `user` reports `user` and not `user:email`/`read:user`,
+# so an all-scopes token failed this check outright. Match whole scopes rather
+# than substrings too — `grep -F user` matched `user:email` and would have
+# passed a token that only had the child.
+has_scope() {
+    printf '%s\n' "$CURRENT_SCOPES" | tr ',' '\n' | tr -d ' \t' | grep -qx "$1"
+}
+
 MISSING_SCOPES=()
 for s in "${REQUIRED_SCOPES[@]}"; do
-    echo "$CURRENT_SCOPES" | grep -qF "$s" || MISSING_SCOPES+=("$s")
+    case "$s" in
+        user:email|read:user) has_scope "$s" || has_scope user || MISSING_SCOPES+=("$s") ;;
+        *)                    has_scope "$s" ||                   MISSING_SCOPES+=("$s") ;;
+    esac
 done
 
 if [[ ${#MISSING_SCOPES[@]} -gt 0 ]]; then
