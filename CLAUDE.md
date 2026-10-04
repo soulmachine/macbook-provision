@@ -31,7 +31,7 @@ ssh -o BatchMode=yes -o ConnectTimeout=15 <host> \
   `mac_battery_installed` / `mac_is_vm` / `mac_is_always_on`; see
   "Always-on-only roles" below.
 - **bootstrap.sh** — Bootstrap script. Prepares a fresh Mac for Ansible. Also configures **passwordless sudo** so the playbook's sudo subprocesses (Homebrew casks, `pkgutil`/`rm` cleanup, Ansible `become`) run unattended: it installs a `/etc/sudoers.d/<user>-nopasswd` drop-in (`<user> ALL=(ALL) NOPASSWD: ALL`, mode 0440), validated with `visudo -cf` and rolled back if validation fails. The first `sudo` call prompts once on a fresh Mac (to write the drop-in); every `sudo` after — both in the rest of bootstrap and in the playbook — is passwordless, so no `SUDO_ASKPASS` helper or `sudo -A -v` priming is needed anywhere (and `ansible.cfg` uses plain `become_flags = -H`). The script is idempotent — it skips the sudoers setup if the drop-in already exists (`[[ -f ... ]]`, no sudo required to check). It also runs a no-op `osascript` against System Events to trigger the macOS Automation (AppleEvents) consent dialog for the host terminal (e.g. Ghostty) on first run; later runs no longer prompt. This pre-authorizes the terminal so headless osascript calls (e.g. `brew uninstall --cask`'s `tell app to quit`) don't hang on a dialog nobody is around to click.
-- **`.env` / `.envrc`** — Optional, gitignored, and **per-machine**. `.envrc` runs `dotenv_if_exists .env` so direnv loads `.env` into the shell — but direnv is hooked from `~/.zshrc`, so that only ever happens in an **interactive** shell. The `dotenv` role covers every other kind by exporting the same `.env` into `~/.zshenv` inside a managed block; see "Dotenv role specifics" below. The `tailscale` role reads `TAILSCALE_AUTH_KEY` (to auto-run `tailscale up`) and optionally a `devices:core`-scoped OAuth client as `TAILSCALE_OAUTH_CLIENT_ID` + `TAILSCALE_OAUTH_CLIENT_SECRET` (to disable node-key expiry); the `github` and `bun` roles read `GITHUB_TOKEN`, plus an optional `GITHUB_SSH_KEY` (unset across the fleet; see `.env.example`). Values legitimately differ across the fleet — a Tailscale auth key is tailnet-scoped, so hosts on different tailnets must carry different ones, and a host may deliberately carry no `GITHUB_TOKEN` at all. That divergence is correct, not drift to reconcile. New roles that need secrets should follow the same pattern — gate the task on `lookup('env', 'VAR') | length > 0` and document the var in `.env.example`.
+- **`.env` / `.envrc`** — Optional, gitignored, and **per-machine**. `.envrc` runs `dotenv_if_exists .env` so direnv loads `.env` into the shell — but direnv is hooked from `~/.zshrc`, so that only ever happens in an **interactive** shell. The `dotenv` role covers every other kind by exporting the same `.env` into `~/.zshenv` inside a managed block; see "Dotenv role specifics" below. The `tailscale` role reads `TAILSCALE_AUTH_KEY` (to auto-run `tailscale up`) and optionally a `devices:core`-scoped OAuth client as `TAILSCALE_OAUTH_CLIENT_ID` + `TAILSCALE_OAUTH_CLIENT_SECRET` (to disable node-key expiry); `GITHUB_SSH_KEY` is optional and unset across the fleet (see `.env.example`). **`GITHUB_TOKEN` is no longer in `.env` on any host** (retired 2026-10-03): the `dotenv` role rebuilds its managed block from this file, so a copy here fought with `~/.local/bin/gh-token-fleet`, which owns the PAT and writes the export *below* that block — see "GitHub authentication (fleet)" in `~/.agents/AGENTS.md`. The `github`, `bun` and `mise` roles still read it, but from the ambient environment, with a `gh auth token` fallback. Values legitimately differ across the fleet — a Tailscale auth key is tailnet-scoped, so hosts on different tailnets must carry different ones. That divergence is correct, not drift to reconcile. New roles that need secrets should follow the same pattern — gate the task on `lookup('env', 'VAR') | length > 0` and document the var in `.env.example`.
 - **inventory** — Holds only `127.0.0.1 ansible_connection=local`, deliberately. Do NOT add remote hosts to it. See "Runs per-host only, never from a control node" below.
 - **roles/** — Each role provisions one tool or application.
 
@@ -212,7 +212,9 @@ an interactive shell. Everything else sees none of it: `ssh host 'cmd'`, git hoo
 the `zsh -lc "... ansible-playbook ..."` form documented above for driving another host, which is
 a login shell but *not* an interactive one. So a remote run reached the `tailscale` and `github`
 roles with `TAILSCALE_AUTH_KEY` and `GITHUB_TOKEN` unset, and because those roles gate on
-`lookup('env', VAR) | length > 0`, they **skipped silently** rather than failing. `~/.zshenv` is
+`lookup('env', VAR) | length > 0`, they **skipped silently** rather than failing. (`GITHUB_TOKEN`
+has since left `.env` entirely — it is exported below the managed block by `gh-token-fleet` — so
+today the role carries only the Tailscale vars. The reasoning is unchanged for those.) `~/.zshenv` is
 the one startup file every zsh reads, so the block goes there. Done by hand across the fleet on
 2026-09-10 (DECISIONS Q68/Q69); this role is that fix made reproducible.
 
@@ -440,10 +442,13 @@ on a 403, exits **non-zero** with `Bun upgrade failed with error: HTTPForbidden`
 even though the installed bun is current. An authenticated call gets 5000/hr
 instead, so the bun role makes sure one is available.
 
-bun reads `GITHUB_TOKEN` / `GITHUB_ACCESS_TOKEN`, which is why `.env` names the
-PAT `GITHUB_TOKEN` — set there, it reaches bun through direnv with no plumbing at
-all. The role's `gh auth token` lookup is the **fallback**, for a machine whose
-`.env` carries no token; an ambient `GITHUB_TOKEN` wins over it.
+bun reads `GITHUB_TOKEN` / `GITHUB_ACCESS_TOKEN`, which is why the fleet's PAT is
+exported under exactly that name — it reaches bun with no plumbing at all. Since
+2026-10-03 the export comes from `~/.zshenv` directly (written by
+`~/.local/bin/gh-token-fleet`, below the `dotenv` managed block), not from `.env`,
+which no longer carries it on any host. Either way bun sees an ambient
+`GITHUB_TOKEN`, so nothing here changed. The role's `gh auth token` lookup is the
+**fallback**, for a machine with no exported token; an ambient one wins over it.
 
 Two details that are easy to get wrong:
 

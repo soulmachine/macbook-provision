@@ -104,7 +104,7 @@ pre-commit run --all-files
 |------|------|
 | host-facts | 机器判定（`mac_family` / `mac_battery_installed` / `mac_is_vm` / `mac_is_always_on`）；不装任何软件 |
 | homebrew | 通用 Homebrew 包与 GUI 应用：git、curl、wget、jq、ripgrep、fd、tree、htop、docker、ffmpeg、gh、gnupg、tmux；cask 含 claude、gemini、pearcleaner、sublime-text、visual-studio-code，Apple Silicon 另加 chatgpt |
-| github | gh CLI（brew）；若 `.env` 中有 `GITHUB_TOKEN`，另外配置 SSH key 与 git 签名 |
+| github | gh CLI（brew）；若环境中有 `GITHUB_TOKEN`（由 `gh-token-fleet` 写入 `~/.zshenv`，不再来自 `.env`），另外配置 SSH key 与 git 签名 |
 | oh-my-zsh | Zsh 框架及插件管理 |
 | direnv | 目录级环境变量管理 |
 | dotenv | 不装任何软件；把 `.env` 以托管块写入 `~/.zshenv`，让非交互式 shell（`ssh host 'cmd'`、git hook、launchd）也能读到其中的变量 |
