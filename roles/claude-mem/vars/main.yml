@@ -1,15 +1,28 @@
 ---
 # Install parameters shared by every `claude-mem install` invocation.
 #
-# NOTE on the model: the published docs use `--model opus`, but claude-mem
-# rejects the "opus" alias and only accepts full model ids — and the accepted set
-# shrinks with each release as old ids are retired (v13.6.0 allowed
-# claude-opus-4-7; v13.15.2 allows claude-haiku-4-5-20251001, claude-sonnet-5,
-# claude-opus-4-8). A retired id is a hard `Fatal error: Unknown Claude model`
-# that fails the play, so bump this whenever claude-mem drops the current Opus.
+# NOTE on the model: `claude-mem install` checks `--model` against a short
+# allowlist (v13.31.0: claude-haiku-4-5-20251001, claude-sonnet-5,
+# claude-opus-4-8) and fails the play with `Unknown Claude model` on anything
+# else — but only when the auth method is not `gateway`. Under `gateway` it
+# saves any id as given. The role writes `CLAUDE_MEM_CLAUDE_AUTH_METHOD: gateway`
+# (claude_mem_settings below) *before* the install, which is what lets an id the
+# allowlist has not caught up with, like this one, through. The gateway must
+# serve the id: `curl $CLIPROXY_BASE_URL/v1/messages` with it before bumping.
 claude_mem_provider: claude
-claude_mem_model: claude-opus-4-8
+claude_mem_model: claude-sonnet-5-5
 claude_mem_runtime: worker
+
+claude_mem_dir: "{{ lookup('env', 'HOME') }}/.claude-mem"
+
+# The settings this role owns in ~/.claude-mem/settings.json; every other key
+# passes through. Tier routing is off so every observer call uses
+# claude_mem_model — with it on, "simple" and "fast" work went to haiku.
+claude_mem_settings:
+  CLAUDE_MEM_PROVIDER: "{{ claude_mem_provider }}"
+  CLAUDE_MEM_CLAUDE_AUTH_METHOD: gateway
+  CLAUDE_MEM_MODEL: "{{ claude_mem_model }}"
+  CLAUDE_MEM_TIER_ROUTING_ENABLED: "false"
 
 # claude-mem is a Claude Code plugin (installed under the `thedotmack`
 # marketplace), not a global npm binary. Claude Code's own plugin ledger records
