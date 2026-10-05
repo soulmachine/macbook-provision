@@ -4,6 +4,70 @@
   args:
     creates: "{{ cua_driver_bin }}"
 
+# The install above never updates (`creates:`), which left the fleet on four
+# versions from 0.22.1 to 0.32.0. `update --apply` runs the same installer and
+# exits 0 whether it updated or not, so the verdict comes from diffing
+# `--version`, as in the uv role. It checks GitHub's releases API
+# unauthenticated, so a failed check is reported, not fatal. Grants survive an
+# update: CuaDriver is Developer ID signed and TCC matches it by bundle id +
+# team, not by binary (verified 0.28.2 -> 0.33.4 on 2026-10-05).
+- name: Record the cua-driver version before updating
+  ansible.builtin.command: "{{ cua_driver_bin }} --version"
+  register: _cua_version_before
+  changed_when: false
+  check_mode: false
+
+- name: Update cua-driver
+  ansible.builtin.command: "{{ cua_driver_bin }} update --apply"
+  register: _cua_update
+  changed_when: false
+  failed_when: false
+
+- name: Check whether cua-driver was updated
+  ansible.builtin.command: "{{ cua_driver_bin }} --version"
+  register: _cua_version_after
+  changed_when: _cua_version_after.stdout != _cua_version_before.stdout
+  check_mode: false
+
+- name: Warn that cua-driver could not check for an update
+  ansible.builtin.debug:
+    msg:
+      - "`cua-driver update --apply` exited {{ _cua_update.rc }}; {{ _cua_version_after.stdout }} is still installed."
+      - "Most likely the unauthenticated GitHub API rate limit (60/hr per IP) is spent."
+      - "Diagnose: run `cua-driver update --apply` by hand to see its own error."
+  when: _cua_update.rc | default(0) != 0
+
+# The installer asks for the old daemon to be restarted onto the new binary.
+- name: Stop the cua-driver daemon running the old version
+  ansible.builtin.command: "{{ cua_driver_bin }} stop"
+  when: _cua_version_after.stdout != _cua_version_before.stdout
+  changed_when: false
+  failed_when: false
+
+# `permissions status` can only answer through a running daemon, and nothing
+# restarts one after a reboot (cua-driver's `autostart` is Windows-only). That
+# alone failed the gate on four granted hosts on 2026-10-05. So start one
+# before asking, with the command cua-driver's own error message gives. There
+# is deliberately no LaunchAgent; the daemon lives until the next reboot and
+# the next run starts it again (DECISIONS Q180). `status` has no --json, and
+# 0.33.4 may print a telemetry notice first, so match the text anywhere.
+- name: Read whether the cua-driver daemon is running
+  ansible.builtin.command: "{{ cua_driver_bin }} status"
+  register: _cua_daemon
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+# failed_when: false keeps a host with no GUI session from stopping the play
+# here; the permissions read below then reports the daemon missing, and the
+# post_task fails the play with that state in its message.
+- name: Start the cua-driver daemon so its permissions can be read
+  ansible.builtin.command: open -n -g -a CuaDriver --args serve
+  register: _cua_start
+  when: "'daemon is running' not in _cua_daemon.stdout"
+  changed_when: _cua_start.rc == 0
+  failed_when: false
+
 # jev-use (https://github.com/trycua/cua/blob/main/docs/content/docs/how-to-guides/driver/jev-use.mdx)
 # "Step 1: Verify Cua Driver" requires Accessibility AND Screen Recording both
 # granted to CuaDriver.app before anything downstream can drive the desktop.
@@ -28,6 +92,11 @@
   changed_when: false
   failed_when: false
   check_mode: false # read-only probe; run in --check so the guard below sees real state
+  # A daemon started a moment ago takes a few seconds to answer, and until it
+  # does the payload carries no "accessibility" key.
+  until: "'\"accessibility\"' in _cua_permissions.stdout"
+  retries: 10
+  delay: 3
 
 - name: Decide whether cua-driver has the permissions jev-use needs
   vars:
