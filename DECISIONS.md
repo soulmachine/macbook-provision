@@ -1805,4 +1805,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** The agent recommended tolerating it after confirming the cause in Hermes's source (`hermes_cli/agent_plugins.py` raises when `$schema` is not the 1.0.0 URL; both refusals print through the same `_fail(console, …)` path to stdout, so stdout is where to match) and in ponytail's upstream manifest (`{"name": "ponytail"}` only). Nothing local can make the install succeed, the install is already retried on every run, and it will land unattended once upstream adds the field — the same shape and reasoning as the scanner-block tolerance. The match allows any whitespace because Rich wrapped the line at 80 columns in the observed output, splitting the phrase. Verified on mac-mini-m2: the role exits 0 and reports the refusal, and a second run changes nothing.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** b03fc9f
