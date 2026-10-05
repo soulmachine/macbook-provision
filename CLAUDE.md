@@ -28,7 +28,7 @@ ssh -o BatchMode=yes -o ConnectTimeout=15 <host> \
 
 - **main.yml** — Main playbook that runs roles in order. Add new roles here. The
   first entry is `host-facts`, which classifies the machine into `mac_family` /
-  `mac_battery_installed` / `mac_is_vm` / `mac_is_always_on`; see
+  `mac_is_vm` / `mac_is_always_on`; see
   "Always-on-only roles" below.
 - **bootstrap.sh** — Bootstrap script. Prepares a fresh Mac for Ansible. Also configures **passwordless sudo** so the playbook's sudo subprocesses (Homebrew casks, `pkgutil`/`rm` cleanup, Ansible `become`) run unattended: it installs a `/etc/sudoers.d/<user>-nopasswd` drop-in (`<user> ALL=(ALL) NOPASSWD: ALL`, mode 0440), validated with `visudo -cf` and rolled back if validation fails. The first `sudo` call prompts once on a fresh Mac (to write the drop-in); every `sudo` after — both in the rest of bootstrap and in the playbook — is passwordless, so no `SUDO_ASKPASS` helper or `sudo -A -v` priming is needed anywhere (and `ansible.cfg` uses plain `become_flags = -H`). The script is idempotent — it skips the sudoers setup if the drop-in already exists (`[[ -f ... ]]`, no sudo required to check). It also runs a no-op `osascript` against System Events to trigger the macOS Automation (AppleEvents) consent dialog for the host terminal (e.g. Ghostty) on first run; later runs no longer prompt. This pre-authorizes the terminal so headless osascript calls (e.g. `brew uninstall --cask`'s `tell app to quit`) don't hang on a dialog nobody is around to click.
 - **`.env` / `.envrc`** — Optional, gitignored, and **per-machine**. `.envrc` runs `dotenv_if_exists .env` so direnv loads `.env` into the shell — but direnv is hooked from `~/.zshrc`, so that only ever happens in an **interactive** shell. The `dotenv` role covers every other kind by exporting the same `.env` into `~/.zshenv` inside a managed block; see "Dotenv role specifics" below. The `tailscale` role reads `TAILSCALE_AUTH_KEY` (to auto-run `tailscale up`) and optionally a `devices:core`-scoped OAuth client as `TAILSCALE_OAUTH_CLIENT_ID` + `TAILSCALE_OAUTH_CLIENT_SECRET` (to disable node-key expiry); `GITHUB_SSH_KEY` is optional and unset across the fleet (see `.env.example`). **`GITHUB_TOKEN` is no longer in `.env` on any host** (retired 2026-10-03): the `dotenv` role rebuilds its managed block from this file, so a copy here fought with `~/.local/bin/gh-token-fleet`, which owns the PAT and writes the export *below* that block — see "GitHub authentication (fleet)" in `~/.agents/AGENTS.md`. The `github`, `bun` and `mise` roles still read it, but from the ambient environment, with a `gh auth token` fallback. Values legitimately differ across the fleet — a Tailscale auth key is tailnet-scoped, so hosts on different tailnets must carry different ones. That divergence is correct, not drift to reconcile. New roles that need secrets should follow the same pattern — gate the task on `lookup('env', 'VAR') | length > 0` and document the var in `.env.example`.
@@ -86,47 +86,34 @@ stays ungated).
 
 **OpenClaw is gone from this repo and must not come back.** It was uninstalled fleet-wide on 2026-09-08 (DECISIONS Q52-Q54), and the removal role that did it was deleted on 2026-09-10 once all seven hosts verified clean of its npm packages, cask and LaunchAgents. Re-adding a role for it needs a fresh decision.
 
-**The gate is the battery, not a model whitelist**, and it is **fail-closed**: the
-`host-facts` role reads ioreg's AppleSmartBattery `BatteryInstalled` field and sets
-`mac_is_always_on` where that field **exists and reads `No`** — plus one explicit
-exception for virtual machines, below. `sysctl -n hw.model` is no help — every Apple
-Silicon Mac reports the family-less `MacN,M` form (Mac mini M2 `Mac14,3`, MacBook Air M4
-`Mac16,12`); only the Intel boxes still spell it out (`Macmini8,1`). The
-`system_profiler -json SPHardwareDataType` probe beside it supplies `mac_family`, the
-marketing name, which feeds both the VM test and the skip message.
+**The gate is the model family, and it is a MacBook blacklist.** The `host-facts` role
+reads `machine_name` from `system_profiler -json SPHardwareDataType` into `mac_family` and
+sets `mac_is_always_on` to `mac_is_vm or not mac_family.startswith('MacBook')`: a VM is
+always-on, a MacBook (plain, Air or Pro) is not, and **every other family is** — Mac
+mini, Mac Studio, and any family nobody has seen yet. `sysctl -n hw.model` is no help
+here: every Apple Silicon Mac reports the family-less `MacN,M` form (Mac mini M2
+`Mac14,3`, MacBook Air M4 `Mac16,12`); only the Intel boxes still spell it out
+(`Macmini8,1`).
 
-**`BatteryInstalled` has three states across this fleet, not two.** Measured live on
-every reachable host — every row below is observed, none inferred:
+**This is fail-open, on purpose** (DECISIONS Q171, 2026-10-04). It replaced an ioreg
+`BatteryInstalled` gate that installed only where the hardware affirmatively reported no
+battery (Q25–Q27), which withheld the roles from the Intel 2018 mini because Intel Macs
+publish no battery node at all. The user chose the family rule knowing it admits that
+mini. The VM branch is redundant today — no VM's family starts with "MacBook"; the lume
+VM's is `Apple Virtual Machine 1` — and is kept because the rule was asked for in that
+shape.
 
-| host | model | `mac_family` | `BatteryInstalled` | verdict |
-|---|---|---|---|---|
-| franks-mac-mini-m2 | `Mac14,3` (M2) | Mac mini | `No` | **install** |
-| archs-mac-mini | `Mac16,10` (M4) | Mac mini | `No` | **install** |
-| franks-mac-studio | `Mac15,14` (M3) | Mac Studio | `No` | **install** |
-| dev-server-frank-lume | `VirtualMac2,1` | Apple Virtual Machine 1 | *absent* | **install** — VM exception |
-| franks-macbook-air | `Mac16,12` (M4) | MacBook Air | `Yes` | skip — portable |
-| macbook-pro-nickel | `Mac17,2` (M5) | MacBook Pro | `Yes` | skip — portable |
-| franks-mac-mini-2018 | `Macmini8,1` (Intel) | Mac mini | *absent* | skip |
+Measured live on every host on 2026-10-04 — every row is observed, none inferred:
 
-Apple Silicon desktops publish an AppleSmartBattery node answering `No`. Intel Macs and
-VMs publish no such node at all — neither the 2018 mini nor the lume VM has
-`BatteryInstalled` anywhere in its full ioreg tree, nor any `AppleSmartBattery*` class,
-so `ioreg -c AppleSmartBattery` matches nothing and the awk prints an empty string.
-
-**Skipping the Intel mini is intended**, not a gap to patch. Requiring an affirmative
-`No` rather than "anything that isn't `Yes`" is the point: a host earns the always-on
-roles only when its hardware positively reports having no battery, so an OS change or an
-unreadable probe withholds them rather than standing up a gateway somewhere nobody
-vetted. `ioreg` exits 0 whether or not the class matches, so the absent case is a normal
-return rather than an error.
-
-**VMs are the one exception**, readmitted by `mac_is_vm` (`'Virtual' in mac_family`).
-A VM can never produce the affirmative `No` — it has no battery hardware to report on —
-yet it is always-on by nature and `dev-server-frank-lume` is provisioned from this repo
-and already runs both roles. Note the shape of the exception: it is a **positive test on
-the model name**, not a relaxation of the battery rule, so physical Intel Macs keep
-failing the gate for exactly the reason they did before. No real Mac's marketing name
-contains "Virtual"; the VM's is `Apple Virtual Machine 1`.
+| host | model | `mac_family` | verdict |
+|---|---|---|---|
+| franks-mac-mini-m2 | `Mac14,3` (M2) | Mac mini | **install** |
+| archs-mac-mini | `Mac16,10` (M4) | Mac mini | **install** |
+| franks-mac-studio | `Mac15,14` (M3) | Mac Studio | **install** |
+| dev-server-frank-lume | `VirtualMac2,1` | Apple Virtual Machine 1 | **install** — VM |
+| franks-mac-mini-2018 | `Macmini8,1` (Intel) | Mac mini | **install** |
+| franks-macbook-air | `Mac16,12` (M4) | MacBook Air | skip — MacBook |
+| macbook-pro-nickel | `Mac17,2` (M5) | MacBook Pro | skip — MacBook |
 
 **A `set_fact` cannot reference a key defined in the same task.** Ansible fails the play
 with `Error while resolving value for 'x': 'y' is undefined` — verified, not assumed.
@@ -135,10 +122,10 @@ re-parses the `system_profiler` JSON instead of reading the `mac_family` beside 
 
 Three details that are easy to get wrong:
 
-- **Both probes need `check_mode: false`.** `command`/`shell` modules skip under
-  `--check`, which would leave the registers undefined and break the `set_fact`. Both
-  are read-only, so running them during a dry run is safe — and it is what makes the
-  gates mean anything there.
+- **The probe needs `check_mode: false`.** `command` modules skip under `--check`,
+  which would leave the register undefined and break the `set_fact`. It is read-only,
+  so running it during a dry run is safe — and it is what makes the gates mean
+  anything there.
 - **Every gate must cast with `| bool`.** `-e mac_is_always_on=true` arrives as the
   **string** `"true"` — and every non-empty string is truthy, `"false"` included, so an
   uncast gate does the opposite of what the override asked. Recent ansible-core also
@@ -163,7 +150,7 @@ Three details that are easy to get wrong:
   directly; neither is obvious. Caveat when checking dedup: `--list-tasks` prints the
   *un-deduplicated* graph (host-facts appears four times — `main.yml`, `hermes`'s meta,
   `ponytail`'s meta, and `ponytail`→`hermes`→`host-facts`; the fifth went with
-  `openclaw`), while an actual run shows its four tasks once — assert on the run, not
+  `openclaw`), while an actual run shows its three tasks once — assert on the run, not
   the listing.
 
 A single-role run needs no extra vars — the `host-facts` dependency classifies the

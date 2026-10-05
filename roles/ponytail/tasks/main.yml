@@ -31,15 +31,13 @@
   when: mac_is_always_on | bool
 
 # Defaulted as belt-and-braces, like the hermes role's message: the
-# `host-facts` dependency always defines these two, so the defaults only cover
-# a play that reaches this task without that role. Safe for a display string,
-# never for the gate above.
+# `host-facts` dependency always defines `mac_family`, so the default only
+# covers a play that reaches this task without that role. Safe for a display
+# string, never for the gate above.
 - name: Report that the Hermes half was skipped
   ansible.builtin.debug:
     msg: >-
       Skipping ponytail's Hermes half on this
-      {{ mac_family | default('machine') }} —
-      BatteryInstalled={{ mac_battery_installed | default('unknown') }}; Hermes
-      is installed only where ioreg affirmatively reports No, or on a virtual
-      machine.
+      {{ mac_family | default('machine') }} — Hermes is installed on every Mac
+      except a MacBook.
   when: not (mac_is_always_on | bool)

@@ -293,7 +293,7 @@
   register: skills_orphans
   changed_when: false
   # Read-only, so running it under `--check` is safe and is what makes the report below mean
-  # anything in a dry run — the same reason host-facts forces its two probes.
+  # anything in a dry run — the same reason host-facts forces its probe.
   check_mode: false
 
 # Never `changed`: an orphan persists until someone deletes it by hand, so reporting one as a

@@ -1,7 +1,7 @@
 ---
 dependencies:
   # Sets `mac_is_always_on`, the fact the Hermes half of this role gates on,
-  # plus the `mac_family` / `mac_battery_installed` the skip message names. Declared here so a standalone
+  # plus the `mac_family` the skip message names. Declared here so a standalone
   # `ansible localhost -m include_role -a name=ponytail` classifies the machine
   # itself instead of aborting on an undefined variable — no `-e` needed.
   - host-facts

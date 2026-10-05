@@ -5,8 +5,8 @@
   become: false
 
   roles:
-    # Classifies the machine into mac_family / mac_battery_installed /
-    # mac_is_vm / mac_is_always_on before any role runs. It is ALSO a meta
+    # Classifies the machine into mac_family / mac_is_vm /
+    # mac_is_always_on before any role runs. It is ALSO a meta
     # dependency of hermes and ponytail — that wiring is what makes a
     # standalone `ansible localhost -m include_role -a name=hermes` work with
     # no extra vars. This entry is belt-and-braces so the full play still

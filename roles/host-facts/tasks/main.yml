@@ -1,6 +1,6 @@
 ---
 # Classify this Mac so the always-on-only roles can gate on it. This role
-# installs nothing — it exists only to set four facts, which makes it the one
+# installs nothing — it exists only to set three facts, which makes it the one
 # role in the repo with no install step. Every task is a read-only probe or a
 # set_fact, so it reports 0 changed and stays clean under the idempotency check.
 #
@@ -35,28 +35,24 @@
 # gateway until its fleet-wide removal on 2026-09-08) is worth installing only
 # on a Mac that is actually up.
 #
-# The gate is ioreg's AppleSmartBattery `BatteryInstalled` field, and it is
-# deliberately fail-closed: install ONLY where that field exists and reads
-# `No`. Three states, all measured live on this fleet:
-#   No       — Apple Silicon desktop (Mac mini M2, Mac Studio). Install.
-#   Yes      — portable (MacBook Air M4). Skip: a laptop sleeps, roams
-#              networks, and is not run 24x7.
-#   (absent) — no AppleSmartBattery node at all, so `ioreg -c AppleSmartBattery`
-#              matches nothing and awk prints an empty string. Skip.
-#              Intel Macs are here: franks-mac-mini-2018 has no
-#              `BatteryInstalled` anywhere in its ioreg tree and no
-#              `AppleSmartBattery*` class either. Skipping it is intended.
+# The gate is the model family, and it is a MacBook blacklist:
+#   a virtual machine        — always-on. Install.
+#   `mac_family` "MacBook…"  — a laptop sleeps, roams networks, and is not run
+#                              24x7. Skip. The prefix covers MacBook, MacBook
+#                              Air and MacBook Pro.
+#   anything else            — Mac mini, Mac Studio, Mac Pro, iMac, and any
+#                              family nobody has seen yet. Install.
 #
-# Requiring an affirmative `No` rather than "anything that isn't Yes" is the
-# point: a host earns the always-on roles only when its hardware positively
-# says it has no battery. A probe that returns nothing — an OS change, a VM, a
-# future machine that drops the node — withholds them instead of installing a
-# gateway somewhere nobody vetted.
+# This is deliberately fail-OPEN, reversing the earlier ioreg `BatteryInstalled`
+# gate, which installed only where the hardware affirmatively reported no
+# battery and so skipped the Intel franks-mac-mini-2018 (its ioreg tree has no
+# battery node at all). The user chose the family rule on 2026-10-04 (DECISIONS
+# Q171) knowing it admits that mini. The VM branch is redundant today — no VM's
+# family starts with "MacBook" — and is kept because the rule was asked for in
+# that shape.
 #
-# Gating on the battery rather than a Mac mini / Mac Studio model whitelist is
-# deliberate too: it answers the real question directly and needs no
-# maintenance, where a whitelist silently skips whatever nobody remembered to
-# add. (`sysctl -n hw.model` is no help — every Apple Silicon Mac reports the
+# The family comes from `system_profiler`'s `machine_name`, the marketing name.
+# (`sysctl -n hw.model` is no help — every Apple Silicon Mac reports the
 # family-less `MacN,M` form: the Mac mini M2 is `Mac14,3`, the MacBook Air M4
 # `Mac16,12`.)
 #
@@ -65,10 +61,10 @@
 # because `-e` delivers a bare string — and `not "false"` is False, so an
 # uncast gate would do the opposite of what the override asked.
 #
-# check_mode: false on both probes — command modules skip under `--check`,
-# which would leave the registers undefined and break the set_fact below. Both
-# are read-only, so running them during a dry run is safe and is what makes
-# the gates meaningful there.
+# check_mode: false on the probe — command modules skip under `--check`,
+# which would leave the register undefined and break the set_fact below. It
+# is read-only, so running it during a dry run is safe and is what makes the
+# gates meaningful there.
 
 - name: Read hardware overview
   ansible.builtin.command: system_profiler -json SPHardwareDataType
@@ -76,49 +72,19 @@
   changed_when: false
   check_mode: false
 
-# `ioreg` exits 0 whether or not the class matches, so the absent case
-# arrives as empty stdout rather than an error.
-#
-# `noqa: risky-shell-pipe` — setting `pipefail` here would be a behavior change,
-# not a fix. The absent case (Intel Macs, VMs: no AppleSmartBattery node at all)
-# is a NORMAL, designed-for outcome that must yield empty stdout so the verdict
-# below withholds the always-on roles. With `pipefail`, a future macOS that made
-# `ioreg` exit non-zero on a missing class would abort the whole play instead —
-# turning "skip this host" into "fail every host". Fail-closed here means
-# withholding roles, not failing the run.
-- name: Read whether a battery is installed # noqa: risky-shell-pipe
-  ansible.builtin.shell:
-    cmd: ioreg -c AppleSmartBattery -r -d 1 | awk -F'= ' '/"BatteryInstalled"/ {print $2; exit}'
-  register: mac_batt
-  changed_when: false
-  check_mode: false
-
 # `mac_family` is the marketing name — "Mac mini", "Mac Studio",
-# "MacBook Air", "Apple Virtual Machine 1"; `mac_battery_installed` is the
-# raw verdict, normalised to "absent" when the field is missing. Both feed
-# the verdict below and the skip message that explains it.
+# "MacBook Air", "Apple Virtual Machine 1". It feeds the verdict below and the
+# skip message that explains it.
 #
 # `mac_is_vm` re-parses the JSON rather than reading `mac_family` because a
 # `set_fact` CANNOT reference a key defined in the same task — Ansible fails
 # the play with "Error while resolving value ... is undefined". That is also
-# why the verdict lives in a second task rather than a fourth key here.
+# why the verdict lives in a second task rather than a third key here.
 - name: Classify this Mac
   ansible.builtin.set_fact:
     mac_family: "{{ (mac_hw.stdout | from_json).SPHardwareDataType[0].machine_name }}"
-    mac_battery_installed: "{{ mac_batt.stdout | trim | default('absent', true) }}"
     mac_is_vm: "{{ 'Virtual' in (mac_hw.stdout | from_json).SPHardwareDataType[0].machine_name }}"
 
-# Two ways to qualify as always-on, and the second is an exception to the
-# fail-closed rule above, taken deliberately:
-#   BatteryInstalled == No  — hardware positively reports having no battery.
-#   a virtual machine       — publishes no AppleSmartBattery node at all, so
-#                             it can never produce that affirmative `No`, yet
-#                             a VM is by nature always-on and hosts a real
-#                             gateway (dev-server-frank-lume is provisioned
-#                             from this repo and already runs both roles).
-# Physical Intel Macs also publish no node, and they stay excluded — the VM
-# is readmitted by an explicit positive test on the model name, not by
-# relaxing the battery rule for everything that fails it.
 - name: Decide whether this Mac is always-on
   ansible.builtin.set_fact:
-    mac_is_always_on: "{{ mac_battery_installed == 'No' or mac_is_vm }}"
+    mac_is_always_on: "{{ mac_is_vm or not mac_family.startswith('MacBook') }}"

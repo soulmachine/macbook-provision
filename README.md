@@ -102,7 +102,7 @@ pre-commit run --all-files
 
 | Role | 说明 |
 |------|------|
-| host-facts | 机器判定（`mac_family` / `mac_battery_installed` / `mac_is_vm` / `mac_is_always_on`）；不装任何软件 |
+| host-facts | 机器判定（`mac_family` / `mac_is_vm` / `mac_is_always_on`）；不装任何软件 |
 | homebrew | 通用 Homebrew 包与 GUI 应用：git、curl、wget、jq、ripgrep、fd、tree、htop、docker、ffmpeg、gh、gnupg、tmux；cask 含 claude、gemini、pearcleaner、sublime-text、visual-studio-code，Apple Silicon 另加 chatgpt |
 | github | gh CLI（brew）；若环境中有 `GITHUB_TOKEN`（由 `gh-token-fleet` 写入 `~/.zshenv`，不再来自 `.env`），另外配置 SSH key 与 git 签名 |
 | oh-my-zsh | Zsh 框架及插件管理 |
@@ -160,31 +160,29 @@ pre-commit run --all-files
 `-e`），后者保证整套 playbook 在任何 role 之前先完成判定。Ansible 对无参数 role 会
 去重，所以无论多少 role 依赖它，每次 play 只执行一次。
 
-判断依据是**有没有内置电池**，取自 ioreg 的 AppleSmartBattery `BatteryInstalled`
-字段，而不是机型白名单。规则是**保守的**：该字段**存在且等于 `No`** 才安装，另外对
-虚拟机开一个显式例外（见下）。（`sysctl -n hw.model` 在这里没用——所有 Apple Silicon
-机型都只报 `MacN,M`，看不出机型家族。）
+判断依据是**机型家族**（`mac_family`，取自 `system_profiler` 的 `machine_name`），
+规则是一个 **MacBook 黑名单**：虚拟机（`mac_is_vm`）一律安装；`mac_family` 以
+`MacBook` 开头（MacBook / MacBook Air / MacBook Pro）的跳过；其余所有机型——Mac mini、
+Mac Studio，以及以后出现的任何新机型——都安装。（`sysctl -n hw.model` 在这里没用——所有
+Apple Silicon 机型都只报 `MacN,M`，看不出机型家族。）
 
-全 fleet 实测结果（下表每一行都是实测，没有推断）：
+这条规则是**放行优先**的，属于有意为之（DECISIONS Q171，2026-10-04）。它取代了之前基于
+ioreg `BatteryInstalled` 的保守规则：那条规则要求硬件明确报告"没有电池"才安装，因此把
+没有电池节点的 2018 Intel Mac mini 挡在外面。现在这台机器也会安装。虚拟机那一条在目前
+其实是多余的（虚拟机的机型名是 `Apple Virtual Machine 1`，不以 `MacBook` 开头），保留它
+是因为规则本来就是这样定的。
 
-| 机器 | 机型 | `mac_family` | `BatteryInstalled` | 判定 |
-|------|------|--------------|--------------------|------|
-| franks-mac-mini-m2 | `Mac14,3`（M2） | Mac mini | `No` | **安装** |
-| archs-mac-mini | `Mac16,10`（M4） | Mac mini | `No` | **安装** |
-| franks-mac-studio | `Mac15,14`（M3） | Mac Studio | `No` | **安装** |
-| dev-server-frank-lume | `VirtualMac2,1` | Apple Virtual Machine 1 | 不存在 | **安装**（虚拟机例外） |
-| franks-macbook-air | `Mac16,12`（M4） | MacBook Air | `Yes` | 跳过（便携机） |
-| macbook-pro-nickel | `Mac17,2`（M5） | MacBook Pro | `Yes` | 跳过（便携机） |
-| franks-mac-mini-2018 | `Macmini8,1`（Intel） | Mac mini | 不存在 | 跳过 |
+全 fleet 实测结果（2026-10-04，下表每一行都是实测，没有推断）：
 
-Intel 机器和虚拟机都压根没有 AppleSmartBattery 节点，整棵 ioreg 树里都找不到
-`BatteryInstalled`。**跳过这台 2018 Intel Mac mini 是预期行为**：要求硬件明确报告
-"没有电池"才安装，探测不到就不装，比"只要不是 `Yes` 就装"更安全。
-
-**虚拟机是唯一的例外**，由 `mac_is_vm`（`'Virtual' in mac_family`）放行：虚拟机没有
-电池硬件，永远给不出那个肯定的 `No`，但它本身就是常驻开机的，而且
-`dev-server-frank-lume` 本来就由本仓库负责 provision，且已装有这两个 role。注意例外的写法
-是**对机型名做正向判断**，而不是放宽电池规则，所以物理 Intel 机器依旧被挡在外面。
+| 机器 | 机型 | `mac_family` | 判定 |
+|------|------|--------------|------|
+| franks-mac-mini-m2 | `Mac14,3`（M2） | Mac mini | **安装** |
+| archs-mac-mini | `Mac16,10`（M4） | Mac mini | **安装** |
+| franks-mac-studio | `Mac15,14`（M3） | Mac Studio | **安装** |
+| dev-server-frank-lume | `VirtualMac2,1` | Apple Virtual Machine 1 | **安装**（虚拟机） |
+| franks-mac-mini-2018 | `Macmini8,1`（Intel） | Mac mini | **安装** |
+| franks-macbook-air | `Mac16,12`（M4） | MacBook Air | 跳过（MacBook） |
+| macbook-pro-nickel | `Mac17,2`（M5） | MacBook Pro | 跳过（MacBook） |
 
 需要**覆盖**硬件判定时用 `-e mac_is_always_on=true`（或 `=false`），extra vars
 优先级最高——但这只是覆盖手段，日常使用不需要传。
