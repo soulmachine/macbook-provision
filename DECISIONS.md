@@ -1794,5 +1794,5 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** The user specified the rule. Its last branch read "fale"; taken literally it would have made the MacBook test dead code, so the agent asked and the user confirmed `true`, with the consequence stated up front. That consequence is the one verdict that changes, measured on all seven hosts the same day: franks-mac-mini-2018 (Intel, no battery node) moves from skip to install and gains `hermes` and ponytail's Hermes half; every other host keeps its verdict. The gate is now fail-open — an unknown non-MacBook family installs — which is exactly the property Q26 chose against; this entry reverses that on the user's call. The VM branch is redundant today (no VM's family starts with "MacBook") and is kept because the rule was asked for in that shape.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 8c64c38
 **Supersedes:** Q26 — fail-closed battery predicate replaced by the family rule; Q27 — VM exception now redundant, kept as a branch of the new rule
