@@ -1867,4 +1867,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** The user picked this from the agent's recommendation. It is the split the `skills` and `paseo` roles already use for failures only a human can fix. The run still ends with `failed=1`, which the nightly sweep looks for, and still prints the `cua-driver permissions grant` instructions. A warning alone would have lost that signal. The role's own debug report covers a run of the role by itself, which never reaches `post_tasks`. One side effect: the jev-use clone and `uv sync` now also run on an ungranted host. Neither needs the permissions. Verified on mac-mini-m2: two real runs of the role (the second changed nothing), plus a scratch play with `-e cua_permissions_granted=false`, in which a stand-in later task ran and the play failed only in `post_tasks`. With the grant real, the same play passed.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 62324cd
