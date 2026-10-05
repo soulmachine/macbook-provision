@@ -354,8 +354,9 @@ start --foreground"`. Three things are easy to get wrong:
   rewrites the line to `paseo daemon run` in place. This is a one-time migration that
   becomes dead code once every host has it.
 - **Every change leaves the daemon stopped or on deleted code.** The cask's uninstall
-  stanza runs `paseo daemon stop --force`, an npm upgrade replaces its files, and
-  `mise unuse` prunes the tree it was launched from. So any change reloads the agent.
+  stanza runs `paseo daemon stop --force`, an npm upgrade replaces its files, and the
+  pin removal prunes the tree it was launched from. `mise unuse` alone only edits the
+  config, so it is followed by `mise prune`. So any change reloads the agent.
 - **Reload means bootout plus bootstrap, with a wait between them.** `kickstart -k`
   would restart the cached old command line. `bootout` returns before the daemon has
   finished its roughly 6s graceful shutdown, and a `bootstrap` issued in that window

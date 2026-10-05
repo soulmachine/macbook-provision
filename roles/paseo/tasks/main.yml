@@ -49,9 +49,10 @@
 
 # Five hosts carried a hand-written `"npm:@getpaseo/cli" = "0.8.0"` in mise's global
 # config, which shadowed both the cask and the npm global on PATH. Removing it leaves
-# one install path per host; `mise unuse` also prunes the 0.8.0 tree. It runs after the
-# npm install so a `paseo` is already on PATH when the pinned one goes. Gated on a read
-# of the global config, so `changed` means the pin was really there.
+# one install path per host. `mise unuse` only edits the config and leaves the 0.8.0
+# tree (about 470 MB) on disk, measured 2026-10-04, so `mise prune` follows it. It runs
+# after the npm install so a `paseo` is already on PATH when the pinned one goes. Gated
+# on a read of the global config, so `changed` means the pin was really there.
 # `check_mode: false`: the read is harmless, and without it `from_json` below would
 # parse the empty stdout of a skipped command under `--check`.
 - name: Read mise's global tool pins
@@ -61,7 +62,7 @@
   check_mode: false
 
 - name: Remove the mise pin on the Paseo CLI
-  ansible.builtin.command: mise unuse --global npm:@getpaseo/cli
+  ansible.builtin.shell: mise unuse --global npm:@getpaseo/cli && mise prune --yes npm:@getpaseo/cli
   register: paseo_mise_pin
   changed_when: true
   when: "'npm:@getpaseo/cli' in (paseo_mise_global.stdout | from_json)"
@@ -75,7 +76,7 @@
 #     exit 1 every ThrottleInterval. Rewritten in place: a one-time migration.
 #   - Every change above leaves the daemon stopped or on deleted code: the cask's
 #     uninstall stanza runs `paseo daemon stop --force`, an npm upgrade replaces its
-#     files, and `mise unuse` deletes the tree it was launched from.
+#     files, and the pin removal prunes the tree it was launched from.
 - name: Find the Paseo daemon LaunchAgent
   ansible.builtin.stat:
     path: ~/Library/LaunchAgents/sh.paseo.daemon.plist
