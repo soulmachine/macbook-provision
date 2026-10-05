@@ -82,7 +82,8 @@ over plain ssh. Only Homebrew needs this.
 checkout, Chromium, and messaging gateways. That only earns its keep on a Mac that is
 actually up, so the role is gated on `mac_is_always_on`, and so is the half of
 `ponytail` that installs into Hermes (the rest of `ponytail` is wanted everywhere and
-stays ungated).
+stays ungated). `paseo` reads the same gate but branches on it instead of skipping —
+see "Paseo role specifics".
 
 **OpenClaw is gone from this repo and must not come back.** It was uninstalled fleet-wide on 2026-09-08 (DECISIONS Q52-Q54), and the removal role that did it was deleted on 2026-09-10 once all seven hosts verified clean of its npm packages, cask and LaunchAgents. Re-adding a role for it needs a fresh decision.
 
@@ -149,10 +150,9 @@ Three details that are easy to get wrong:
   `include_role`, and a parameterless role **de-duplicates**, so `host-facts` runs
   exactly once per play however many roles pull it in. Both properties were verified
   directly; neither is obvious. Caveat when checking dedup: `--list-tasks` prints the
-  *un-deduplicated* graph (host-facts appears four times — `main.yml`, `hermes`'s meta,
-  `ponytail`'s meta, and `ponytail`→`hermes`→`host-facts`; the fifth went with
-  `openclaw`), while an actual run shows its three tasks once — assert on the run, not
-  the listing.
+  *un-deduplicated* graph (host-facts appears five times — `main.yml`, `hermes`'s meta,
+  `ponytail`'s meta, `ponytail`→`hermes`→`host-facts`, and `paseo`'s meta), while an
+  actual run shows its three tasks once — assert on the run, not the listing.
 
 A single-role run needs no extra vars — the `host-facts` dependency classifies the
 machine itself:
@@ -331,6 +331,38 @@ wrong:
 - **oh-my-pi is not documented upstream.** It is installed because omp's plugin manager
   reads the same `pi` manifest key ponytail publishes to npm; if it ever stops loading,
   drop `tasks/omp.yml`. kimi-code has no mechanism to install into and is skipped.
+
+#### Paseo role specifics
+
+`paseo` branches on `mac_is_always_on` instead of skipping. A MacBook gets the `paseo`
+cask (Paseo.app, which bundles its own daemon). An always-on Mac, or a non-macOS host,
+gets upstream's server install, `npm install -g @getpaseo/cli`, and has the cask
+**removed**, because nobody sits at those boxes to use a desktop app. The npm install is
+diffed with `npm ls -g`, the same gate as `obsidian` and `playwright-cli`. A hand-written
+`"npm:@getpaseo/cli" = "0.8.0"` pin in mise's global config had been shadowing both
+installs on five hosts, and the role removes it everywhere.
+
+Its `tags: [agent-multiplexer]` reaches `host-facts` with no `tags: always`, because a
+role's tags are inherited by its meta dependencies.
+
+**The `sh.paseo.daemon` LaunchAgent is not this role's, but the role keeps it alive.**
+Five always-on hosts carry a hand-written agent running `zsh -lc "exec paseo daemon
+start --foreground"`. Three things are easy to get wrong:
+
+- **0.10 removed `--foreground`.** The agent survived only because the 0.8.0 pin won on
+  PATH. Once the pin is gone it exits 1 in a loop every ThrottleInterval. The role
+  rewrites the line to `paseo daemon run` in place. This is a one-time migration that
+  becomes dead code once every host has it.
+- **Every change leaves the daemon stopped or on deleted code.** The cask's uninstall
+  stanza runs `paseo daemon stop --force`, an npm upgrade replaces its files, and
+  `mise unuse` prunes the tree it was launched from. So any change reloads the agent.
+- **Reload means bootout plus bootstrap, with a wait between them.** `kickstart -k`
+  would restart the cached old command line. `bootout` returns before the daemon has
+  finished its roughly 6s graceful shutdown, and a `bootstrap` issued in that window
+  fails with rc 5, leaving the agent unloaded (measured 2026-10-04). The task polls
+  `launchctl print` until the service is gone. It exits 113, launchd's "no such
+  service", when the agent is not loaded, so an agent unloaded on purpose stays down.
+  The role never creates the agent: mac-mini-m6 has none, so no daemon runs there.
 
 ### Role Structure
 

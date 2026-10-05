@@ -1,5 +1,114 @@
 ---
-- name: Install Paseo
+# Two install paths, split on the `host-facts` always-on gate:
+#   MacBook (mac_is_always_on false) — the `paseo` cask: Paseo.app, the desktop UI,
+#                                      which bundles its own daemon and CLI.
+#   always-on Mac, or not macOS      — `@getpaseo/cli` from npm: the CLI and the daemon,
+#                                      which serves the web UI itself. No desktop app on
+#                                      a box nobody sits at, so the cask is removed there.
+# The npm package is upstream's documented server install and tracks the same version
+# as the cask.
+- name: Ensure platform fact is gathered
+  ansible.builtin.setup:
+    gather_subset: platform
+  when: ansible_facts['system'] is not defined
+
+- name: Decide whether this host gets the Paseo desktop app
+  ansible.builtin.set_fact:
+    paseo_desktop: "{{ ansible_facts['system'] == 'Darwin' and not (mac_is_always_on | bool) }}"
+
+# `brew uninstall --cask paseo` runs the cask's uninstall stanza, which includes
+# `paseo daemon stop --force` — so removing it stops the running daemon. The
+# restart at the bottom of this file brings it back on the npm install.
+- name: Install or remove the Paseo desktop app
   community.general.homebrew_cask:
     name: paseo
-    state: latest
+    state: "{{ 'latest' if paseo_desktop | bool else 'absent' }}"
+  register: paseo_cask
+  when: ansible_facts['system'] == 'Darwin'
+
+# Same gate as the obsidian and playwright-cli roles: `npm install -g` prints the same
+# line for a no-op and a real upgrade, so diff `npm ls -g` around it. An absent package
+# exits 1, hence `failed_when: false` on the read, so a first install reads as a change.
+- name: Install the Paseo CLI and daemon from npm
+  when: not (paseo_desktop | bool)
+  block:
+    - name: Read the installed Paseo CLI version
+      ansible.builtin.command: npm ls -g --depth=0 --json @getpaseo/cli
+      register: paseo_cli_before
+      changed_when: false
+      failed_when: false
+
+    - name: Install the Paseo CLI globally # noqa: command-instead-of-module
+      ansible.builtin.command: npm install -g @getpaseo/cli@latest
+      changed_when: false
+
+    - name: Check whether the Paseo CLI changed
+      ansible.builtin.command: npm ls -g --depth=0 --json @getpaseo/cli
+      register: paseo_cli_after
+      changed_when: paseo_cli_after.stdout != paseo_cli_before.stdout
+
+# Five hosts carried a hand-written `"npm:@getpaseo/cli" = "0.8.0"` in mise's global
+# config, which shadowed both the cask and the npm global on PATH. Removing it leaves
+# one install path per host; `mise unuse` also prunes the 0.8.0 tree. It runs after the
+# npm install so a `paseo` is already on PATH when the pinned one goes. Gated on a read
+# of the global config, so `changed` means the pin was really there.
+# `check_mode: false`: the read is harmless, and without it `from_json` below would
+# parse the empty stdout of a skipped command under `--check`.
+- name: Read mise's global tool pins
+  ansible.builtin.command: mise ls --global --json
+  register: paseo_mise_global
+  changed_when: false
+  check_mode: false
+
+- name: Remove the mise pin on the Paseo CLI
+  ansible.builtin.command: mise unuse --global npm:@getpaseo/cli
+  register: paseo_mise_pin
+  changed_when: true
+  when: "'npm:@getpaseo/cli' in (paseo_mise_global.stdout | from_json)"
+
+# The `sh.paseo.daemon` LaunchAgent was hand-installed on five always-on hosts. It
+# runs `zsh -lc "exec paseo daemon start --foreground"`, so it resolves `paseo` by name
+# when it starts. This role does not own the agent and never creates it, but it fixes
+# two things the changes above break:
+#   - 0.10 removed `--foreground` ("Use paseo daemon run"). The agent survived only
+#     because the mise 0.8.0 pin won on PATH, so removing the pin crash-loops it with
+#     exit 1 every ThrottleInterval. Rewritten in place: a one-time migration.
+#   - Every change above leaves the daemon stopped or on deleted code: the cask's
+#     uninstall stanza runs `paseo daemon stop --force`, an npm upgrade replaces its
+#     files, and `mise unuse` deletes the tree it was launched from.
+- name: Find the Paseo daemon LaunchAgent
+  ansible.builtin.stat:
+    path: ~/Library/LaunchAgents/sh.paseo.daemon.plist
+  register: paseo_agent
+  when: ansible_facts['system'] == 'Darwin'
+
+- name: Move the Paseo LaunchAgent off the removed --foreground flag
+  ansible.builtin.replace:
+    path: ~/Library/LaunchAgents/sh.paseo.daemon.plist
+    regexp: 'paseo daemon start --foreground'
+    replace: 'paseo daemon run'
+  register: paseo_agent_plist
+  when: paseo_agent.stat.exists | default(false)
+
+# bootout + bootstrap rather than `kickstart -k`: launchd caches the plist, so a
+# kickstart would restart the old command line. bootout returns before a running
+# daemon finishes its graceful shutdown (about 6s), and a bootstrap issued in that
+# window fails with rc 5. So wait until launchd has dropped the service, up to 30s.
+# Exit 113 is launchd's "no such service". It means the agent is not loaded, and
+# someone who unloaded it on purpose keeps it that way, so 113 is neither a failure
+# nor a change.
+- name: Reload the Paseo daemon LaunchAgent
+  ansible.builtin.shell: |
+    svc="gui/$(id -u)/sh.paseo.daemon"
+    launchctl print "$svc" >/dev/null 2>&1 || exit 113
+    launchctl bootout "$svc"
+    for _ in $(seq 60); do launchctl print "$svc" >/dev/null 2>&1 || break; sleep 0.5; done
+    launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/sh.paseo.daemon.plist
+  register: paseo_reload
+  changed_when: paseo_reload.rc == 0
+  failed_when: paseo_reload.rc not in [0, 113]
+  when:
+    - paseo_agent.stat.exists | default(false)
+    - >-
+      paseo_cask is changed or paseo_cli_after is changed
+      or paseo_mise_pin is changed or paseo_agent_plist is changed

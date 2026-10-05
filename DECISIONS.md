@@ -1827,3 +1827,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** https://github.com/NousResearch/hermes-agent/pull/125937#issuecomment-5988289846
 **Supersedes:** Q173 — escalation resolved by the user
+
+## Q175 — interactive/paseo-npm — deviation
+
+**Question:** The user asked for the paseo role to install `npm install -g @getpaseo/cli` instead of the Homebrew cask. How far should that reach, and what should happen to what is already on the fleet?
+**Options considered:** cask removed, left in place, or kept beside npm / mise's `npm:@getpaseo/cli` 0.8.0 pin removed by the role, by hand, or kept / LaunchAgent restarted with `kickstart -k` or reloaded with bootout + bootstrap / `tags: always` on host-facts, or relying on tag inheritance
+**Chosen:** Branch on `mac_is_always_on`. MacBooks keep the cask (Paseo.app). Always-on Macs and non-macOS hosts get the npm CLI and daemon, and the cask is uninstalled. The role removes the mise pin on every host. When anything changes, the role migrates the hand-written `sh.paseo.daemon` LaunchAgent from `paseo daemon start --foreground` to `paseo daemon run` and reloads it, waiting for bootout to finish. No `tags: always`.
+**Decided-by:** human
+**Justification:** The user chose the split and the pin removal (AskUserQuestion, 2026-10-04). Testing on mac-mini-m2 forced the LaunchAgent work, which the user had not been asked about. Paseo 0.10 removed `--foreground`, and the agent on five hosts had survived only because the 0.8.0 pin won on PATH. Removing the pin left the agent exiting 1 every 10s, so shipping the pin removal without the migration would have taken the daemon down on four more hosts at the next sweep. The role edits and reloads a plist it does not own. It never creates one, and it leaves an agent that is not loaded (exit 113) alone. First attempt: a bare bootout followed by bootstrap failed with rc 5 against a running daemon, because bootout returns before the roughly 6s graceful shutdown ends, and the agent was left unloaded until it was re-bootstrapped by hand. The task now polls `launchctl print` before bootstrapping. Verified on m2: an npm downgrade to 0.10.2 was reported changed, restored to 0.10.3 and reloaded the daemon onto 0.10.3, and the next pass was `changed=0`. `--list-tasks` and a `--tags agent-multiplexer --check` run show paseo's tag reaching `host-facts` through its meta dependency, so the host-facts comment that called for `tags: always` was wrong and has been corrected. Paseo.app is gone from the six non-MacBook hosts. mac-mini-m6 has no LaunchAgent, so once its cask goes no daemon runs there. That is flagged for the user and not built.
+**Outcome:** applied
+**Ref:** (pending)

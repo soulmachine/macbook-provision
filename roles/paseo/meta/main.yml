@@ -1,4 +1,8 @@
 ---
 dependencies:
+  # Sets `mac_is_always_on`, the fact this role splits its install on. Declared here
+  # so a standalone `ansible localhost -m include_role -a name=paseo` classifies the
+  # machine itself instead of aborting on an undefined variable — no `-e` needed.
+  - host-facts
   - claude-code
   - codex

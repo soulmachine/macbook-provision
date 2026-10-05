@@ -5,7 +5,7 @@
 # set_fact, so it reports 0 changed and stays clean under the idempotency check.
 #
 # It is wired two ways, both deliberate:
-#   - as a `meta/main.yml` dependency of hermes and ponytail, so a
+#   - as a `meta/main.yml` dependency of hermes, ponytail and paseo, so a
 #     standalone `ansible localhost -m include_role -a name=hermes`
 #     classifies the machine itself and needs no `-e mac_is_always_on=...`;
 #   - listed first in main.yml's `roles:`, so the full play classifies before
@@ -25,10 +25,11 @@
 # scoped to the role, host facts are global — which is what lets hermes read
 # these from a dependency. Do not "simplify" it into vars/main.yml later.
 #
-# This role carries no tags. A `--tags`-limited play that reached a gated role
-# would abort on the undefined gate. No tag reaches one today
-# (`agent-multiplexer` is paseo/moshi, `terminal-multiplexer` is
-# zellij/tmux/herdr); if a gated role ever gains a tag, add `tags: always` here.
+# This role carries no tags and needs none. A tagged role that reads the gate
+# (paseo, `agent-multiplexer`) pulls this one in as a meta dependency, and a
+# role's tags are inherited by its dependencies — so `--tags agent-multiplexer`
+# selects these tasks too (verified with `--list-tasks`, 2026-10-04). A gated
+# role must list this one in its meta for that to hold.
 
 # Classify the machine before any role runs, so always-on-only roles can gate
 # on it. A role that stands up a long-lived local service (hermes; openclaw's
