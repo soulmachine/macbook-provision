@@ -1868,3 +1868,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The user picked this from the agent's recommendation. It is the split the `skills` and `paseo` roles already use for failures only a human can fix. The run still ends with `failed=1`, which the nightly sweep looks for, and still prints the `cua-driver permissions grant` instructions. A warning alone would have lost that signal. The role's own debug report covers a run of the role by itself, which never reaches `post_tasks`. One side effect: the jev-use clone and `uv sync` now also run on an ungranted host. Neither needs the permissions. Verified on mac-mini-m2: two real runs of the role (the second changed nothing), plus a scratch play with `-e cua_permissions_granted=false`, in which a stand-in later task ran and the play failed only in `post_tasks`. With the grant real, the same play passed.
 **Outcome:** applied
 **Ref:** 62324cd
+
+## Q179 — fleet-github-pat — gate-resolution
+
+**Question:** Q169 and Q170 left the old shared PAT (`ghp_U7qQ…`) unrevoked, pending archs-mac-mini, the last host holding a copy. Is anything still left to do?
+**Options considered:** revoke it now / confirm it is already gone and close the item
+**Chosen:** Already done; closed. No revocation was performed today.
+**Decided-by:** agent
+**Justification:** The user said on 2026-09-23 that the old PAT was gone from github.com/settings/tokens. It could not be re-checked there on 2026-10-05, because the user's Chrome is not signed in to GitHub and no API lists classic PATs. The fleet agrees. A hash-only scan on 2026-10-05 covered every startup file, its backups, the repo `.env` and the gh config on all ten hosts. The only live token is the current fleet PAT (`cf21d9c…`), which works as `soulmachine` everywhere. No file on any host starts with `ghp_U7qQ`. The two other tokens found, `d1c3ba9…` in old `.zshrc` backups on mac-mini-2018 and macbook-pro-nickel and `42a7ed0…` in a 2026-09-10 `.zshenv` backup on dev-server-frank-lume, both return 401. archs-mac-mini's `~/.zshenv` (rewritten 2026-09-24) no longer exports `GITHUB_TOKEN`, and its other files hold no token at all. One step from Q169 is still open: archs-mac-mini's keyring login as `ArchAutoTech` reports an invalid token, so `gh` there has no working credential until someone runs an interactive `gh auth login`.
+**Outcome:** applied
+**Ref:** —
