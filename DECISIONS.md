@@ -1848,3 +1848,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** 2cd1058
 **Supersedes:** Q175 — the role now owns the LaunchAgent rather than migrating a hand-written one in place
+
+## Q177 — interactive/paseo-npm — tradeoff
+
+**Question:** The paseo role confirmed only that launchd had `sh.paseo.daemon` loaded, which is how archs-mac-mini's daemon failed on every start for about a week while the role would have reported `ok`. When the daemon is down, should the role fail at once, only warn, or fail the play later?
+**Options considered:** fail inside the role / report with a `debug` only / record it and fail the play from `main.yml` post_tasks
+**Chosen:** Record and defer. After the load step the role polls `paseo daemon status --json` until `localDaemon` reads `running` (12 tries, 5 s apart, to cover a restart coming up), with `failed_when: false`, keeps the last state in a fact, and prints it for single-role runs. The post_task "Fail when the Paseo daemon is not running" then fails the play at the end.
+**Decided-by:** agent
+**Justification:** The user approved adding a health check; the mechanism follows the `skills` role's deferred pinned-skill failure. Failing in the role would stop the 11 roles after paseo (34 of 45) on every night the daemon is down. A `debug` alone would leave the sweep's recap at `failed=0`, which is the gap being closed. Verified that `until` with `failed_when: false` runs out its retries and continues with `failed=False`. A shim that made the status read report `stopped` produced 12 retries, the later moshi role still ran, and the play failed only at the post_task (`failed=1`). The healthy path is a no-op on m2 and m6.
+**Outcome:** applied
+**Ref:** 8fb7ab2
