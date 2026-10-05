@@ -100,6 +100,24 @@
         mode: "0644"
       register: paseo_agent_plist
 
+    # The relay (relay.paseo.sh, end-to-end encrypted) is the only way a paired phone or
+    # laptop reaches this daemon, which listens on 127.0.0.1 alone. Paseo defaults it to
+    # off. `config set` only saves `~/.paseo/config.json`; its own output says it is
+    # "not applied to a running daemon", so the reload below picks it up. On a new
+    # host it writes the file before the daemon's first start. Pairing stays manual:
+    # the `paseo daemon pair` link is a per-host secret.
+    # `default('{}', true)`: under `--check` the skipped read leaves an empty stdout.
+    - name: Read whether the Paseo relay is enabled
+      ansible.builtin.command: paseo daemon config get daemon.relay.enabled
+      register: paseo_relay
+      changed_when: false
+
+    - name: Enable the Paseo relay
+      ansible.builtin.command: paseo daemon config set daemon.relay.enabled true
+      register: paseo_relay_set
+      changed_when: true
+      when: (paseo_relay.stdout | default('{}', true) | from_json).value | default(false) is not sameas true
+
     # rc 113 is launchd's "no such service": the agent is not loaded. That includes an
     # agent someone unloaded on purpose, which the next run loads again.
     - name: Read whether the Paseo daemon LaunchAgent is loaded
@@ -109,9 +127,10 @@
       failed_when: paseo_agent_loaded.rc not in [0, 113]
       check_mode: false
 
-    # Reload on any change above, because each one leaves the daemon stopped or running
-    # deleted code: the cask's uninstall stanza runs `paseo daemon stop --force`, an npm
-    # install replaces its files, and the pin removal prunes the tree it started from.
+    # Reload on any change above. A relay change needs it to take effect, and each of
+    # the others leaves the daemon stopped or running deleted code: the cask's uninstall
+    # stanza runs `paseo daemon stop --force`, an npm install replaces its files, and
+    # the pin removal prunes the tree it started from.
     # bootout + bootstrap, not `kickstart -k`: launchd caches the plist, so a kickstart
     # would restart the old command line. bootout returns before the daemon's roughly
     # 6s graceful shutdown ends, and a bootstrap issued in that window fails with rc 5,
@@ -126,5 +145,5 @@
         launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/sh.paseo.daemon.plist
       changed_when: true
       when: >-
-        paseo_agent_loaded.rc != 0 or paseo_agent_plist is changed
+        paseo_agent_loaded.rc != 0 or paseo_agent_plist is changed or paseo_relay_set is changed
         or paseo_cask is changed or paseo_cli_after is changed or paseo_mise_pin is changed

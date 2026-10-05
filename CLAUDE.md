@@ -348,8 +348,12 @@ role's tags are inherited by its meta dependencies.
 **On always-on Macs the role owns the `sh.paseo.daemon` LaunchAgent** (DECISIONS Q176),
 so every such host runs the daemon. It installs `files/sh.paseo.daemon.plist`, which
 runs `zsh -lc "exec paseo daemon run"`, and loads the agent whenever launchd doesn't have
-it, including one someone unloaded on purpose. Pairing a host with your devices
-(`paseo daemon pair`) is still manual. Five hosts had hand-written copies, and the file
+it, including one someone unloaded on purpose. It also turns on the relay
+(`daemon.relay.enabled`, which Paseo defaults to off). The daemon listens on 127.0.0.1
+only, so the relay is the only way a paired device can reach it. `paseo daemon config
+set` only saves the file, so a change goes through the same reload. Pairing a host with
+your devices (`paseo daemon pair`) is still manual, because the pairing link is a
+per-host secret. Five hosts had hand-written copies, and the file
 is byte-identical to those after their move off `--foreground`, so those hosts keep
 their daemon running untouched. Four things are easy to get wrong:
 
