@@ -1796,3 +1796,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** 8c64c38
 **Supersedes:** Q26 — fail-closed battery predicate replaced by the family rule; Q27 — VM exception now redundant, kept as a branch of the new rule
+
+## Q172 — interactive/always-on-only-roles — deviation
+
+**Question:** Hermes `27c02f632` (pulled by the hermes role on 2026-10-04) began rejecting plugin manifests that do not declare the Agent Plugins `$schema`, and ponytail's `plugin.json` declares none. The ponytail role's Hermes install tolerated only the scanner block, so the role now failed on every always-on host — five of them since Q171 — stopping the rest of that host's play in the nightly sweep. Fail, or tolerate?
+**Options considered:** leave it failing until upstream ponytail adds the field / tolerate this specific error in `failed_when`, as the scanner block already is / disable the Hermes half of the role
+**Chosen:** Tolerate it. `failed_when` also passes when stdout matches `Agent\s+Plugins\s+schema`, with a separate debug task explaining the refusal; the scanner-block report is narrowed to fire only on its own message. Any other error still fails.
+**Decided-by:** human
+**Justification:** The agent recommended tolerating it after confirming the cause in Hermes's source (`hermes_cli/agent_plugins.py` raises when `$schema` is not the 1.0.0 URL; both refusals print through the same `_fail(console, …)` path to stdout, so stdout is where to match) and in ponytail's upstream manifest (`{"name": "ponytail"}` only). Nothing local can make the install succeed, the install is already retried on every run, and it will land unattended once upstream adds the field — the same shape and reasoning as the scanner-block tolerance. The match allows any whitespace because Rich wrapped the line at 80 columns in the observed output, splitting the phrase. Verified on mac-mini-m2: the role exits 0 and reports the refusal, and a second run changes nothing.
+**Outcome:** applied
+**Ref:** (pending)

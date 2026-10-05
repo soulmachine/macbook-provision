@@ -27,6 +27,14 @@
 # and lands by itself once upstream or the scanner changes. Hermes prints the
 # verdict on stdout (stderr stays empty), which is where the match looks.
 #
+# A second refusal is tolerated the same way (DECISIONS Q172). Since Hermes
+# 27c02f632 (2026-10-04) the installer rejects a plugin.json without
+# `"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"`
+# ("declares an unsupported or missing Agent Plugins schema"), and ponytail's
+# is just `{"name": "ponytail"}`. Nothing local can fix that; it lands once
+# upstream adds the field. Rich wraps that line at 80 columns, so the match
+# allows any whitespace between the words.
+#
 # `changed` comes from the directory appearing, not from the command: a
 # blocked install exits 1 having created nothing, and must not report a
 # change on every converged run of an always-on host.
@@ -42,6 +50,7 @@
   failed_when:
     - ponytail_hermes_install.rc != 0
     - "'Security scan blocked' not in ponytail_hermes_install.stdout"
+    - ponytail_hermes_install.stdout is not search('Agent\s+Plugins\s+schema')
   changed_when: false
 
 - name: Report that Hermes's plugin scanner blocked ponytail
@@ -52,7 +61,20 @@
       by running `hermes plugins install {{ ponytail_repo }} --enable` by hand;
       to accept them, set `plugins.scan_on_install: false` in
       ~/.hermes/config.yaml for that one install and re-run this role.
-  when: ponytail_hermes_install.rc | default(0) != 0
+  when:
+    - ponytail_hermes_install.rc | default(0) != 0
+    - "'Security scan blocked' in ponytail_hermes_install.stdout"
+
+- name: Report that Hermes rejected ponytail's plugin manifest
+  ansible.builtin.debug:
+    msg: >-
+      Hermes refused to install ponytail: its plugin.json declares no Agent
+      Plugins `$schema`, which Hermes now requires. Nothing to do locally —
+      the install is retried on every run and lands once upstream adds the
+      field.
+  when:
+    - ponytail_hermes_install.rc | default(0) != 0
+    - ponytail_hermes_install.stdout is search('Agent\s+Plugins\s+schema')
 
 - name: Check whether the ponytail Hermes plugin was installed
   ansible.builtin.stat:

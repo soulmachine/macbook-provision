@@ -296,13 +296,20 @@ wrong:
   and hermes-agent #93927. `--force` cannot override a dangerous verdict. The only
   override is
   `plugins.scan_on_install: false` in `~/.hermes/config.yaml`, a security posture the
-  role will not set for you. So the install task tolerates exactly that one failure
+  role will not set for you. So the install task tolerates that failure
   (`failed_when` on the `Security scan blocked` line, which Hermes prints on stdout),
   prints the remedy, and reports `changed` from the plugin directory appearing rather
   than from the command — which is why it cannot use `creates:` (a tolerated failure
-  would report a change on every run). Any other error still fails the play. The
-  install is retried on every run and lands by itself once upstream or the scanner
-  changes.
+  would report a change on every run). The install is retried on every run and lands
+  by itself once upstream or the scanner changes.
+- **Hermes also rejects ponytail's manifest, and that is tolerated too** (Q172). Since
+  Hermes `27c02f632` (2026-10-04) the installer requires plugin.json to declare
+  `"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"`; ponytail's
+  is just `{"name": "ponytail"}`, so the install fails with `declares an unsupported or
+  missing Agent Plugins schema` before the scanner even runs. The same `failed_when`
+  lets it through, matched as `search('Agent\s+Plugins\s+schema')` because Rich wraps
+  that stdout line at 80 columns and splits the phrase. These two are the only
+  tolerated errors; any other still fails the play.
 - **Codex hook trust is a one-time, per-host step the role does not perform.** Codex
   runs a plugin's hooks only once each is trusted: a `trusted_hash` under
   `[hooks.state."<plugin>@<marketplace>:<hooks file>:<event>:<group>:<handler>"]` in
