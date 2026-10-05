@@ -31,9 +31,13 @@
 # 27c02f632 (2026-10-04) the installer rejects a plugin.json without
 # `"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"`
 # ("declares an unsupported or missing Agent Plugins schema"), and ponytail's
-# is just `{"name": "ponytail"}`. Nothing local can fix that; it lands once
-# upstream adds the field. Rich wraps that line at 80 columns, so the match
-# allows any whitespace between the words.
+# is just `{"name": "ponytail"}` — on purpose: ponytail#1021 dropped the field
+# because it makes Codex, VS Code and Qwen load ponytail as an Agent Plugin
+# and lose its hooks. So the fix is on Hermes's side: hermes-agent#125937 lets
+# a native plugin.yaml win over a foreign plugin.json, and the install lands
+# once that merges. Do not ask ponytail to add the field back — it would strip
+# ponytail's hooks from Codex on this fleet. Rich wraps that line at 80
+# columns, so the match allows any whitespace between the words.
 #
 # `changed` comes from the directory appearing, not from the command: a
 # blocked install exits 1 having created nothing, and must not report a
@@ -70,8 +74,8 @@
     msg: >-
       Hermes refused to install ponytail: its plugin.json declares no Agent
       Plugins `$schema`, which Hermes now requires. Nothing to do locally —
-      the install is retried on every run and lands once upstream adds the
-      field.
+      the install is retried on every run and lands once Hermes prefers
+      ponytail's native plugin.yaml (NousResearch/hermes-agent#125937).
   when:
     - ponytail_hermes_install.rc | default(0) != 0
     - ponytail_hermes_install.stdout is search('Agent\s+Plugins\s+schema')

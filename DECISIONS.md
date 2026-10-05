@@ -1806,3 +1806,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The agent recommended tolerating it after confirming the cause in Hermes's source (`hermes_cli/agent_plugins.py` raises when `$schema` is not the 1.0.0 URL; both refusals print through the same `_fail(console, …)` path to stdout, so stdout is where to match) and in ponytail's upstream manifest (`{"name": "ponytail"}` only). Nothing local can make the install succeed, the install is already retried on every run, and it will land unattended once upstream adds the field — the same shape and reasoning as the scanner-block tolerance. The match allows any whitespace because Rich wrapped the line at 80 columns in the observed output, splitting the phrase. Verified on mac-mini-m2: the role exits 0 and reports the refusal, and a second run changes nothing.
 **Outcome:** applied
 **Ref:** b03fc9f
+
+## Q173 — interactive/always-on-only-roles — deviation
+
+**Question:** The user asked for an issue on DietrichGebert/ponytail requesting the Agent Plugins `$schema` in its root `plugin.json`, to unblock the Hermes install Q172 tolerates. File it?
+**Options considered:** file the issue as asked / do not file it, and point at the Hermes-side fix instead
+**Chosen:** —
+**Decided-by:** agent (escalated to the user)
+**Justification:** A search before filing found the request already made and already reversed upstream. ponytail#925 reported the same Hermes refusal and was fixed by ponytail#744, which added the field; the owner then removed it again in ponytail#1021 (merged 2026-10-04) because with it Codex, VS Code and Qwen load ponytail as an Agent Plugin, which carries no hooks — so ponytail's ruleset never reaches the model there. Codex is one of the agents this repo's `ponytail` role installs into, so the request would break this fleet if granted. The fix the owner and the #925 thread point at is Hermes-side: NousResearch/hermes-agent#125937 (open, tracking #125927) lets a native `plugin.yaml` win over a foreign `plugin.json`. Filing is a public, outward-facing action whose premise turned out to be wrong, so it waits on the user. This entry also corrects Q172's claim that the install lands "once upstream adds the field": it lands once hermes-agent#125937 merges; the role's comment, its report message and CLAUDE.md now say so.
+**Outcome:** escalated
+**Ref:** (pending)

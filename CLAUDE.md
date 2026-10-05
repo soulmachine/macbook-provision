@@ -306,7 +306,11 @@ wrong:
   Hermes `27c02f632` (2026-10-04) the installer requires plugin.json to declare
   `"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"`; ponytail's
   is just `{"name": "ponytail"}`, so the install fails with `declares an unsupported or
-  missing Agent Plugins schema` before the scanner even runs. The same `failed_when`
+  missing Agent Plugins schema` before the scanner even runs. **Ponytail omits the field
+  on purpose** — ponytail#1021 removed it because it makes Codex, VS Code and Qwen load
+  the plugin as an Agent Plugin and drop its hooks — so do not ask upstream to add it;
+  the fix is Hermes letting a native `plugin.yaml` win (NousResearch/hermes-agent#125937),
+  and the install lands once that merges. The same `failed_when`
   lets it through, matched as `search('Agent\s+Plugins\s+schema')` because Rich wraps
   that stdout line at 80 columns and splits the phrase. These two are the only
   tolerated errors; any other still fails the play.
