@@ -135,7 +135,7 @@ pre-commit run --all-files
 | cc-switch | Claude 配置切换器：tap `farion1231/ccswitch` + cask `cc-switch`（依赖 claude-code、codex） |
 | hermes | Hermes 个人 agent（Nous Research）；**仅限常驻开机的机器** |
 | ponytail | 给所有 agent 安装 [ponytail](https://github.com/DietrichGebert/ponytail) 插件——Claude Code / Codex / OpenCode / pi / oh-my-pi / Hermes 各用其原生安装方式；其中 Hermes 部分**仅限常驻开机的机器** |
-| paseo | agent 多路复用：MacBook 装桌面版（cask `paseo`）；常驻开机的机器改装 npm `@getpaseo/cli`（CLI + daemon），并卸载 cask、移除 mise 里的旧版本 pin，同时把手写的 `sh.paseo.daemon` LaunchAgent 迁移到 `paseo daemon run` 并重新加载；tag `agent-multiplexer`（依赖 host-facts、claude-code、codex） |
+| paseo | agent 多路复用：MacBook 装桌面版（cask `paseo`）；常驻开机的机器改装 npm `@getpaseo/cli`（CLI + daemon），并卸载 cask、移除 mise 里的旧版本 pin，同时安装并加载由本 role 管理的 `sh.paseo.daemon` LaunchAgent（`paseo daemon run`）；tag `agent-multiplexer`（依赖 host-facts、claude-code、codex） |
 | ghostty | 终端模拟器（cask `ghostty`）（依赖 oh-my-zsh） |
 | cmux | 多 agent 工作区：tap `manaflow-ai/cmux` + cask `cmux`，并把 CLI 链接到 `~/.local/bin`（依赖 ghostty） |
 | obsidian | Obsidian（cask）+ npm 全局 `defuddle`（依赖 claude-code） |

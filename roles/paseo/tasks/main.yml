@@ -5,6 +5,8 @@
 #   always-on Mac, or not macOS      — `@getpaseo/cli` from npm: the CLI and the daemon,
 #                                      which serves the web UI itself. No desktop app on
 #                                      a box nobody sits at, so the cask is removed there.
+#                                      On macOS the daemon runs under a LaunchAgent this
+#                                      role owns (bottom of this file).
 # The npm package is upstream's documented server install and tracks the same version
 # as the cask.
 - name: Ensure platform fact is gathered
@@ -67,49 +69,62 @@
   changed_when: true
   when: "'npm:@getpaseo/cli' in (paseo_mise_global.stdout | from_json)"
 
-# The `sh.paseo.daemon` LaunchAgent was hand-installed on five always-on hosts. It
-# runs `zsh -lc "exec paseo daemon start --foreground"`, so it resolves `paseo` by name
-# when it starts. This role does not own the agent and never creates it, but it fixes
-# two things the changes above break:
-#   - 0.10 removed `--foreground` ("Use paseo daemon run"). The agent survived only
-#     because the mise 0.8.0 pin won on PATH, so removing the pin crash-loops it with
-#     exit 1 every ThrottleInterval. Rewritten in place: a one-time migration.
-#   - Every change above leaves the daemon stopped or on deleted code: the cask's
-#     uninstall stanza runs `paseo daemon stop --force`, an npm upgrade replaces its
-#     files, and the pin removal prunes the tree it was launched from.
-- name: Find the Paseo daemon LaunchAgent
-  ansible.builtin.stat:
-    path: ~/Library/LaunchAgents/sh.paseo.daemon.plist
-  register: paseo_agent
-  when: ansible_facts['system'] == 'Darwin'
-
-- name: Move the Paseo LaunchAgent off the removed --foreground flag
-  ansible.builtin.replace:
-    path: ~/Library/LaunchAgents/sh.paseo.daemon.plist
-    regexp: 'paseo daemon start --foreground'
-    replace: 'paseo daemon run'
-  register: paseo_agent_plist
-  when: paseo_agent.stat.exists | default(false)
-
-# bootout + bootstrap rather than `kickstart -k`: launchd caches the plist, so a
-# kickstart would restart the old command line. bootout returns before a running
-# daemon finishes its graceful shutdown (about 6s), and a bootstrap issued in that
-# window fails with rc 5. So wait until launchd has dropped the service, up to 30s.
-# Exit 113 is launchd's "no such service". It means the agent is not loaded, and
-# someone who unloaded it on purpose keeps it that way, so 113 is neither a failure
-# nor a change.
-- name: Reload the Paseo daemon LaunchAgent
-  ansible.builtin.shell: |
-    svc="gui/$(id -u)/sh.paseo.daemon"
-    launchctl print "$svc" >/dev/null 2>&1 || exit 113
-    launchctl bootout "$svc"
-    for _ in $(seq 60); do launchctl print "$svc" >/dev/null 2>&1 || break; sleep 0.5; done
-    launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/sh.paseo.daemon.plist
-  register: paseo_reload
-  changed_when: paseo_reload.rc == 0
-  failed_when: paseo_reload.rc not in [0, 113]
+# On an always-on Mac the role owns the `sh.paseo.daemon` LaunchAgent (DECISIONS Q176),
+# so every such host runs the daemon. Before this it was hand-written on five hosts
+# and missing on mac-mini-m6. `files/sh.paseo.daemon.plist` is byte-identical to the
+# hand-written agent after its move off `--foreground`, which 0.10 removed, so a host
+# already on that version keeps its daemon running untouched.
+#
+# The plist launches `paseo` by name through a login shell, so every start picks up
+# whatever install is current. That is what survives a Node upgrade: the nodejs role's
+# `mise upgrade node` deletes the old Node version along with this npm global, the
+# install above then reads as a change, and the daemon restarts on the new one.
+- name: Run the Paseo daemon under launchd
   when:
-    - paseo_agent.stat.exists | default(false)
-    - >-
-      paseo_cask is changed or paseo_cli_after is changed
-      or paseo_mise_pin is changed or paseo_agent_plist is changed
+    - ansible_facts['system'] == 'Darwin'
+    - not (paseo_desktop | bool)
+  block:
+    # `copy` will not create a missing parent, and a new account has no LaunchAgents dir.
+    # Symbolic mode on purpose: the fleet has both 700 and 755 here, and an octal mode
+    # would rewrite one or the other on every host that differs.
+    - name: Ensure the LaunchAgents directory exists
+      ansible.builtin.file:
+        path: ~/Library/LaunchAgents
+        state: directory
+        mode: u+rwx
+
+    - name: Install the Paseo daemon LaunchAgent
+      ansible.builtin.copy:
+        src: sh.paseo.daemon.plist
+        dest: ~/Library/LaunchAgents/sh.paseo.daemon.plist
+        mode: "0644"
+      register: paseo_agent_plist
+
+    # rc 113 is launchd's "no such service": the agent is not loaded. That includes an
+    # agent someone unloaded on purpose, which the next run loads again.
+    - name: Read whether the Paseo daemon LaunchAgent is loaded
+      ansible.builtin.shell: launchctl print "gui/$(id -u)/sh.paseo.daemon" >/dev/null
+      register: paseo_agent_loaded
+      changed_when: false
+      failed_when: paseo_agent_loaded.rc not in [0, 113]
+      check_mode: false
+
+    # Reload on any change above, because each one leaves the daemon stopped or running
+    # deleted code: the cask's uninstall stanza runs `paseo daemon stop --force`, an npm
+    # install replaces its files, and the pin removal prunes the tree it started from.
+    # bootout + bootstrap, not `kickstart -k`: launchd caches the plist, so a kickstart
+    # would restart the old command line. bootout returns before the daemon's roughly
+    # 6s graceful shutdown ends, and a bootstrap issued in that window fails with rc 5,
+    # so wait up to 30s for launchd to drop the service first.
+    - name: Load or reload the Paseo daemon LaunchAgent
+      ansible.builtin.shell: |
+        svc="gui/$(id -u)/sh.paseo.daemon"
+        if launchctl print "$svc" >/dev/null 2>&1; then
+          launchctl bootout "$svc"
+          for _ in $(seq 60); do launchctl print "$svc" >/dev/null 2>&1 || break; sleep 0.5; done
+        fi
+        launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/sh.paseo.daemon.plist
+      changed_when: true
+      when: >-
+        paseo_agent_loaded.rc != 0 or paseo_agent_plist is changed
+        or paseo_cask is changed or paseo_cli_after is changed or paseo_mise_pin is changed

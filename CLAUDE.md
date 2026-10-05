@@ -345,25 +345,37 @@ installs on five hosts, and the role removes it everywhere.
 Its `tags: [agent-multiplexer]` reaches `host-facts` with no `tags: always`, because a
 role's tags are inherited by its meta dependencies.
 
-**The `sh.paseo.daemon` LaunchAgent is not this role's, but the role keeps it alive.**
-Five always-on hosts carry a hand-written agent running `zsh -lc "exec paseo daemon
-start --foreground"`. Three things are easy to get wrong:
+**On always-on Macs the role owns the `sh.paseo.daemon` LaunchAgent** (DECISIONS Q176),
+so every such host runs the daemon. It installs `files/sh.paseo.daemon.plist`, which
+runs `zsh -lc "exec paseo daemon run"`, and loads the agent whenever launchd doesn't have
+it, including one someone unloaded on purpose. Pairing a host with your devices
+(`paseo daemon pair`) is still manual. Five hosts had hand-written copies, and the file
+is byte-identical to those after their move off `--foreground`, so those hosts keep
+their daemon running untouched. Four things are easy to get wrong:
 
-- **0.10 removed `--foreground`.** The agent survived only because the 0.8.0 pin won on
-  PATH. Once the pin is gone it exits 1 in a loop every ThrottleInterval. The role
-  rewrites the line to `paseo daemon run` in place. This is a one-time migration that
-  becomes dead code once every host has it.
+- **0.10 removed `--foreground`.** The old hand-written agents survived only because
+  the 0.8.0 pin won on PATH. Once the pin was gone they exited 1 in a loop every
+  ThrottleInterval. Installing the role's plist replaces that line.
+- **`paseo` is launched by name, through a login shell, on purpose.** The nodejs role's
+  `mise upgrade node` deletes the old Node version, and the npm global with it. The
+  daemon's worker processes run on the full path of the Node it started on
+  (`node/24.21.0/bin/node`), so even a running daemon breaks. The paseo role then sees
+  `@getpaseo/cli` go from absent to present, and the reload starts the daemon on the
+  new Node. A mise pin would not help here: a Node upgrade breaks it the same way, and
+  with Paseo's own version unchanged nothing would trigger a restart.
 - **Every change leaves the daemon stopped or on deleted code.** The cask's uninstall
-  stanza runs `paseo daemon stop --force`, an npm upgrade replaces its files, and the
+  stanza runs `paseo daemon stop --force`, an npm install replaces its files, and the
   pin removal prunes the tree it was launched from. `mise unuse` alone only edits the
-  config, so it is followed by `mise prune`. So any change reloads the agent.
+  config, so it is followed by `mise prune`. So any change, or a new plist, reloads
+  the agent.
 - **Reload means bootout plus bootstrap, with a wait between them.** `kickstart -k`
   would restart the cached old command line. `bootout` returns before the daemon has
   finished its roughly 6s graceful shutdown, and a `bootstrap` issued in that window
   fails with rc 5, leaving the agent unloaded (measured 2026-10-04). The task polls
-  `launchctl print` until the service is gone. It exits 113, launchd's "no such
-  service", when the agent is not loaded, so an agent unloaded on purpose stays down.
-  The role never creates the agent: mac-mini-m6 has none, so no daemon runs there.
+  `launchctl print` until the service is gone.
+
+`~/Library/LaunchAgents` is 700 on some hosts and 755 on others. The task that ensures
+the directory exists uses `mode: u+rwx` so it changes neither.
 
 ### Role Structure
 

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>sh.paseo.daemon</string>
+  <!-- zsh -lc, not the binary directly: launchd reads no shell config, and the
+       agent CLIs this daemon spawns need CLIPROXY_API_KEY / CLIPROXY_BASE_URL
+       from ~/.zshenv plus the mise shims on PATH from ~/.zprofile. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>exec paseo daemon run</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>StandardOutPath</key>
+  <string>/dev/null</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/paseo-daemon.err</string>
+</dict>
+</plist>
