@@ -147,3 +147,39 @@
       when: >-
         paseo_agent_loaded.rc != 0 or paseo_agent_plist is changed or paseo_relay_set is changed
         or paseo_cask is changed or paseo_cli_after is changed or paseo_mise_pin is changed
+
+    # A loaded agent is not a running daemon. archs-mac-mini's crash-looped for a week
+    # (`Failed to acquire PID lock`, exit 1 every ThrottleInterval) while `launchctl print`
+    # still found it, so the loaded check above saw nothing wrong. Ask the daemon itself,
+    # allowing up to 60s for a start or restart above to come up. On this ansible-core,
+    # `failed_when: false` holds even when the retries run out (verified 2026-10-04), so a
+    # down daemon is recorded, not raised. main.yml's post_tasks fail the play on it, so
+    # the roles after this one still run (see the comment there).
+    - name: Read whether the Paseo daemon is running
+      ansible.builtin.command: paseo daemon status --json
+      register: paseo_daemon_status
+      changed_when: false
+      failed_when: false
+      retries: 12
+      delay: 5
+      until: (paseo_daemon_status.stdout | default('{}', true) | from_json).localDaemon | default('') == 'running'
+
+    # A host fact, not a role var, so main.yml's post_tasks can read it.
+    - name: Record a Paseo daemon that is not running
+      ansible.builtin.set_fact:
+        paseo_daemon_down: >-
+          The Paseo daemon is not running (localDaemon:
+          {{ (paseo_daemon_status.stdout | default('{}', true) | from_json).localDaemon | default('no status') }})
+          after 60s of waiting. `launchctl print gui/$(id -u)/sh.paseo.daemon` shows launchd's
+          last exit code, and /tmp/paseo-daemon.err the daemon's own error. archs-mac-mini's
+          week-long outage in 2026-09 was a stale, empty ~/.paseo/paseo.pid.
+      when:
+        - paseo_daemon_status is not skipped
+        - (paseo_daemon_status.stdout | default('{}', true) | from_json).localDaemon | default('') != 'running'
+
+    # post_tasks only run in a full play, so a single-role run would never see the failure
+    # there. The skills role reports its deferred failures the same way.
+    - name: Report a Paseo daemon that is not running
+      ansible.builtin.debug:
+        msg: "{{ paseo_daemon_down }}"
+      when: paseo_daemon_down is defined

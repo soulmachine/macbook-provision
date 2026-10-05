@@ -355,7 +355,7 @@ set` only saves the file, so a change goes through the same reload. Pairing a ho
 your devices (`paseo daemon pair`) is still manual, because the pairing link is a
 per-host secret. Five hosts had hand-written copies, and the file
 is byte-identical to those after their move off `--foreground`, so those hosts keep
-their daemon running untouched. Four things are easy to get wrong:
+their daemon running untouched. Five things are easy to get wrong:
 
 - **0.10 removed `--foreground`.** The old hand-written agents survived only because
   the 0.8.0 pin won on PATH. Once the pin was gone they exited 1 in a loop every
@@ -377,6 +377,15 @@ their daemon running untouched. Four things are easy to get wrong:
   finished its roughly 6s graceful shutdown, and a `bootstrap` issued in that window
   fails with rc 5, leaving the agent unloaded (measured 2026-10-04). The task polls
   `launchctl print` until the service is gone.
+- **A loaded agent is not a running daemon.** archs-mac-mini's daemon failed on every
+  start for about a week (a stale, empty `~/.paseo/paseo.pid`), and `launchctl print`
+  still found the agent the whole time. So after loading, the role asks
+  `paseo daemon status --json` for up to 60s. If the daemon isn't `running`, it sets the
+  host fact `paseo_daemon_down`, and a `main.yml` post_task fails the play on it. The
+  sweep's `failed=0` check sees the failure, and the 11 roles after paseo still run. On
+  this ansible-core, `until` with `failed_when: false` does not fail the task when the
+  retries run out (verified 2026-10-04). The post_task is tagged `agent-multiplexer`,
+  because untagged post_tasks are skipped in a tag-limited run.
 
 `~/Library/LaunchAgents` is 700 on some hosts and 755 on others. The task that ensures
 the directory exists uses `mode: u+rwx` so it changes neither.
