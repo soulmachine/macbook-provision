@@ -152,7 +152,11 @@ PRIVATE_KEY_FILE="${PUBLIC_KEY_FILE%.pub}"
 SSH_CONFIG="$HOME/.ssh/config"
 echo ""
 echo "── SSH config ───────────────────────────────────────────────────────────"
-IDENTITY_LINE="IdentityFile ${PRIVATE_KEY_FILE/#$HOME/\~}"
+# The tilde goes in through a variable: a literal `\~` in the replacement keeps
+# its backslash under macOS's /bin/bash 3.2 (bash 5 drops it), which wrote an
+# unusable `IdentityFile \~/...` on hosts where `env bash` resolved to 3.2.
+TILDE="~"
+IDENTITY_LINE="IdentityFile ${PRIVATE_KEY_FILE/#$HOME/$TILDE}"
 if grep -qF "$IDENTITY_LINE" "$SSH_CONFIG" 2>/dev/null; then
     echo "github.com IdentityFile already configured — skipping."
 else
