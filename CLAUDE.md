@@ -109,6 +109,7 @@ Measured live on every host on 2026-10-04 — every row is observed, none inferr
 |---|---|---|---|
 | franks-mac-mini-m2 | `Mac14,3` (M2) | Mac mini | **install** |
 | archs-mac-mini | `Mac16,10` (M4) | Mac mini | **install** |
+| mac-mini-m6 | `Mac18,5` (M6) | Mac mini | **install** |
 | franks-mac-studio | `Mac15,14` (M3) | Mac Studio | **install** |
 | dev-server-frank-lume | `VirtualMac2,1` | Apple Virtual Machine 1 | **install** — VM |
 | franks-mac-mini-2018 | `Macmini8,1` (Intel) | Mac mini | **install** |
