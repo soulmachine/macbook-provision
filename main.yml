@@ -113,6 +113,11 @@
     # Deferred for the same reason as the skills failures: paseo is 34th of 45 roles, and a
     # down daemon is no reason to skip tailscale and the rest. Tagged like the role so a
     # `--tags agent-multiplexer` run reports it too; untagged post_tasks are filtered out.
+    - name: Fail when cua-driver lacks its permissions
+      ansible.builtin.fail:
+        msg: "{{ cua_permissions_missing }}"
+      when: cua_permissions_missing is defined
+
     - name: Fail when the Paseo daemon is not running
       ansible.builtin.fail:
         msg: "{{ paseo_daemon_down }}"

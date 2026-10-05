@@ -1858,3 +1858,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The user approved adding a health check; the mechanism follows the `skills` role's deferred pinned-skill failure. Failing in the role would stop the 11 roles after paseo (34 of 45) on every night the daemon is down. A `debug` alone would leave the sweep's recap at `failed=0`, which is the gap being closed. Verified that `until` with `failed_when: false` runs out its retries and continues with `failed=False`. A shim that made the status read report `stopped` produced 12 retries, the later moshi role still ran, and the play failed only at the post_task (`failed=1`). The healthy path is a no-op on m2 and m6.
 **Outcome:** applied
 **Ref:** 8fb7ab2
+
+## Q178 — interactive/nightly-sweep — deviation
+
+**Question:** The `cua` role failed the play outright when cua-driver lacked Accessibility or Screen Recording. It sits 28th of 49 roles, so one ungranted host skipped the 21 roles after it every night. The 2018 mini had stopped there on most nights since 2026-09-25, and on 2026-10-05 four hosts did, so none of them reached `hermes`, `ponytail`, `paseo` or `tailscale`. Keep the immediate failure, or defer it?
+**Options considered:** keep failing in the role / defer the failure to `main.yml`'s `post_tasks` / downgrade it to a warning that never fails
+**Chosen:** Defer it. The role records the message as the host fact `cua_permissions_missing` (defined only when a grant is missing) and prints it, and a new `post_task`, "Fail when cua-driver lacks its permissions", fails the play on it after every role has run.
+**Decided-by:** human
+**Justification:** The user picked this from the agent's recommendation. It is the split the `skills` and `paseo` roles already use for failures only a human can fix. The run still ends with `failed=1`, which the nightly sweep looks for, and still prints the `cua-driver permissions grant` instructions. A warning alone would have lost that signal. The role's own debug report covers a run of the role by itself, which never reaches `post_tasks`. One side effect: the jev-use clone and `uv sync` now also run on an ungranted host. Neither needs the permissions. Verified on mac-mini-m2: two real runs of the role (the second changed nothing), plus a scratch play with `-e cua_permissions_granted=false`, in which a stand-in later task ran and the play failed only in `post_tasks`. With the grant real, the same play passed.
+**Outcome:** applied
+**Ref:** (pending)

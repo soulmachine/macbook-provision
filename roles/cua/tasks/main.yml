@@ -11,9 +11,17 @@
 # otherwise) and never itself prompts; `permissions grant` is cua-driver's own
 # documented, correct way to request them — it launches the app via
 # LaunchServices and drives OS consent dialogs. That's a GUI flow no Ansible
-# task can click through, so — same as the tailscale role's Network Extension
-# gate — this fails the play with the exact remedy command instead of trying
-# to automate it.
+# task can click through, so the play fails with the exact remedy command
+# instead of trying to automate it.
+#
+# This role only RECORDS the missing grant; main.yml's post_tasks is what fails
+# the play on it (DECISIONS Q178). It used to `fail` right here, and this role
+# sits 28th of 49, so one ungranted host skipped the 21 roles after it —
+# hermes, ponytail, paseo and tailscale among them — every night: the 2018
+# mini went about ten days without them (2026-09-25 to 10-05). Deferring keeps
+# the signal (the recap still says failed=1, which the nightly sweep greps for)
+# and drops the blast radius to nothing — the same split the skills and paseo
+# roles use.
 - name: Read cua-driver permissions status
   ansible.builtin.command: "{{ cua_driver_bin }} permissions status --json"
   register: _cua_permissions
@@ -29,9 +37,11 @@
       {{ (_cua_status.accessibility | default(false, true) | bool)
          and (_cua_status.screen_recording | default(false, true) | bool) }}
 
-- name: Fail with instructions for granting cua-driver permissions
-  ansible.builtin.fail:
-    msg: |
+# A host fact, not a role var, so main.yml's post_tasks can read it. Defined
+# only when a grant is missing, which is what the post_task tests.
+- name: Record that cua-driver lacks the permissions jev-use needs
+  ansible.builtin.set_fact:
+    cua_permissions_missing: |
 
       ================================================================
       Manual step required: grant cua-driver Accessibility + Screen Recording
@@ -52,6 +62,14 @@
         {{ _cua_permissions.stdout | trim | default('(no output)', true) }}
       ================================================================
   when: not (cua_permissions_granted | bool)
+
+# post_tasks only run in a full play, so a single-role run would never see the
+# failure there. The skills and paseo roles report their deferred failures the
+# same way.
+- name: Report that cua-driver lacks its permissions
+  ansible.builtin.debug:
+    msg: "{{ cua_permissions_missing }}"
+  when: cua_permissions_missing is defined
 
 - name: Clone the jev-use example # noqa: latest[git]
   ansible.builtin.git:
