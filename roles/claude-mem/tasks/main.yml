@@ -45,11 +45,17 @@
 # The observer reaches models through the fleet gateway (CLIProxyAPI), not the
 # Claude Code keychain login. The worker runs outside any interactive session, so
 # that login read as signed out and the observer silently saved nothing (measured
-# on mac-mini-m6, 2026-10-05). claude-mem reads ANTHROPIC_BASE_URL and
-# ANTHROPIC_AUTH_TOKEN from its own ~/.claude-mem/.env and hands them only to the
-# observer subprocess — the scoped form ~/.agents/AGENTS.md asks for, since
-# exporting either globally breaks pi. Both values are this host's own, from
-# ~/.zshenv, which every `zsh -lc` provisioning run reads.
+# on mac-mini-m6, 2026-10-05). claude-mem reads ANTHROPIC_BASE_URL and the key
+# from its own ~/.claude-mem/.env and hands them only to the observer subprocess —
+# the scoped form ~/.agents/AGENTS.md asks for, since exporting either globally
+# breaks pi. Both values are this host's own, from ~/.zshenv, which every
+# `zsh -lc` provisioning run reads.
+#
+# The key goes in as ANTHROPIC_API_KEY, not ANTHROPIC_AUTH_TOKEN, though the
+# gateway takes either. claude-mem's quota guard aborts the observer once the
+# serving account passes 92-95% of a limit, and it stands down only for an "API
+# key" credential. Through the gateway that guard would gap memory near every
+# limit of the first account in the host's order (DECISIONS Q181).
 - name: Require the fleet gateway credentials
   ansible.builtin.assert:
     that:
@@ -75,10 +81,16 @@
     mode: "0600"
   loop:
     - { key: ANTHROPIC_BASE_URL, value: "{{ lookup('env', 'CLIPROXY_BASE_URL') }}" }
-    - { key: ANTHROPIC_AUTH_TOKEN, value: "{{ lookup('env', 'CLIPROXY_API_KEY') }}" }
+    - { key: ANTHROPIC_API_KEY, value: "{{ lookup('env', 'CLIPROXY_API_KEY') }}" }
   loop_control:
     label: "{{ item.key }}"
   no_log: true
+
+- name: Drop the guarded token form of the gateway key
+  ansible.builtin.lineinfile:
+    path: "{{ claude_mem_dir }}/.env"
+    regexp: "^ANTHROPIC_AUTH_TOKEN="
+    state: absent
 
 # Before the install, not after: an explicit `subscription` in this file makes
 # `claude-mem install` reject claude_mem_model (see vars/main.yml). Same

@@ -7,7 +7,9 @@
 # else — but only when the auth method is not `gateway`. Under `gateway` it
 # saves any id as given. The role writes `CLAUDE_MEM_CLAUDE_AUTH_METHOD: gateway`
 # (claude_mem_settings below) *before* the install, which is what lets an id the
-# allowlist has not caught up with, like this one, through. The gateway must
+# allowlist has not caught up with, like this one, through — and is why the
+# method stays `gateway` though the key sits in .env as ANTHROPIC_API_KEY
+# (`api-key` would enforce the allowlist again). The gateway must
 # serve the id: `curl $CLIPROXY_BASE_URL/v1/messages` with it before bumping.
 claude_mem_provider: claude
 claude_mem_model: claude-sonnet-5-5
