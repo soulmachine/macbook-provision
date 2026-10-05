@@ -1816,3 +1816,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** A search before filing found the request already made and already reversed upstream. ponytail#925 reported the same Hermes refusal and was fixed by ponytail#744, which added the field; the owner then removed it again in ponytail#1021 (merged 2026-10-04) because with it Codex, VS Code and Qwen load ponytail as an Agent Plugin, which carries no hooks — so ponytail's ruleset never reaches the model there. Codex is one of the agents this repo's `ponytail` role installs into, so the request would break this fleet if granted. The fix the owner and the #925 thread point at is Hermes-side: NousResearch/hermes-agent#125937 (open, tracking #125927) lets a native `plugin.yaml` win over a foreign `plugin.json`. Filing is a public, outward-facing action whose premise turned out to be wrong, so it waits on the user. This entry also corrects Q172's claim that the install lands "once upstream adds the field": it lands once hermes-agent#125937 merges; the role's comment, its report message and CLAUDE.md now say so.
 **Outcome:** escalated
 **Ref:** 49f66c7
+
+## Q174 — interactive/always-on-only-roles — gate-resolution
+
+**Question:** Q173 escalated whether to file the ponytail `$schema` issue after finding that upstream had removed the field on purpose. What instead?
+**Options considered:** file the ponytail issue anyway / comment on the Hermes-side fix, NousResearch/hermes-agent#125937, with this fleet's reproduction
+**Chosen:** Commented on hermes-agent#125937; no ponytail issue was filed.
+**Decided-by:** human
+**Justification:** The user chose the Hermes PR after seeing that ponytail#1021 removed the field to keep hooks working in Codex, VS Code and Qwen. The comment adds what the PR's own test lacked, the real ponytail tree: the PR's `plugins_cmd_install.py` change applies cleanly on Hermes `27c02f632`, and `_refuse_unavailable_portable_plugin("ponytail", tree)` on a fresh ponytail clone (v4.12.0) raises the schema error unpatched and passes patched. This was run from a /tmp copy of `hermes_cli` with the installed checkout behind it on `PYTHONPATH`, so neither the installed Hermes nor `~/.hermes` was modified. Only the install check was tested, not a full install, because Hermes's entry point drops `PYTHONPATH` and a full patched run could have written to the real `~/.hermes`. The comment says so.
+**Outcome:** applied
+**Ref:** https://github.com/NousResearch/hermes-agent/pull/125937#issuecomment-5988289846
+**Supersedes:** Q173 — escalation resolved by the user
