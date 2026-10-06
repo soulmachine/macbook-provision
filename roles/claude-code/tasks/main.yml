@@ -51,6 +51,17 @@
     state: directory
     mode: "0755"
 
+# Transcripts and edit snapshots keep any secret a session printed or edited (the gateway
+# key turned up in both on 2026-10-06), so no other local user may read them (DECISIONS Q188).
+- name: Keep Claude Code transcripts and edit snapshots private
+  ansible.builtin.file:
+    path: "{{ lookup('env', 'HOME') }}/.claude/{{ item }}"
+    state: directory
+    mode: "0700"
+  loop:
+    - projects
+    - file-history
+
 # Same ledger-diff shape as the plugin update below, for the same reason: the old gate here
 # read `'already' not in stdout`, a NEGATED sentinel. `claude plugin marketplace add` has
 # more than one no-op phrasing and prints nothing at all on some failure paths, so that gate
