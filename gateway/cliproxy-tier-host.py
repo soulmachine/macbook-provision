@@ -130,12 +130,25 @@ if p.exists():
     text = p.read_text()
     # gateway model entries for `kimi -m cliproxy/<alias>`; inserted above the managed provider block
     KIMI_GW = {"opus5.5": "claude-opus-5-5", "sonnet5.5": "claude-sonnet-5-5", "fable5.1": "claude-fable-5-1"}
+    # Where kimi supports api_key_env (2.1.1 does) the key stays in the environment, so a rotation leaves
+    # no stale copy. Older builds (0.29-0.38 seen) ignore it and fail with "provider cliproxy has no
+    # credential configured", so they keep a literal key, rewritten to the current one every run.
+    env_ok = kimi_bin is not None and b"api_key_env" in Path(kimi_bin).resolve().read_bytes()
+    cred = 'api_key_env = "CLIPROXY_API_KEY"' if env_ok else f'api_key = "{KEY}"'
     if kimi_bin and "[providers.cliproxy]" not in text:
         # kimi with no gateway provider yet (mac-mini-m6): add the managed block the other hosts carry
         cand = (text.rstrip("\n") + "\n\n" if text.strip() else "") + (
             '# --- cliproxyapi (managed) ---\n[providers.cliproxy]\ntype = "anthropic"\n'
-            f'base_url = "{BASE}"\napi_key = "{KEY}"\n\n# --- end cliproxyapi ---\n')
+            f'base_url = "{BASE}"\n{cred}\n\n# --- end cliproxyapi ---\n')
         assert tomllib.loads(cand)["providers"]["cliproxy"]["base_url"] == BASE, "kimi provider candidate invalid"
+        write(p, cand); text = cand
+    # kimi rejects api_key and api_key_env together, so swap whichever one is there
+    cand = re.sub(r'(\[providers\.cliproxy\]\n(?:(?!\[)[^\n]*\n)*?)api_key(?:_env)? = "[^"]*"\n',
+                  lambda m: m.group(1) + cred + "\n", text, count=1)
+    if cand != text:
+        prov = tomllib.loads(cand)["providers"]["cliproxy"]
+        want = {"api_key_env": "CLIPROXY_API_KEY"} if env_ok else {"api_key": KEY}
+        assert {k: prov.get(k) for k in ("api_key", "api_key_env") if k in prov} == want, "kimi key candidate invalid"
         write(p, cand); text = cand
     if "[providers.cliproxy]" in text:
         # kimi sends max_tokens = max_output_size, else max_context_size; the 5-5 models cap output at 128K
@@ -259,6 +272,14 @@ if p.exists():
         if "anthropic" in ad:
             ad.pop("anthropic"); write(auth, json.dumps(ad, indent=2) + "\n", 0o600)
     status["opencode"] = "gw"
+
+# ---------- claude-mem: refresh the gateway key its observer reads ----------
+# The claude-mem role writes this file too, but only at the host's next play, and dev-server-frank
+# runs no playbook. claude-mem strips ANTHROPIC_* from its env, so a literal copy is the only option.
+p = H / ".claude-mem/.env"
+if p.exists() and re.search(rf"^ANTHROPIC_BASE_URL={re.escape(BASE)}/?$", p.read_text(), flags=re.M):
+    upsert_env(p, {"ANTHROPIC_API_KEY": KEY})
+    status["claude-mem"] = "gw"
 
 # ---------- pi: converged by Ansible + cliproxy-assert-pi; just assert here ----------
 p = H / ".pi/agent/settings.json"
