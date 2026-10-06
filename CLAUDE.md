@@ -34,6 +34,10 @@ ssh -o BatchMode=yes -o ConnectTimeout=15 <host> \
 - **`.env` / `.envrc`** — Optional, gitignored, and **per-machine**. `.envrc` runs `dotenv_if_exists .env` so direnv loads `.env` into the shell — but direnv is hooked from `~/.zshrc`, so that only ever happens in an **interactive** shell. The `dotenv` role covers every other kind by exporting the same `.env` into `~/.zshenv` inside a managed block; see "Dotenv role specifics" below. The `tailscale` role reads `TAILSCALE_AUTH_KEY` (to auto-run `tailscale up`) and optionally a `devices:core`-scoped OAuth client as `TAILSCALE_OAUTH_CLIENT_ID` + `TAILSCALE_OAUTH_CLIENT_SECRET` (to disable node-key expiry); `GITHUB_SSH_KEY` is optional and unset across the fleet (see `.env.example`). **`GITHUB_TOKEN` is no longer in `.env` on any host** (retired 2026-10-03): the `dotenv` role rebuilds its managed block from this file, so a copy here fought with `~/.local/bin/gh-token-fleet`, which owns the PAT and writes the export *below* that block — see "GitHub authentication (fleet)" in `~/.agents/AGENTS.md`. The `github`, `bun` and `mise` roles still read it, but from the ambient environment, with a `gh auth token` fallback. Values legitimately differ across the fleet — a Tailscale auth key is tailnet-scoped, so hosts on different tailnets must carry different ones. That divergence is correct, not drift to reconcile. New roles that need secrets should follow the same pattern — gate the task on `lookup('env', 'VAR') | length > 0` and document the var in `.env.example`.
 - **inventory** — Holds only `127.0.0.1 ansible_connection=local`, deliberately. Do NOT add remote hosts to it. See "Runs per-host only, never from a control node" below.
 - **roles/** — Each role provisions one tool or application.
+- **gateway/** — The CLIProxyAPI fleet scripts (`cliproxy-tier`, `cliproxy-tier-host.py`,
+  `cliproxy-assert-pi`, `cliproxy-routing-sync`, `cliproxy-usage`). They run on mac-mini-m2 only,
+  not from the playbook: m2's `~/.local/bin/<name>` is a symlink into this checkout, so an edit
+  here is live there at once. Commit and push it like any other change.
 
 #### Runs per-host only, never from a control node
 

@@ -1,0 +1,57 @@
+#!/bin/sh
+# cliproxy-usage — per-host request attribution for CLIProxyAPI.
+#
+# Every remote host reaches the proxy through its own reverse SSH tunnel, and each
+# tunnel forwards to a distinct lo0 alias on this machine (127.0.0.2-.8, see
+# ~/.cli-proxy-api/host-loopback.txt). CLIProxyAPI's access log records that alias as
+# the client IP, so the alias IS the host identity. This maps it back to a name.
+#
+# Usage: cliproxy-usage [-n LINES] [-e]     -e = errors (non-2xx) only
+
+LOG="$HOME/.cli-proxy-api/logs/main.log"
+MAP="$HOME/.cli-proxy-api/host-loopback.txt"
+LINES=0; ERRONLY=0
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -n) LINES="$2"; shift 2 ;;
+        -e) ERRONLY=1; shift ;;
+        *) echo "usage: cliproxy-usage [-n LINES] [-e]" >&2; exit 2 ;;
+    esac
+done
+
+[ -f "$LOG" ] || { echo "no access log at $LOG (is logging-to-file on?)" >&2; exit 1; }
+
+if [ "$LINES" -gt 0 ]; then SRC=$(tail -n "$LINES" "$LOG"); else SRC=$(cat "$LOG"); fi
+
+echo "$SRC" | awk -v map="$MAP" -v erronly="$ERRONLY" '
+BEGIN {
+    while ((getline line < map) > 0) {
+        n = split(line, f, /[ \t]+/)
+        if (n >= 2 && f[1] != "") host[f[2]] = f[1]
+    }
+}
+/gin_logger/ {
+    ip = ""; status = ""; path = ""
+    for (i = 1; i <= NF; i++) {
+        if ($i ~ /^127\.0\.0\.[0-9]+$/) ip = $i
+        if ($i ~ /^[1-5][0-9][0-9]$/ && status == "") status = $i
+        if ($i ~ /^"/) path = $i
+    }
+    if (ip == "") next
+    if (erronly == 1 && status ~ /^2/) next
+    h = (ip in host) ? host[ip] : ip "(unmapped)"
+    total[h]++
+    # hermes probes Ollama-style endpoints the proxy does not serve and falls back
+    # cleanly, so those 404s are expected noise rather than failures. Counted apart
+    # so NON-2XX means something you would act on.
+    if (status !~ /^2/) {
+        if (path ~ /\/api\/(hello|show|tags|version)/) probe[h]++; else bad[h]++
+    }
+    seen++
+}
+END {
+    if (seen == 0) { print "no attributed requests in range"; exit }
+    printf "%-24s %8s %8s %8s\n", "HOST", "REQS", "NON-2XX", "PROBE"
+    for (h in total) printf "%-24s %8d %8d %8d\n", h, total[h], (h in bad ? bad[h] : 0), (h in probe ? probe[h] : 0)
+}' | (read -r hdr; echo "$hdr"; sort -k2 -rn)

@@ -1,0 +1,68 @@
+#!/bin/bash
+# cliproxy-assert-pi — re-assert pi's cliproxy provider across the fleet.
+#
+# The nightly macbook-provision `roles/pi` copy overwrote ~/.pi/agent/models.json and
+# settings.json with the vendor-only payload, silently dropping the cliproxy provider and
+# defaultModel. Fixed 2026-09-13 (Q77 in that repo: the payload now carries the gateway);
+# this job stays as the hourly safety net for the hosts the playbook does not run on.
+#
+# Idempotent: writes only when the file does not already say what it should.
+set -uo pipefail
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+
+# Every host that has pi. dev-server-frank is excluded: Claude Code only, no pi binary.
+read -r -a HOSTS <<<"${PI_HOSTS:-mac-mini-m2 macbook-air mac-mini-2018 macbook-pro-nickel mac-studio-m3 archs-mac-mini dev-server-frank-lume mac-mini-m6}"
+KEYMAP="$HOME/.cli-proxy-api/host-keys.txt"
+LOG="$HOME/Library/Logs/cliproxy-assert-pi.log"
+mkdir -p "$(dirname "$LOG")"
+log() { printf '%s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*" >>"$LOG"; }
+
+# Runs on the target host. Prints "ok" if already correct, "fixed" if it had to write.
+MERGE=$(cat <<'PY'
+import json, pathlib, sys
+d = pathlib.Path.home()/".pi/agent"
+want_provider = {
+    "baseUrl": "http://127.0.0.1:8317",
+    "api": "anthropic-messages",
+    "apiKey": "$CLIPROXY_API_KEY",
+    # must match macbook-provision roles/pi/files/agent/models.json, or the two fight
+    "models": [{"id": "claude-opus-5-5"}, {"id": "claude-sonnet-5-5"},
+               {"id": "claude-fable-5-1"}, {"id": "claude-opus-5"},
+               {"id": "claude-sonnet-5"}, {"id": "claude-haiku-4-5-20251001"}],
+}
+changed = []
+
+m = d/"models.json"
+md = json.loads(m.read_text()) if m.exists() else {}
+if md.setdefault("providers", {}).get("cliproxy") != want_provider:
+    md["providers"]["cliproxy"] = want_provider
+    m.write_text(json.dumps(md, indent=2) + "\n")
+    changed.append("models.json")
+
+s = d/"settings.json"
+sd = json.loads(s.read_text()) if s.exists() else {}
+if sd.get("defaultModel") != "cliproxy/claude-opus-5-5":
+    sd["defaultModel"] = "cliproxy/claude-opus-5-5"
+    s.write_text(json.dumps(sd, indent=2) + "\n")
+    changed.append("settings.json")
+
+print("fixed " + ",".join(changed) if changed else "ok")
+PY
+)
+
+fixed=0
+for h in "${HOSTS[@]}"; do
+    # The mini is the gateway itself, so it has no tunnel to ssh through.
+    if [ "$h" = "mac-mini-m2" ]; then
+        out=$(/usr/bin/python3 -c "$MERGE" 2>&1)
+    else
+        out=$(ssh -o BatchMode=yes -o ConnectTimeout=10 "$h" "/usr/bin/python3 -c '$MERGE'" 2>&1)
+    fi
+    case "$out" in
+        ok)     ;;
+        fixed*) log "$h $out"; fixed=$((fixed+1)) ;;
+        *)      log "$h ERROR $out" ;;
+    esac
+done
+[ "$fixed" -gt 0 ] && log "re-asserted on $fixed host(s)"
+exit 0

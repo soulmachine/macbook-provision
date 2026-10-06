@@ -1,0 +1,20 @@
+#!/bin/bash
+# cliproxy-tier — apply the two-tier gateway policy across the fleet (see cliproxy-tier-host.py).
+# Usage: cliproxy-tier [host ...]   (default: every host). Re-running is the key-rotation tool.
+set -uo pipefail
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+ALL="mac-mini-m2 macbook-air mac-mini-2018 macbook-pro-nickel mac-studio-m3 archs-mac-mini dev-server-frank dev-server-frank-lume supermicro mac-mini-m6"
+LOG="$HOME/Library/Logs/cliproxy-tier.log"; mkdir -p "$(dirname "$LOG")"
+# Keep the key-routing sidecar's keys in step with host-keys.txt before touching any host.
+sync=$(cliproxy-routing-sync 2>&1); printf '%s\n' "$sync"; printf '%s routing-sync\n%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$sync" >>"$LOG"
+B=$(base64 < "$HOME/.local/bin/cliproxy-tier-host.py" | tr -d '\n')
+for h in ${*:-$ALL}; do
+    if [ "$h" = mac-mini-m2 ]; then
+        out=$(zsh -lc 'python3 "$HOME/.local/bin/cliproxy-tier-host.py"' 2>&1)
+    else
+        out=$(ssh -o BatchMode=yes -o ConnectTimeout=10 "$h" "echo $B | base64 -d > /tmp/cliproxy-tier-host.py; if command -v zsh >/dev/null 2>&1; then zsh -lc 'python3 /tmp/cliproxy-tier-host.py'; else bash -lc 'python3 /tmp/cliproxy-tier-host.py'; fi; rc=\$?; rm -f /tmp/cliproxy-tier-host.py; exit \$rc" 2>&1)
+    fi
+    rc=$?
+    printf '%s\n' "$out"; [ $rc -ne 0 ] && printf '  [%s] FAILED rc=%s\n' "$h" "$rc"
+    printf '%s %s rc=%s\n%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$h" "$rc" "$out" >>"$LOG"
+done

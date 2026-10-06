@@ -1907,4 +1907,24 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (default to opus-5-5); agent (keeping the old IDs, where each client is changed)
 **Justification:** The gateway already served all three: it listed them on `/v1/models`, a live call to each answered, and every reachable host saw them over its tunnel. The only gaps were the clients' own pinned lists and defaults. The payload list and `cliproxy-assert-pi`'s list must stay identical, because the hourly assert compares the whole provider object and the nightly copy overwrites it, so the two would rewrite each other every hour (see Q81).
 **Outcome:** applied
+**Ref:** d12bc4c
+
+## Q183 — interactive/gateway-clients — deviation
+
+**Question:** Two clients were not on the gateway on some hosts. kimi on mac-mini-m6 had no `[providers.cliproxy]`, so `kimi-gw` there could not work. hermes on mac-mini-2018 and m6 still had the untouched example config: provider `auto`, an OpenRouter base URL, no key, and no sessions. It could not answer at all, and `cliproxy-tier` still reported it as `hermes=gw`. Should `cliproxy-tier-host.py` set these up?
+**Options considered:** fix the two hosts by hand / have the tier script create what is missing on any host
+**Chosen:** The tier script now does it. kimi: on a host with kimi but no gateway provider, it appends the same managed block the other hosts carry (a literal key, as everywhere else), then the 5-5 model aliases. A host with no kimi login and no `default_model` gets `cliproxy/opus5.5`. hermes: a config not on `custom:cliproxy` is switched with `hermes config set` (provider, default `claude-opus-5-5`, `providers.cliproxy` with `key_env`), and `model.base_url` is unset. The status line now says `NOT-gw` when that did not take. Also fixed: `backup()` kept only the last of several writes to one file in a run, losing the pre-run original. It now keeps the first.
+**Decided-by:** human (do it); agent (in the script rather than by hand, `config set` over a regex rewrite)
+**Justification:** `~/.agents/AGENTS.md` puts hermes in the gateway-only tier, so a hermes off the gateway breaks policy, and a script fix also covers future hosts. `hermes config set` keeps the 120 KB example file's comments; a scratch-copy test on 2018 kept all 1,765 comment lines. Verified: second runs on 2018 and m6 change nothing; the four hosts already on the gateway change nothing; one-shot calls from 2018 and m6 (hermes) and m6 (`kimi-gw`, `kimi`, the `sonnet5.5` and `fable5.1` aliases) appear in the gateway log as those hosts on the expected models. Known gap, not fixed: the script never rewrites kimi's stored key, so a key rotation leaves kimi on the old key until fixed by hand.
+**Outcome:** applied
+**Ref:** (this commit; the scripts land in `gateway/` with Q184)
+
+## Q184 — interactive/gateway-scripts — tradeoff
+
+**Question:** The m2 gateway scripts (`cliproxy-tier`, `cliproxy-tier-host.py`, `cliproxy-assert-pi`, `cliproxy-routing-sync`, `cliproxy-usage`) lived only in m2's `~/.local/bin`, with no history. Where should they be versioned?
+**Options considered:** this repo / OpenSWE/cliproxy-key-routing / a new private repo
+**Chosen:** `gateway/` in this repo. m2's `~/.local/bin/<name>` entries are now symlinks into this checkout.
+**Decided-by:** human (version them, in this repo or the plugin repo); agent (this repo, symlinks)
+**Justification:** This is the fleet-ops repo, and it already names these scripts (the pi role and the claude-mem task text). The plugin repo is about the Go plugin only. Both repos are public. The scripts hold no key: each host's key is read from its environment or from `~/.cli-proxy-api/host-keys.txt`, which stays out of git. Host names, port 8317 and the loopback aliases were already public here. Symlinks keep every caller working unchanged: the `com.cliproxy.assert-pi` launchd job, `cliproxy-tier`'s `$HOME/.local/bin` lookups, and PATH. Verified after the switch: `cliproxy-tier mac-mini-m2` changed nothing, `cliproxy-usage` and `cliproxy-routing-sync` ran, and a launchd kickstart of assert-pi exited 0.
+**Outcome:** applied
 **Ref:** (this commit)
