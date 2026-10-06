@@ -19,6 +19,15 @@
       "apiKey": "$CLIPROXY_API_KEY",
       "models": [
         {
+          "id": "claude-opus-5-5"
+        },
+        {
+          "id": "claude-sonnet-5-5"
+        },
+        {
+          "id": "claude-fable-5-1"
+        },
+        {
           "id": "claude-opus-5"
         },
         {
