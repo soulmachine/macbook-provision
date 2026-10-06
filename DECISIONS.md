@@ -1928,3 +1928,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** This is the fleet-ops repo, and it already names these scripts (the pi role and the claude-mem task text). The plugin repo is about the Go plugin only. Both repos are public. The scripts hold no key: each host's key is read from its environment or from `~/.cli-proxy-api/host-keys.txt`, which stays out of git. Host names, port 8317 and the loopback aliases were already public here. Symlinks keep every caller working unchanged: the `com.cliproxy.assert-pi` launchd job, `cliproxy-tier`'s `$HOME/.local/bin` lookups, and PATH. Verified after the switch: `cliproxy-tier mac-mini-m2` changed nothing, `cliproxy-usage` and `cliproxy-routing-sync` ran, and a launchd kickstart of assert-pi exited 0.
 **Outcome:** applied
 **Ref:** (this commit)
+
+## Q185 — interactive/nightly-sweep — deviation
+
+**Question:** The 2026-10-06 sweep failed on every host that finished at the post_task for the `cursor/plugins` pins (`unslop`, `thermo-nuclear-code-quality-review`). Both skills still exist upstream; cursor/plugins#423 (2026-10-05) added a root `.claude-plugin/marketplace.json` that lists only `origin-apps`, and the skills CLI now discovers only the plugins that file lists (2 skills of 107). Drop the pins, or install them another way?
+**Options considered:** drop both pins, as the failure message suggests for a withdrawn skill / pin each by its plugin subpath / wait for upstream to list every plugin in the root marketplace
+**Chosen:** Pin by subpath: `cursor/plugins/pstack` for `unslop` and `cursor/plugins/cursor-team-kit` for `thermo-nuclear-code-quality-review`. `files/find-orphans.py` now keys pins by `owner/repo` and merges pins that share a repo.
+**Decided-by:** agent
+**Justification:** The skills were not withdrawn, so dropping them would remove two skills the user chose (Q88, narrowed by the partial list). A subpath is read as a plain directory, bypassing the marketplace file, and these are the exact `skillPath`s every host's lock already recorded, so nothing installed changes. The lock still records `source: cursor/plugins` after a subpath install (checked on m2), and the detector used to key pins by their literal source with a later pin overwriting an earlier one, so it would have called both skills orphans. The self-test gained a two-subpath case, which fails against the old keying. Verified with the skills role on m2: rc 0, no install failure, and the cursor skills are not reported. The two orphans it still reports (mattpocock `resolving-merge-conflicts`, archify `archify-review`) are upstream withdrawals unrelated to this.
+**Outcome:** applied
+**Ref:** 327c46f
