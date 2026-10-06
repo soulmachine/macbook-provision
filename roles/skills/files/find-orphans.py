@@ -60,7 +60,11 @@ def find_orphans(skills, store, whole, partial, isdir):
 
     Returns [(source, name, reason)] sorted by source then name.
     """
-    wanted = {p["source"]: set(p["skills"]) for p in partial}
+    # A pin may name a subpath (`owner/repo/plugin`), which the lock still records as plain
+    # `owner/repo`, and two pins may share one repo, so key by repo and merge their names.
+    wanted = defaultdict(set)
+    for p in partial:
+        wanted["/".join(p["source"].split("/")[:2])] |= set(p["skills"])
     whole = set(whole)
 
     by_source = defaultdict(dict)
@@ -127,15 +131,22 @@ def self_test():
         "skipped1": {"source": "o/skipped", "updatedAt": old},  # whole source, wholly stale
         "skipped2": {"source": "o/skipped", "updatedAt": old},
         "nofrac":   {"source": "o/plain",   "updatedAt": "2026-09-16T14:42:11"},
+        # Two subpath pins into one repo; the lock records both under the bare repo.
+        "sub_a":    {"source": "o/split",   "updatedAt": newest},
+        "sub_b":    {"source": "o/split",   "updatedAt": newest},
+        "sub_c":    {"source": "o/split",   "updatedAt": newest},
     }
     on_disk = set(skills) - {"deleted", "linked"}
     got = find_orphans(skills, "/store", ["o/whole", "o/skipped", "o/plain"],
-                       [{"source": "o/partial", "skills": ["asked"]}], lambda n: n in on_disk)
+                       [{"source": "o/partial", "skills": ["asked"]},
+                        {"source": "o/split/a", "skills": ["sub_a"]},
+                        {"source": "o/split/b", "skills": ["sub_b"]}], lambda n: n in on_disk)
 
     assert got == [
         ("o/partial", "sibling", "no longer requested"),
         ("o/partial", "unasked", "no longer requested"),
         ("o/retired", "gone",    "no source in this role installs it"),
+        ("o/split",   "sub_c",   "no longer requested"),
         ("o/whole",   "dropped", "upstream no longer ships it"),
     ], got
     # Two properties that make this safe to run unattended, asserted rather than assumed:

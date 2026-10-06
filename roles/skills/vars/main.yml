@@ -123,8 +123,17 @@ skills_sources_partial:
   # ever runs when asked for by name. Its sibling `thermos` fans out to two *subagents* that
   # live in the plugin, not in the skill — outside what `skills add` installs — so only this
   # one, which is a single self-contained SKILL.md, is taken.
-  - source: cursor/plugins
-    skills: [unslop, thermo-nuclear-code-quality-review]
+  #
+  # Pinned by plugin subpath, not as `cursor/plugins`. On 2026-10-05 upstream added a root
+  # `.claude-plugin/marketplace.json` listing only `origin-apps` (cursor/plugins#423), and the
+  # CLI then discovers only the plugins it lists: 2 skills of 107, so both pins failed on
+  # every host. A subpath is read as a plain directory, and these are the exact paths the
+  # lock's `skillPath` already recorded. The lock still says `cursor/plugins`, which is why
+  # files/find-orphans.py keys pins by `owner/repo`.
+  - source: cursor/plugins/pstack
+    skills: [unslop]
+  - source: cursor/plugins/cursor-team-kit
+    skills: [thermo-nuclear-code-quality-review]
 
 # Partial sources that a DIFFERENT role installs. The orphan detector below groups the lock
 # by source and flags anything no source accounts for, so without this every such skill reads
