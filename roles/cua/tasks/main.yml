@@ -17,8 +17,11 @@
   changed_when: false
   check_mode: false
 
+# --no-cache: the check otherwise reuses a result up to 20 h old
+# (~/.cua-driver/version_check.json). On 2026-10-06 m2 and mac-mini-2018 stayed
+# on 0.33.4 overnight although 0.34.0 had been out for 10 hours.
 - name: Update cua-driver
-  ansible.builtin.command: "{{ cua_driver_bin }} update --apply"
+  ansible.builtin.command: "{{ cua_driver_bin }} update --apply --no-cache"
   register: _cua_update
   changed_when: false
   failed_when: false
@@ -34,7 +37,7 @@
     msg:
       - "`cua-driver update --apply` exited {{ _cua_update.rc }}; {{ _cua_version_after.stdout }} is still installed."
       - "Most likely the unauthenticated GitHub API rate limit (60/hr per IP) is spent."
-      - "Diagnose: run `cua-driver update --apply` by hand to see its own error."
+      - "Its last output: {{ ((_cua_update.stdout_lines | default([])) + (_cua_update.stderr_lines | default([])))[-3:] }}"
   when: _cua_update.rc | default(0) != 0
 
 # The installer asks for the old daemon to be restarted onto the new binary.
