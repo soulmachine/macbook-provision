@@ -13,6 +13,7 @@ claude_code_plugins:
   - claude-mem@thedotmack
   - swe-workflow@swe-workflow
   - claude-mermaid@claude-mermaid
+  - html-plan@claude-community
 
 # `~/.claude/plugins/installed_plugins.json`, the ledger the update gate diffs. Claude Code
 # stamps a `gitCommitSha` into it per install record, and that moves only when a new upstream
@@ -53,3 +54,5 @@ claude_code_marketplaces:
     source: OpenSWE/swe-workflow # transferred out of swe-workflow/ on 2026-09-18
   - name: claude-mermaid
     source: veelenga/claude-mermaid
+  - name: claude-community
+    source: anthropics/claude-plugins-community
