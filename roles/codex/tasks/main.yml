@@ -26,6 +26,68 @@
   register: codex_version_after
   changed_when: codex_version_after.stdout != codex_version_before.stdout
 
+# --- open-pstack --------------------------------------------------------------
+# The ponytail role's codex.yml, one plugin's worth; its comments carry the reasoning. The
+# `[marketplaces.*]` / `[plugins."*"]` sections in config.toml are the install markers, and
+# the refresh diffs the `revision` codex records in the snapshot, not stdout. No
+# `[features] multi_agent` here, which pstack's subagent skills need: it is on by default
+# (`codex features list` on 0.161.0). No hook-trust reminder either — pstack's hook is
+# Claude-only and its .codex-plugin manifest declares none.
+- name: Read the Codex config
+  ansible.builtin.slurp:
+    src: "{{ codex_home }}/config.toml"
+  register: codex_config_raw
+  failed_when: false
+
+- name: Decode the Codex config
+  ansible.builtin.set_fact:
+    codex_config: "{{ codex_config_raw.content | default('') | b64decode }}"
+
+# `--ref main` is upstream's own install line.
+- name: Add the open-pstack Codex marketplace
+  ansible.builtin.command: codex plugin marketplace add {{ codex_pstack_source }} --ref main
+  when: >-
+    '[marketplaces.' ~ codex_pstack_marketplace ~ ']' not in codex_config
+  register: codex_pstack_mp_add
+  changed_when: true
+
+- name: Install the pstack Codex plugin
+  ansible.builtin.command: codex plugin add {{ codex_pstack_plugin }}
+  when: >-
+    '[plugins."' ~ codex_pstack_plugin ~ '"]' not in codex_config
+  changed_when: true
+
+# Gated on the marketplace being registered, NOT on the record existing as in the ponytail
+# role: on codex 0.161.0 `marketplace add` writes no record — the first `upgrade` does
+# (measured 2026-10-07) — so a record gate would never open on a fresh host. A missing
+# record reads as an empty revision, so that first upgrade reports changed once. Skipped
+# under --check on a fresh host, where the add above did not run.
+- name: Refresh the pstack Codex plugin
+  when: >-
+    codex_pstack_mp_add is changed
+    or '[marketplaces.' ~ codex_pstack_marketplace ~ ']' in codex_config
+  block:
+    - name: Read the open-pstack Codex marketplace record before upgrading
+      ansible.builtin.slurp:
+        src: "{{ codex_pstack_record }}"
+      register: codex_pstack_record_before
+      failed_when: false
+
+    - name: Upgrade the open-pstack Codex marketplace
+      ansible.builtin.command: codex plugin marketplace upgrade {{ codex_pstack_marketplace }}
+      changed_when: false
+
+    # changed_when on a `slurp`, not a following `debug`: the minimal callback hides a debug's
+    # verdict (CLAUDE.md, ponytail role). `e30=` is base64 `{}`.
+    - name: Check whether the pstack Codex plugin was updated
+      ansible.builtin.slurp:
+        src: "{{ codex_pstack_record }}"
+      register: codex_pstack_record_after
+      changed_when: >-
+        (codex_pstack_record_after.content | b64decode | from_json).revision
+        != (codex_pstack_record_before.content | default('e30=') | b64decode | from_json).revision
+           | default('')
+
 - name: Add codex-yolo alias to .zshrc
   ansible.builtin.lineinfile:
     path: "{{ lookup('env', 'HOME') }}/.zshrc"

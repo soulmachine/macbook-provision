@@ -2010,3 +2010,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied — on mac-mini-m2 the plugin reached `running` (0.2.0), and a second play changed nothing
 **Ref:** —
 **Supersedes:** —
+
+## Q193 — interactive/open-pstack — tradeoff
+
+**Question:** The user asked to install open-pstack (ericlitman/open-pstack, Cursor's pstack ported to Claude Code and Codex) for both agents, fleet-wide through the playbook, without the optional `plugin-dev` companion. Where should each half live, and which of upstream's setup steps should the playbook own?
+**Options considered:** a new per-plugin role shaped like `ponytail` / the Claude half as entries in the claude-code role's plugin and marketplace lists plus the Codex half as tasks in the codex role; manage `[features] multi_agent = true` in Codex's config.toml / leave it; provision `setup-pstack`'s model sheet / leave it manual
+**Chosen:** List entries in the claude-code role (`pstack@open-pstack`, marketplace `open-pstack`), whose existing loops add, install, update and enable it. Codex: marker-gated `codex plugin marketplace add ericlitman/open-pstack --ref main` and `codex plugin add pstack@open-pstack` in the codex role, with a refresh that diffs the recorded `revision`. `multi_agent` is not managed. `setup-pstack` stays manual. The `cursor/plugins` pins of `unslop` and `thermo-nuclear-code-quality-review` in the skills role (Q185) stay as they are.
+**Decided-by:** human (fleet, no plugin-dev); agent (placement, the rest)
+**Justification:** Two list entries and one block reuse existing gates, where a new role would duplicate them. `codex features list` on 0.161.0 shows `multi_agent` stable and on by default, so writing it would only pin a default. `setup-pstack` probes which model CLIs a host has and asks before saving, so it cannot run unattended. pstack's copies of the two pinned skills are namespaced `pstack:`, so nothing collides. The Codex refresh is gated on the marketplace being registered, not on the revision record existing as in the ponytail role, because codex 0.161.0's `marketplace add` writes no record and only the first `upgrade` does (measured 2026-10-07). A record gate would never open on a fresh host. pstack's Claude Code SessionStart hook now runs in every Claude session on every host, beside ponytail's. `/plugin disable` on a host is respected.
+**Outcome:** applied — on mac-mini-m2 both roles changed on run 1 and not on run 2, and Claude Code and Codex each list 54 `pstack:` skills
+**Ref:** (pending)
+**Supersedes:** —
