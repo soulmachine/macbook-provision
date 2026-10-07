@@ -2041,5 +2041,5 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** The user chose re-apply after being told the change would undo Q194. Q193's reasoning stands.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** eeb5cc6
 **Supersedes:** Q194 — the user reversed the revert
