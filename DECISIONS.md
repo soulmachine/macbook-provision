@@ -2021,3 +2021,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied — on mac-mini-m2 both roles changed on run 1 and not on run 2, and Claude Code and Codex each list 54 `pstack:` skills
 **Ref:** 1c14431, 93042b6 (no_log on the config read)
 **Supersedes:** —
+
+## Q194 — interactive/open-pstack — deviation
+
+**Question:** After Q193 shipped, the user asked to revert it. What does the revert cover?
+**Options considered:** revert the repo only, leaving pstack installed on the two hosts it reached / revert the repo and uninstall pstack from those hosts
+**Chosen:** Revert the code, README and CLAUDE.md changes of 1c14431, 93042b6 and a22e14c. Q193 stays in this journal, because the journal is append-only. Also uninstall the plugin and remove the marketplace in both Claude Code and Codex on mac-mini-m2 and mac-mini-m6.
+**Decided-by:** human (revert); agent (scope)
+**Justification:** A revert only stops future installs. It removes nothing already installed, so m2 and m6 would keep a plugin the repo no longer provisions. No other host ran a play while the change was live, so those two are the only hosts with it.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q193 — reverted at the user's request

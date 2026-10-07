@@ -14,8 +14,6 @@ claude_code_plugins:
   - swe-workflow@swe-workflow
   - claude-mermaid@claude-mermaid
   - html-plan@claude-community
-  # The roles/codex install of the same plugin is the other half.
-  - pstack@open-pstack
 
 # `~/.claude/plugins/installed_plugins.json`, the ledger the update gate diffs. Claude Code
 # stamps a `gitCommitSha` into it per install record, and that moves only when a new upstream
@@ -58,5 +56,3 @@ claude_code_marketplaces:
     source: veelenga/claude-mermaid
   - name: claude-community
     source: anthropics/claude-plugins-community
-  - name: open-pstack
-    source: ericlitman/open-pstack

@@ -119,7 +119,7 @@ pre-commit run --all-files
 | claude-code | Claude Code CLI 及插件（依赖 nodejs） |
 | claude-extras | Claude Code 周边工具：npm `@inulute/cux`、uv 工具 `claude-swap`（依赖 nodejs、uv、claude-code） |
 | typesafe | TypeSafe Jev 模型相关的一切：官方 `typesafe-ai` skill（`npx skills add typesafe-ai/skills`，不需要 key，2026-09-19 从 skills role 移来），以及两个 Claude Code 插件 fast-jev-compaction（Jev 决策式压缩，需 function hooks）与 claude-jev（MCP，`jev_*` 判断工具）；把 `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` 与 `TYPESAFE_API_KEY` 写入 `~/.claude/settings.json` 的 `env`；`.env` 无 `TYPESAFE_API_KEY` 时只跳过插件部分（依赖 claude-code、nodejs） |
-| codex | OpenAI Codex CLI，并安装 [open-pstack](https://github.com/ericlitman/open-pstack) 的 `pstack` 插件（Claude Code 那一半在 claude-code role 的插件列表里；`/pstack:setup-pstack` 需手动运行）（依赖 nodejs） |
+| codex | OpenAI Codex CLI（依赖 nodejs） |
 | opencode | OpenCode CLI（npm `opencode-ai`）；并用 `npx oh-my-openagent` 写入 `~/.config/opencode/opencode.json`，由版本戳门控，避免每次 play 重装（依赖 nodejs） |
 | kimi-code | Kimi Code CLI（通过官方 code.kimi.com 脚本安装） |
 | omp | oh-my-pi：bun 全局 `@oh-my-pi/pi-coding-agent`（依赖 bun） |
