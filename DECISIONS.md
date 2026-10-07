@@ -1999,3 +1999,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** —
 **Supersedes:** Q190 — confirms its assumed choice for these two formulae; the rest of Q190 stands as assumed
+
+## Q192 — interactive/paseo-plugins — tradeoff
+
+**Question:** The user asked the paseo role to run `paseo plugin install npm:@oliexe/paseo-bots` on always-on hosts. Paseo ships with its global `pluginsEnabled` switch off (it was absent on all six always-on hosts, measured 2026-10-07), so an installed plugin sits `disabled`. Should the role turn the switch on? And should it also keep the plugin updated?
+**Options considered:** enable plugins in the role and install / install only and leave the switch to Settings → Plugins on each host; for updates, install only / also run `paseo plugin update` every play
+**Chosen:** The role turns `pluginsEnabled` on (`paseo daemon config set` gated on a read, then `paseo reload`, not the launchd bounce) and installs paseo-bots when `paseo plugin ls` lacks it. It does not update it.
+**Decided-by:** human (the switch), agent (no update)
+**Justification:** The user chose to enable the switch after being shown Paseo's own trust warning: plugins are unsandboxed code with full access to the daemon machine. `paseo reload` applies config.json without restarting the daemon, so it does not kill running agents. No update because each update trusts new unsandboxed code from upstream, and the user approved this version, not every later one.
+**Outcome:** applied — on mac-mini-m2 the plugin reached `running` (0.2.0), and a second play changed nothing
+**Ref:** —
+**Supersedes:** —

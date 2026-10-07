@@ -154,12 +154,15 @@
     # allowing up to 60s for a start or restart above to come up. On this ansible-core,
     # `failed_when: false` holds even when the retries run out (verified 2026-10-04), so a
     # down daemon is recorded, not raised. main.yml's post_tasks fail the play on it, so
-    # the roles after this one still run (see the comment there).
+    # the roles after this one still run (see the comment there). `check_mode: false`:
+    # under `--check` a skipped read never meets `until`, and running out of retries
+    # there is fatal despite `failed_when` (measured 2026-10-07).
     - name: Read whether the Paseo daemon is running
       ansible.builtin.command: paseo daemon status --json
       register: paseo_daemon_status
       changed_when: false
       failed_when: false
+      check_mode: false
       retries: 12
       delay: 5
       until: (paseo_daemon_status.stdout | default('{}', true) | from_json).localDaemon | default('') == 'running'
@@ -183,3 +186,35 @@
       ansible.builtin.debug:
         msg: "{{ paseo_daemon_down }}"
       when: paseo_daemon_down is defined
+
+    # The paseo-bots plugin (DECISIONS Q192). Plugins are trusted, unsandboxed code, and
+    # Paseo ships with its global `pluginsEnabled` switch off, which leaves an installed
+    # plugin `disabled`; the role turns it on, by the user's choice. Both steps talk to the
+    # daemon, so they wait for it to be running. `paseo reload` applies config.json
+    # without the launchd bounce above, which would kill the daemon's running agents.
+    # Install only, no update: like the cask and npm CLI above it would track upstream,
+    # but `paseo plugin update` re-trusts new unsandboxed code, so that stays a manual
+    # `paseo plugin update paseo-bots`.
+    # `default(..., true)`: under `--check` the skipped reads leave an empty stdout.
+    - name: Enable Paseo plugins and install paseo-bots
+      when: paseo_daemon_down is not defined
+      block:
+        - name: Read whether Paseo plugins are enabled
+          ansible.builtin.command: paseo daemon config get pluginsEnabled
+          register: paseo_plugins_switch
+          changed_when: false
+
+        - name: Enable Paseo plugins
+          ansible.builtin.shell: paseo daemon config set pluginsEnabled true && paseo reload --json
+          changed_when: true
+          when: (paseo_plugins_switch.stdout | default('{}', true) | from_json).value | default(false) is not sameas true
+
+        - name: Read the installed Paseo plugins
+          ansible.builtin.command: paseo plugin ls --json
+          register: paseo_plugins
+          changed_when: false
+
+        - name: Install the paseo-bots plugin
+          ansible.builtin.command: paseo plugin install npm:@oliexe/paseo-bots
+          changed_when: true
+          when: "'paseo-bots' not in (paseo_plugins.stdout | default('[]', true) | from_json | map(attribute='id'))"

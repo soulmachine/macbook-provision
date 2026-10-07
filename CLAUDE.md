@@ -391,6 +391,15 @@ their daemon running untouched. Five things are easy to get wrong:
   retries run out (verified 2026-10-04). The post_task is tagged `agent-multiplexer`,
   because untagged post_tasks are skipped in a tag-limited run.
 
+**On always-on Macs the role also installs the `paseo-bots` plugin** (`npm:@oliexe/paseo-bots`,
+DECISIONS Q192). Paseo ships with its global `pluginsEnabled` switch off, and an installed plugin
+stays `disabled` until it is on, so the role turns it on first. That was the user's choice, made
+after reading Paseo's warning that plugins are unsandboxed code. It applies the switch with
+`paseo reload`, not the launchd bounce, because a bounce kills the daemon's running agents. Both
+steps wait for the daemon to be running. The role installs the plugin only when `paseo plugin ls`
+lacks it, and never runs `paseo plugin update`, because each update trusts new code. Run that by
+hand.
+
 `~/Library/LaunchAgents` is 700 on some hosts and 755 on others. The task that ensures
 the directory exists uses `mode: u+rwx` so it changes neither.
 
