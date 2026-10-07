@@ -2052,5 +2052,5 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (fix ponytail); agent (the 0600 mode, leaving claude-code alone)
 **Justification:** The record gate meant a fresh host's ponytail Codex plugin never updated. The OpenCode write runs only when ponytail is not yet listed, but when it does run it loosened a file that `jev-register-agents` keeps at 0600 because it holds keys (AGENTS.md, jev setup notes). The claude-code role was not in the request. A ponytail run still prints the TypeSafe key through that dependency.
 **Outcome:** applied — on mac-mini-m2, with the record deleted, run 1 reported the Codex plugin `updated` and rewrote the record, and run 2 changed nothing; `opencode.json` stayed 0600
-**Ref:** (pending)
+**Ref:** 82cef26
 **Supersedes:** —
