@@ -2030,5 +2030,5 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (revert); agent (scope)
 **Justification:** A revert only stops future installs. It removes nothing already installed, so m2 and m6 would keep a plugin the repo no longer provisions. No other host ran a play while the change was live, so those two are the only hosts with it.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 7cdc23c
 **Supersedes:** Q193 — reverted at the user's request
