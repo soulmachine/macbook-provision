@@ -27,8 +27,9 @@ want_provider = {
     "apiKey": "$CLIPROXY_API_KEY",
     # must match macbook-provision roles/pi/files/agent/models.json, or the two fight
     "models": [{"id": "claude-opus-5-5"}, {"id": "claude-sonnet-5-5"},
-               {"id": "claude-fable-5-1"}, {"id": "claude-opus-5"},
-               {"id": "claude-sonnet-5"}, {"id": "claude-haiku-4-5-20251001"}],
+               {"id": "claude-fable-5-1"}, {"id": "claude-haiku-5-5"},
+               {"id": "claude-opus-5"}, {"id": "claude-sonnet-5"},
+               {"id": "claude-haiku-4-5-20251001"}],
 }
 changed = []
 
