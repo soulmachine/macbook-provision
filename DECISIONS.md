@@ -2019,5 +2019,5 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (fleet, no plugin-dev); agent (placement, the rest)
 **Justification:** Two list entries and one block reuse existing gates, where a new role would duplicate them. `codex features list` on 0.161.0 shows `multi_agent` stable and on by default, so writing it would only pin a default. `setup-pstack` probes which model CLIs a host has and asks before saving, so it cannot run unattended. pstack's copies of the two pinned skills are namespaced `pstack:`, so nothing collides. The Codex refresh is gated on the marketplace being registered, not on the revision record existing as in the ponytail role, because codex 0.161.0's `marketplace add` writes no record and only the first `upgrade` does (measured 2026-10-07). A record gate would never open on a fresh host. pstack's Claude Code SessionStart hook now runs in every Claude session on every host, beside ponytail's. `/plugin disable` on a host is respected.
 **Outcome:** applied — on mac-mini-m2 both roles changed on run 1 and not on run 2, and Claude Code and Codex each list 54 `pstack:` skills
-**Ref:** (pending)
+**Ref:** 1c14431, 93042b6 (no_log on the config read)
 **Supersedes:** —
