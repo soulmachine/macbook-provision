@@ -71,6 +71,14 @@
   # does not fail the play is invisible to it by construction. Deferring to post_tasks keeps
   # the recap honest and lets the rest of the play finish.
   post_tasks:
+    # First, because the upgrade is the earliest deferred failure in the play. A failing
+    # post_task stops the ones after it, so a host with several deferred failures reports
+    # this one at the end; each role also printed its own message where it happened.
+    - name: Fail when the Homebrew upgrade failed
+      ansible.builtin.fail:
+        msg: "{{ homebrew_upgrade_failed }}"
+      when: homebrew_upgrade_failed is defined
+
     - name: Fail when a pinned skill could not be installed
       ansible.builtin.fail:
         msg: >-

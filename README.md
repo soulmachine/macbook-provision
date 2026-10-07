@@ -103,7 +103,7 @@ pre-commit run --all-files
 | Role | 说明 |
 |------|------|
 | host-facts | 机器判定（`mac_family` / `mac_is_vm` / `mac_is_always_on`）；不装任何软件 |
-| homebrew | 通用 Homebrew 包与 GUI 应用：git、curl、wget、jq、ripgrep、fd、tree、htop、docker、ffmpeg、gh、gnupg、tmux；cask 含 claude、gemini、pearcleaner、sublime-text、visual-studio-code，Apple Silicon 另加 chatgpt |
+| homebrew | 通用 Homebrew 包与 GUI 应用：git、curl、wget、jq、ripgrep、fd、tree、htop、docker、ffmpeg、gh、gnupg、tmux；cask 含 claude、gemini、pearcleaner、sublime-text、visual-studio-code，Apple Silicon 另加 chatgpt；`brew upgrade` 失败时记录下来、在 play 末尾才报错，不阻断后面的 role |
 | github | gh CLI（brew）；若环境中有 `GITHUB_TOKEN`（由 `gh-token-fleet` 写入 `~/.zshenv`，不再来自 `.env`），另外配置 SSH key 与 git 签名 |
 | oh-my-zsh | Zsh 框架及插件管理 |
 | direnv | 目录级环境变量管理 |

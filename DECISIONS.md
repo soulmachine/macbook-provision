@@ -1968,3 +1968,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The claude-code role already owns `~/.claude` and runs on every provisioned host, so the task needs no new role or play entry. It covers the same two folders as Q187 for the same reason: those are where the gateway key was found, and the rest of `~/.claude` stays 755. supermicro and dev-server-frank run no playbook, so they keep only the manual fix.
 **Outcome:** applied
 **Ref:** (this commit)
+
+## Q189 — interactive/nightly-sweep — deviation
+
+**Question:** On 2026-10-07 seven of eight hosts failed the nightly sweep at the play's 8th task, `homebrew : Update Homebrew and upgrade all installed packages`. Homebrew's `chatgpt` cask (26.1002.51308) pointed at a download that returned 404, one failed download fails the whole `brew upgrade`, and the play stopped there, so none of the 48 roles after it ran on any of those hosts. Keep failing at that task, or defer it?
+**Options considered:** keep failing immediately / defer the failure to `main.yml`'s `post_tasks`, as Q178 did for `cua` / make the upgrade best-effort and never fail
+**Chosen:** Defer it. The upgrade task now runs inside a `block`; its `rescue` records the module's message as the host fact `homebrew_upgrade_failed` and prints it, and a new first `post_task`, "Fail when the Homebrew upgrade failed", fails the play on it.
+**Decided-by:** human
+**Justification:** The user approved the agent's recommendation. Upstream breakage like this is routine: a cask's download moves, a mirror is down, or Xcode is too old, as on archs-mac-mini. Each one stopped every later role on every Apple Silicon host for a whole night. The run still ends `failed=1` with the real message, so the sweep still reports it. A best-effort upgrade would have hidden it. `rescue` was used rather than `failed_when: false` because the Homebrew module reports failure only through `failed`, which `failed_when` overwrites, so the message would have been lost. A later role that needs a working `brew` still fails on its own, which is accurate. Because a failing post_task stops the ones after it, a host with several deferred failures shows only this one at the end; each role still prints its own message where it happened. Verified on mac-mini-m2 while the `chatgpt` 404 was still live: the role run on its own exits 0, records and prints the failure, and runs its remaining 11 tasks. In a scratch play, a stand-in later task ran and the play failed only in `post_tasks` (`failed=1 rescued=1`).
+**Outcome:** applied
+**Ref:** (pending)

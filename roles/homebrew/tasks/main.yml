@@ -133,10 +133,36 @@
 # Cast with `| bool`: a bare Jinja expression templates to the STRING "False",
 # and a non-empty string is truthy — the same trap CLAUDE.md documents for the
 # always-on gates.
+#
+# A failure here is RECORDED, not raised; main.yml's post_tasks fails the play on
+# it (DECISIONS Q189). This is the 8th task of the play, and one package that
+# cannot upgrade fails the whole `brew upgrade`, so failing here skipped all 48
+# roles after this one. On 2026-10-07 the `chatgpt` cask pointed at a download
+# that returned 404 for a few hours, and that stopped seven of eight hosts dead.
+# `rescue` rather than `failed_when: false`, because the module reports its
+# failure only through `failed`, which `failed_when` overwrites; `rescue` keeps
+# the real message in `ansible_failed_result`. The red `fatal:` it still prints
+# is accurate — the upgrade did fail — and the recap's `failed=1` comes from the
+# post_task.
 - name: Update Homebrew and upgrade all installed packages
-  community.general.homebrew:
-    update_homebrew: true
-    upgrade_all: "{{ (ansible_facts['architecture'] != 'x86_64') | bool }}"
+  block:
+    - name: Update Homebrew and upgrade all installed packages
+      community.general.homebrew:
+        update_homebrew: true
+        upgrade_all: "{{ (ansible_facts['architecture'] != 'x86_64') | bool }}"
+  rescue:
+    # A host fact, not a role var, so main.yml's post_tasks can read it.
+    - name: Record that the Homebrew upgrade failed
+      ansible.builtin.set_fact:
+        homebrew_upgrade_failed: >-
+          `brew update` / `brew upgrade` failed, so packages already installed
+          may not be current: {{ ansible_failed_result.msg | default('(no message)') | trim }}
+
+    # post_tasks only run in a full play, so a single-role run would never see the
+    # failure there. The skills, cua and paseo roles report theirs the same way.
+    - name: Report that the Homebrew upgrade failed
+      ansible.builtin.debug:
+        msg: "{{ homebrew_upgrade_failed }}"
 
 - name: Install common Homebrew packages
   community.general.homebrew:
