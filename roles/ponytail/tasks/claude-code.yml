@@ -81,11 +81,14 @@
     ponytail_claude_updated: "{{ ponytail_claude_sha_before != ponytail_claude_sha_after }}"
   changed_when: ponytail_claude_updated
 
+# no_log on both: settings.json carries TYPESAFE_API_KEY in its `env` map (the typesafe
+# role writes it), and an ad-hoc `include_role` run prints every result in full.
 - name: Read Claude Code settings
   ansible.builtin.slurp:
     src: "{{ ponytail_home }}/.claude/settings.json"
   register: ponytail_claude_settings_raw
   failed_when: false
+  no_log: true
 
 - name: Parse Claude Code settings
   ansible.builtin.set_fact:
@@ -93,6 +96,7 @@
       {{ (ponytail_claude_settings_raw.content | b64decode | from_json)
          if (ponytail_claude_settings_raw.content | default('') | b64decode | trim | length > 0)
          else {} }}
+  no_log: true
 
 # Only enabled plugins load. Older Claude Code builds did not add an install to
 # `enabledPlugins`; 2.1.276 does (measured 2026-09-18), so this is a safety net

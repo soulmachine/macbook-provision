@@ -2043,3 +2043,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** eeb5cc6
 **Supersedes:** Q194 — the user reversed the revert
+
+## Q196 — interactive/ponytail-fixes — deviation
+
+**Question:** The user asked to fix the two ponytail-role problems found while doing Q193. First, its Codex refresh is gated on a revision record that codex 0.161.0's `marketplace add` no longer writes. Second, it reads key-bearing config files without `no_log`. A third surfaced on reading: its OpenCode write sets `opencode.json` to 0644. How far should the fix go?
+**Options considered:** fix the Codex gate and add `no_log` only / also keep `opencode.json` at 0600 / also fix the same leak in the claude-code role, which ponytail depends on
+**Chosen:** In ponytail only: gate the Codex refresh on `[marketplaces.ponytail]` being registered, with a missing record read as an empty revision. Add `no_log` to the reads of `config.toml`, `settings.json` and `opencode.json` and to the OpenCode write. Write `opencode.json` at 0600. The claude-code role's own `settings.json` read is left as it is.
+**Decided-by:** human (fix ponytail); agent (the 0600 mode, leaving claude-code alone)
+**Justification:** The record gate meant a fresh host's ponytail Codex plugin never updated. The OpenCode write runs only when ponytail is not yet listed, but when it does run it loosened a file that `jev-register-agents` keeps at 0600 because it holds keys (AGENTS.md, jev setup notes). The claude-code role was not in the request. A ponytail run still prints the TypeSafe key through that dependency.
+**Outcome:** applied — on mac-mini-m2, with the record deleted, run 1 reported the Codex plugin `updated` and rewrote the record, and run 2 changed nothing; `opencode.json` stayed 0600
+**Ref:** (pending)
+**Supersedes:** —

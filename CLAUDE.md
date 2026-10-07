@@ -262,10 +262,17 @@ wrong:
   upstream against that record, so a snapshot rewound one commit still reads "already
   up to date" while a record pointing at an older commit triggers a real upgrade (both
   verified); the pi and Hermes checkouts' HEADs. OpenCode needs no refresh — a bare
-  npm name in `opencode.json` resolves as `@latest` at startup. Each refresh block is
-  gated on a
-  `stat` of the record or checkout it diffs, so `--check` on a fresh host passes
-  instead of failing on a read of a file that does not exist yet.
+  npm name in `opencode.json` resolves as `@latest` at startup. The pi and Hermes
+  refresh blocks are gated on a `stat` of the checkout they diff, so `--check` on a
+  fresh host passes instead of failing on a read of a file that does not exist yet.
+  The Codex one is gated on `[marketplaces.ponytail]` being registered instead, because
+  codex 0.161.0's `marketplace add` writes no record — only the first `upgrade` does —
+  so a record gate never opened on a fresh host (Q193, Q196).
+- **The config files it reads hold API keys, so those reads are `no_log`.**
+  `~/.codex/config.toml`, `~/.claude/settings.json` and `~/.config/opencode/opencode.json`
+  all carry keys, and an ad-hoc `include_role` run prints every `slurp` and `set_fact`
+  result in full. The OpenCode write keeps the file at 0600, the mode
+  `jev-register-agents` sets.
 - **A `debug` task's `changed_when` is invisible to ad-hoc output.** The `minimal`
   callback strips everything but `msg` from a debug result *before* it picks the
   `CHANGED`/`SUCCESS` label, so the report tasks that carry the refresh verdicts (this

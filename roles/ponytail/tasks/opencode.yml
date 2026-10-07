@@ -11,6 +11,10 @@
 # Read → append → write, gated on the entry being absent, so the file is not
 # rewritten on converged runs. `to_nice_json(indent=2)` matches the 2-space
 # layout oh-my-openagent writes; keys sort, but `$schema` sorts first anyway.
+#
+# The file carries API keys — jev-register-agents bakes them into its MCP env blocks and
+# chmods it 0600 — so the read, parse and write are no_log, and the write keeps 0600
+# rather than loosening it to 0644.
 - name: Ensure the OpenCode config directory exists
   ansible.builtin.file:
     path: "{{ ponytail_home }}/.config/opencode"
@@ -22,6 +26,7 @@
     src: "{{ ponytail_home }}/.config/opencode/opencode.json"
   register: ponytail_opencode_raw
   failed_when: false
+  no_log: true
 
 - name: Parse the OpenCode config
   ansible.builtin.set_fact:
@@ -29,12 +34,14 @@
       {{ (ponytail_opencode_raw.content | b64decode | from_json)
          if (ponytail_opencode_raw.content | default('') | b64decode | trim | length > 0)
          else {} }}
+  no_log: true
 
 - name: Register the ponytail OpenCode plugin
   ansible.builtin.copy:
     dest: "{{ ponytail_home }}/.config/opencode/opencode.json"
     content: "{{ ponytail_opencode_merged | to_nice_json(indent=2) }}\n"
-    mode: "0644"
+    mode: "0600"
+  no_log: true
   vars:
     ponytail_opencode_merged: >-
       {{ ponytail_opencode_settings
