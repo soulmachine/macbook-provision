@@ -33,15 +33,20 @@
 # `[features] multi_agent` here, which pstack's subagent skills need: it is on by default
 # (`codex features list` on 0.161.0). No hook-trust reminder either — pstack's hook is
 # Claude-only and its .codex-plugin manifest declares none.
+#
+# no_log on both: config.toml carries API keys in `[mcp_servers.*.env]`, and an ad-hoc
+# `include_role` run prints every result in full, base64 being no protection.
 - name: Read the Codex config
   ansible.builtin.slurp:
     src: "{{ codex_home }}/config.toml"
   register: codex_config_raw
   failed_when: false
+  no_log: true
 
 - name: Decode the Codex config
   ansible.builtin.set_fact:
     codex_config: "{{ codex_config_raw.content | default('') | b64decode }}"
+  no_log: true
 
 # `--ref main` is upstream's own install line.
 - name: Add the open-pstack Codex marketplace
