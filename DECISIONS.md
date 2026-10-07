@@ -2032,3 +2032,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** 7cdc23c
 **Supersedes:** Q193 — reverted at the user's request
+
+## Q195 — interactive/open-pstack — deviation
+
+**Question:** After the Q194 revert, the full Q193 change reappeared in the working tree, and the user asked to commit and push it. Committing it re-applies open-pstack and undoes Q194. Re-apply, keep the revert, or leave it alone?
+**Options considered:** re-apply pstack and reinstall it on the hosts Q194 cleaned / discard the restored changes and keep the revert / commit nothing
+**Chosen:** Re-apply. Commit the restored change unchanged from Q193 (1c14431 + 93042b6), and re-run the claude-code and codex roles on mac-mini-m2 and mac-mini-m6, the two hosts Q194 uninstalled it from. The other hosts get it at the next nightly sweep.
+**Decided-by:** human
+**Justification:** The user chose re-apply after being told the change would undo Q194. Q193's reasoning stands.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q194 — the user reversed the revert
