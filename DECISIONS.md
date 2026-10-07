@@ -1988,3 +1988,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The user asked for the item done, described as "each source is either trusted or removed"; the rule mapping each tap to one or the other is the agent's default. Trusting the specific package keeps everything that was installed working the way it did before Homebrew began enforcing trust. It is also the narrow form Homebrew's own message recommends, and narrower than trusting the tap. A tap with nothing installed only adds metadata to load, so removing it costs nothing, and `brew tap` brings it back. Installed packages were found from the install receipts on disk, because Homebrew omits untrusted packages from `brew info --installed`, so that listing showed nothing to keep. This is host-side state, deliberately not a role: no role installs these packages, so a fresh host never acquires them. Each host's `~/.homebrew/trust.json` was backed up to `trust.json.bak-20261007` first, and `brew untrust` reverses any single trust. Verified: a second dry run finds nothing to do on any host, and `brew outdated` no longer prints the untrusted-tap warning on any of the six Apple Silicon Macs. Worth a look: `gogcli` and `goplaces` on macbook-air come from `openclaw/tap`, which survived the fleet-wide OpenClaw removal (Q52–Q54); they are standalone CLIs, not OpenClaw itself, so trusting them does not bring OpenClaw back, but the user may prefer to uninstall them.
 **Outcome:** assumed
 **Ref:** —
+
+## Q191 — interactive/nightly-sweep — gate-resolution
+
+**Question:** Q190 trusted `gogcli` and `goplaces` on macbook-air as an assumption and flagged them for review, because they come from `openclaw/tap`, which survived the fleet-wide OpenClaw removal (Q52–Q54). Keep them trusted, or uninstall them?
+**Options considered:** keep them trusted / untrust and uninstall them
+**Chosen:** Keep them trusted. Nothing changed on the host.
+**Decided-by:** human
+**Justification:** The user confirmed after reviewing Q190. They are standalone CLIs, not OpenClaw, so keeping them does not conflict with the OpenClaw removal.
+**Outcome:** applied
+**Ref:** —
+**Supersedes:** Q190 — confirms its assumed choice for these two formulae; the rest of Q190 stands as assumed
