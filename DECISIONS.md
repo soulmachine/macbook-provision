@@ -2087,3 +2087,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** assumed
 **Ref:** d05ab3f
 **Supersedes:** —
+
+## Q200 — interactive/codex-chatgpt — deviation
+
+**Question:** Q199 left mac-mini-2018 on the codex cask (frozen at 0.161.0) because "ChatGPT.app is Apple Silicon only". That premise is wrong. What should the roles do on Intel?
+**Options considered:** move `chatgpt` from the homebrew role's arm64-only task to its common cask list / have the codex role install `chatgpt` on every architecture / keep Q199
+**Chosen:** The codex role installs the `chatgpt` cask itself, then links `codex` and removes the codex cask, on every host. The homebrew role's arm64-only cask task is deleted (`chatgpt` was its only entry). The `stat` gate on ChatGPT.app's CLI is gone with it, since the cask is now installed one task earlier.
+**Decided-by:** human
+**Justification:** Frank asked to update the codex role after the check. Homebrew's `chatgpt` cask declares `arch arm: "arm64", intel: "x64"` with a sha256 for each, and `depends_on macos: :ventura` only; its x64 zip (26.1002.52244) returns 200, and its central directory lists `ChatGPT.app/Contents/Resources/codex-cli/bin/codex`, the path `codex_chatgpt_cli` names. mac-mini-2018 is x86_64 on macOS 15.8.1. Putting the cask in the codex role keeps the dependency where it is used, and a single-role codex run now fixes a host that lacks the app. `upgrade_all` stays off on x86_64; the cask has `auto_updates`, so the app updates itself there too.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q199 — its premise that ChatGPT.app has no Intel build was wrong.
