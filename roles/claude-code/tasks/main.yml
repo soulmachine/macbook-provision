@@ -178,11 +178,17 @@
 # `failed_when: false` on the slurp forces `failed: false`, so `... is succeeded`
 # is true even when the file is missing and no `content` key was ever set —
 # hence the parse guards on `content` itself, not on task status.
+#
+# no_log on all four tasks that hold the file — read, parse, merge, write: it carries
+# TYPESAFE_API_KEY in its `env` map (the typesafe role), and an ad-hoc `include_role` run
+# prints every result in full, as does `--diff` on the write. That includes every run of a
+# role depending on this one (ponytail, typesafe).
 - name: Read existing Claude Code settings
   ansible.builtin.slurp:
     src: "{{ lookup('env', 'HOME') }}/.claude/settings.json"
   register: claude_code_settings_raw
   failed_when: false
+  no_log: true
 
 - name: Parse existing Claude Code settings
   ansible.builtin.set_fact:
@@ -190,6 +196,7 @@
       {{ (claude_code_settings_raw.content | b64decode | from_json)
          if (claude_code_settings_raw.content | default('') | b64decode | trim | length > 0)
          else {} }}
+  no_log: true
 
 # The settings this role owns, merged over whatever else the file holds — hooks,
 # enabledPlugins and the rest pass through untouched. They go in one write: each
@@ -202,6 +209,7 @@
   ansible.builtin.set_fact:
     claude_code_settings_merged: >-
       {{ claude_code_settings | combine(claude_code_settings_managed, recursive=true) }}
+  no_log: true
   vars:
     claude_code_settings_managed:
       # No Co-Authored-By trailer on commits. `attribution` is the current
@@ -260,6 +268,7 @@
     content: "{{ claude_code_settings_merged | to_nice_json }}\n"
     mode: "0600"
   when: claude_code_settings_merged != claude_code_settings
+  no_log: true
 
 # Only enabled plugins appear in `/plugin`. Older Claude Code builds recorded an
 # install in ~/.claude/plugins/installed_plugins.json without touching
