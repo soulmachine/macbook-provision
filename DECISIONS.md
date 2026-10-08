@@ -2054,3 +2054,36 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied — on mac-mini-m2, with the record deleted, run 1 reported the Codex plugin `updated` and rewrote the record, and run 2 changed nothing; `opencode.json` stayed 0600
 **Ref:** 82cef26
 **Supersedes:** —
+
+## Q197 — interactive/codex-chatgpt — deviation
+
+**Question:** The codex cask runs `codex completion` at every upgrade, and on some hosts that first launch stops the unattended nightly run on a Gatekeeper prompt. The user said codex ships inside ChatGPT.app and should be installed by neither cask nor npm. How should the codex role provide `codex`?
+**Options considered:** link to the CLI inside ChatGPT.app and uninstall the cask / keep the cask / install from npm
+**Chosen:** Link `~/.local/bin/codex` (forced, replacing m2's link to codex's own standalone install) to `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`, the entrypoint the bundle's `codex-package.json` names, then uninstall the codex cask. The `codex update` tasks are dropped. Hosts without ChatGPT.app: see Q199.
+**Decided-by:** human (the source of codex); agent (the link location and order)
+**Justification:** User instruction. ChatGPT.app updates itself (`chatgpt` cask `auto_updates: true`) and was on the same version (26.1002.52244, bundling codex-cli 0.162.0-alpha.2) on all seven Apple Silicon hosts on 2026-10-08, so the bundled CLI stays current without the playbook. The link is made before the cask is removed so `codex` never goes missing mid-run.
+**Outcome:** applied
+**Ref:** d05ab3f
+**Supersedes:** —
+
+## Q198 — interactive/codex-chatgpt — tradeoff
+
+**Question:** A cask that runs its own binary while installing (1password-cli today, codex until Q197) can stop an unattended `brew upgrade` on a Gatekeeper first-launch prompt. The cause is not known: an identical binary, path and "Homebrew Cask" quarantine passed silently on mac-mini-m6 and prompted on mac-studio-m3, with the online notarization check returning 200 on both. How should the nightly run avoid the wait?
+**Options considered:** mark the cached download user-approved before the upgrade / strip com.apple.provenance from the toolchain (tested on m3: it fixed the quarantine stamp, not the prompt) / only alert when a prompt is pending
+**Chosen:** Split `brew update` from `brew upgrade` in the homebrew role. Between them, on arm64, fetch each outdated cask whose definition uses `generate_completions_from_executable` and write quarantine `00c1` (adds user-approved 0x0040) on the cached download. Every other cask keeps its first-launch check.
+**Decided-by:** human (the approach); agent (the scope: outdated casks of that shape, detected from each host's cask definitions, since hand-installed casks such as 1password-cli are not in this repo)
+**Justification:** Homebrew does not re-quarantine a download that already carries quarantine, and copies its flags onto every extracted file adding 0x0100 (`cask/download.rb`, `cask/quarantine.rb` in Homebrew 7.0.8), so the binary ends up `01c1`, what an Open click writes. The cost is the same as clicking Open unattended for those casks. Setting the bit on the binary after a prompt is already pending does not help: Gatekeeper queues later launches of that binary behind the open prompt (m3, 2026-10-08).
+**Outcome:** applied — on macbook-air, which prompted on 2026-10-08, the tasks marked the codex download `00c1`, and `brew upgrade --cask codex` run through Ansible finished 0.161.0 → 0.162.0 with no prompt (syspolicyd `evaluateScanResult: 2`, binary `01c1`)
+**Ref:** 69eacd6
+**Supersedes:** —
+
+## Q199 — interactive/codex-chatgpt — gate-resolution
+
+**Question:** Q197 takes codex from ChatGPT.app, but mac-mini-2018 is Intel and ChatGPT.app is Apple Silicon only. What should the codex role do there?
+**Options considered:** leave the existing codex cask alone / uninstall it too, leaving the host without codex / keep provisioning the cask there
+**Chosen:** Leave it alone: the role links and uninstalls only where ChatGPT.app's CLI exists. `upgrade_all` is off on x86_64, so that cask now stays at 0.161.0.
+**Decided-by:** agent
+**Justification:** Cheapest to reverse, and it does not take a working tool away from a host. The user's rule was stated for the ChatGPT.app case; whether the Intel host should keep, update or drop codex is theirs to confirm.
+**Outcome:** assumed
+**Ref:** d05ab3f
+**Supersedes:** —
