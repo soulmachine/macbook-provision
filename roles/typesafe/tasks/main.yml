@@ -97,6 +97,7 @@
         src: "{{ typesafe_settings }}"
       register: typesafe_settings_raw
       failed_when: false
+      no_log: true
 
     - name: Parse Claude Code settings
       ansible.builtin.set_fact:
@@ -104,8 +105,10 @@
           {{ (typesafe_settings_raw.content | b64decode | from_json)
              if (typesafe_settings_raw.content | default('') | b64decode | trim | length > 0)
              else {} }}
+      no_log: true
 
-    # no_log on the two tasks that carry the key: the merged document and the file write.
+    # no_log on every task that holds the file — the reads and parse above, the merged
+    # document and the write here, the re-read below — because every one carries the key.
     # A `-v` or `--diff` would otherwise print it.
     - name: Merge the Jev env into the settings
       ansible.builtin.set_fact:
@@ -226,6 +229,7 @@
         src: "{{ typesafe_settings }}"
       register: typesafe_settings_now_raw
       failed_when: false
+      no_log: true
 
     - name: Enable the Jev plugins
       ansible.builtin.command: claude plugin enable {{ item }}

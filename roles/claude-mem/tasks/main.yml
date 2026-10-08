@@ -100,6 +100,8 @@
     src: "{{ claude_mem_dir }}/settings.json"
   register: claude_mem_settings_raw
   failed_when: false
+  # The same provider keys the write below hides; an ad-hoc run prints a read in full.
+  no_log: true
 
 - name: Merge the managed claude-mem settings
   ansible.builtin.set_fact:
@@ -107,6 +109,7 @@
       {{ (claude_mem_settings_raw.content | b64decode | from_json)
          if (claude_mem_settings_raw.content | default('') | b64decode | trim | length > 0)
          else {} }}
+  no_log: true
 
 - name: Apply the managed claude-mem settings
   ansible.builtin.copy:

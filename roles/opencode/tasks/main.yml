@@ -52,6 +52,9 @@
   register: opencode_config_raw
   when: opencode_config_before.stat.exists
   check_mode: false
+  # The file carries API keys in its MCP env blocks (jev-register-agents writes them),
+  # and an ad-hoc `include_role` run prints every result in full.
+  no_log: true
 
 # `failed_when: false` rather than a `stat` gate: the stamp is absent on every
 # host that provisioned before this role learned to write one, which is normal.
