@@ -5,10 +5,13 @@
 # a Gatekeeper prompt nobody was there to click (2026-10-08, DECISIONS Q197). bin/codex is the
 # entrypoint the bundle's codex-package.json names. The cask has an Intel (x64) build with
 # codex at the same path, so this runs on every host, mac-mini-2018 included (DECISIONS Q200).
+# --adopt takes over a ChatGPT.app installed by hand instead of failing on "already an App";
+# the cask sets auto_updates, so brew adopts it without comparing versions.
 - name: Install ChatGPT.app, which carries the Codex CLI
   community.general.homebrew_cask:
     name: chatgpt
     state: present
+    install_options: adopt
 
 - name: Link codex to the copy inside ChatGPT.app
   ansible.builtin.file:
