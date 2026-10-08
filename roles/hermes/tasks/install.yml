@@ -67,7 +67,7 @@
 # there was nothing left to do, which is what disguised it as a transient.
 #
 # So diff the checkout revision instead, per AGENTS.md "Self-update tasks: diff
-# state, don't grep output" — the shape roles/codex uses for `codex update`. Probe
+# state, don't grep output" — the shape roles/claude-code uses for `claude update`. Probe
 # with git, not `hermes --version`: the breakage is in Python imports, so a git
 # probe cannot be taken down by the very thing being measured. Both probes carry
 # `failed_when: false` so that `--check` on a host where the clone does not exist

@@ -201,7 +201,7 @@ ioreg `BatteryInstalled` 的保守规则：那条规则要求硬件明确报告"
 | 工具 | 安装渠道 | 落地位置 / 命令名 |
 |------|----------|-------------------|
 | claude-code | 官方 `install.sh` | `~/.local/bin/claude` |
-| codex | Homebrew **cask** | 命令 `codex`；`codex update` 会自己转调 `brew upgrade --cask codex` |
+| codex | **ChatGPT.app 自带**（`chatgpt` cask，仅 Apple Silicon） | `~/.local/bin/codex` → `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`，随 ChatGPT.app 自更新 |
 | opencode | npm 全局 `opencode-ai` | 命令 `opencode` |
 | kimi-code | 官方 `install.sh`（curl \| bash） | `~/.kimi-code/bin/kimi`，命令是 **`kimi`** 而不是 `kimi-code` |
 | omp | bun 全局 `@oh-my-pi/pi-coding-agent` | `~/.bun/bin/omp`，命令是 **`omp`** |
@@ -210,9 +210,10 @@ ioreg `BatteryInstalled` 的保守规则：那条规则要求硬件明确报告"
 | cc-switch | tap `farion1231/ccswitch` + **cask** | GUI 应用 |
 | agent-reach | **没有包管理器**，见下 | 由 `claude -p` 按上游文档安装 |
 
-`codex` 用 cask 而不是 npm 是刻意的：npm 全局包会装进当前 node 版本的 prefix 里，
-而 node 由 mise 管理，一换版本这个包就静默消失了。role 表里的「依赖 nodejs」指的是
-运行期依赖，不是安装渠道。
+`codex` 不单独装（既不用 cask 也不用 npm）是刻意的：ChatGPT.app 里本来就带了一份并会自更新；
+codex cask 每次升级都会运行 `codex completion`，在部分主机上这次首次启动会卡在没人点的
+Gatekeeper 弹窗上（DECISIONS Q197）。role 会卸载旧的 codex cask。Intel 主机没有 ChatGPT.app，
+role 不动那里已有的 codex。role 表里的「依赖 nodejs」指的是运行期依赖，不是安装渠道。
 
 #### 每次运行都会被覆盖的配置文件
 

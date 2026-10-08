@@ -48,8 +48,8 @@ do not fan this playbook out.** The `--limit 127.0.0.1` above is belt-and-braces
 the current inventory it changes nothing, and it keeps the rule true if an entry is ever
 added back.
 
-The roles read `lookup('env', 'HOME')` in 98 places across 27 roles (counted
-2026-10-07; `scripts/check-home-lookup-count.sh` keeps this honest), with zero uses of
+The roles read `lookup('env', 'HOME')` in 99 places across 27 roles (counted
+2026-10-08; `scripts/check-home-lookup-count.sh` keeps this honest), with zero uses of
 `ansible_env.HOME`, and pull the `.env` secrets the same way. Ansible evaluates every
 `lookup()` on the **control node**, not the target. Fan this out and one machine's
 `$HOME` and `.env` reach all of them: provisioning `mac-studio-m3` (home
@@ -475,7 +475,7 @@ the official `typesafe-ai` skill from `typesafe-ai/skills`, which moved here fro
 
 #### Self-update tasks: diff state, don't grep output
 
-Roles that shell out to a tool's own updater (`claude update`, `codex update`,
+Roles that shell out to a tool's own updater (`claude update`,
 `npx skills update`) must decide `changed` from **observable state measured
 before and after the call**, not from a phrase in the tool's stdout. Record the
 version or checksum, run the updater with `changed_when: false`, then re-measure

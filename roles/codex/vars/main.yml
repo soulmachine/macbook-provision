@@ -8,4 +8,5 @@ codex_pstack_source: ericlitman/open-pstack
 codex_pstack_marketplace: open-pstack
 codex_pstack_plugin: pstack@open-pstack
 codex_home: "{{ lookup('env', 'HOME') }}/.codex"
+codex_chatgpt_cli: /Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex
 codex_pstack_record: "{{ codex_home }}/.tmp/marketplaces/{{ codex_pstack_marketplace }}/.codex-marketplace-install.json"
