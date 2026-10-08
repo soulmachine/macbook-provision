@@ -1,7 +1,7 @@
 ---
 # The repo's own .env. `playbook_dir` is the repo root for `ansible-playbook
 # main.yml`, and the cwd for the `ansible localhost -m include_role` form the
-# README documents — which CLAUDE.md says to run from the repo root either way.
+# README documents — which AGENTS.md says to run from the repo root either way.
 dotenv_path: "{{ playbook_dir }}/.env"
 
 # One assignment line. Anchored, so a comment or a blank line cannot match, and

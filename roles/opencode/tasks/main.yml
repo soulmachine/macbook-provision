@@ -31,7 +31,7 @@
 #    them (384 KB) had accumulated here by 2026-09-15, every recent one
 #    byte-identical to the live file. The gate is a version stamp diffed against
 #    npm's `latest`, the same shape the claude-mem role uses — state, not stdout,
-#    per CLAUDE.md "Self-update tasks". It still refreshes when upstream ships new
+#    per AGENTS.md "Self-update tasks". It still refreshes when upstream ships new
 #    model mappings, and still repairs a host whose config lost the plugin entry.
 #
 # `npx --yes` skips npx's "Ok to proceed?" prompt so the task cannot hang.

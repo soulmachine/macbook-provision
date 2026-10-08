@@ -12,7 +12,7 @@
 # a pinned exact version.
 #
 # changed_when compares state before and after, per the "diff state, don't grep
-# output" rule in CLAUDE.md: `mise use` prints its tool line on every run whether
+# output" rule in AGENTS.md: `mise use` prints its tool line on every run whether
 # or not it did anything, and `mise upgrade` is silent when already current —
 # neither output is a usable change signal.
 #

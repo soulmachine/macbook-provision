@@ -1,5 +1,5 @@
 #!/bin/sh
-# CLAUDE.md states how many places the roles read `lookup('env', 'HOME')`, because that
+# AGENTS.md states how many places the roles read `lookup('env', 'HOME')`, because that
 # count is the whole argument for "never fan this playbook out" — Ansible resolves every
 # lookup() on the control node, so each one is a place another host's $HOME would leak in.
 #
@@ -8,7 +8,7 @@
 # role added two `chdir: "{{ lookup('env', 'HOME') }}/..."` lines. A doc claim nobody can
 # check is a doc claim that rots, so check it.
 #
-# Deliberately checks ONE number. CLAUDE.md used to carry a second ("convert all 79
+# Deliberately checks ONE number. AGENTS.md used to carry a second ("convert all 79
 # lookups"), fourteen lines below the first and disagreeing with it; that one was reworded
 # to carry no figure at all rather than be kept in sync.
 set -eu
@@ -26,9 +26,9 @@ actual_roles=$(grep -rlE "$pattern" roles/ | sed 's|^roles/||; s|/.*||' | sort -
 # "... in N places across M roles". Matched on the phrase alone rather than on the
 # backticked `lookup('env', 'HOME')` that precedes it — quoting and backticks make that
 # prefix fiddly to match portably, and the phrase is unique in the file anyway.
-stated=$(grep -oE 'in [0-9]+ places across [0-9]+ roles' CLAUDE.md || true)
+stated=$(grep -oE 'in [0-9]+ places across [0-9]+ roles' AGENTS.md || true)
 if [ "$(printf '%s\n' "$stated" | grep -c .)" != "1" ]; then
-  echo "check-home-lookup-count: expected exactly one claim in CLAUDE.md, found this:" >&2
+  echo "check-home-lookup-count: expected exactly one claim in AGENTS.md, found this:" >&2
   printf '%s\n' "$stated" >&2
   echo "  Expected prose of the form: ... in N places across M roles" >&2
   exit 1
@@ -39,24 +39,24 @@ stated_roles=$(printf '%s\n' "$stated" | grep -oE 'across [0-9]+ roles' | grep -
 
 rc=0
 if [ "$stated_places" != "$actual_places" ]; then
-  echo "check-home-lookup-count: CLAUDE.md says $stated_places places, found $actual_places" >&2
+  echo "check-home-lookup-count: AGENTS.md says $stated_places places, found $actual_places" >&2
   rc=1
 fi
 if [ "$stated_roles" != "$actual_roles" ]; then
-  echo "check-home-lookup-count: CLAUDE.md says $stated_roles roles, found $actual_roles" >&2
+  echo "check-home-lookup-count: AGENTS.md says $stated_roles roles, found $actual_roles" >&2
   rc=1
 fi
 
 # The claim is only meaningful while the alternative really is unused.
 env_home=$(grep -rE 'ansible_env\.HOME' roles/ main.yml | wc -l | tr -d ' ')
 if [ "$env_home" != "0" ]; then
-  echo "check-home-lookup-count: CLAUDE.md claims zero uses of ansible_env.HOME, found $env_home" >&2
+  echo "check-home-lookup-count: AGENTS.md claims zero uses of ansible_env.HOME, found $env_home" >&2
   rc=1
 fi
 
 if [ "$rc" -ne 0 ]; then
-  echo "  Update the sentence in CLAUDE.md (\"Runs per-host only\") to match." >&2
+  echo "  Update the sentence in AGENTS.md (\"Runs per-host only\") to match." >&2
   exit 1
 fi
 
-echo "lookup('env', 'HOME'): $actual_places places across $actual_roles roles — matches CLAUDE.md"
+echo "lookup('env', 'HOME'): $actual_places places across $actual_roles roles — matches AGENTS.md"

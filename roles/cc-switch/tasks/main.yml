@@ -10,7 +10,7 @@
 #
 # Gated on the trust ledger, not on the command's wording. `brew trust` documents its own
 # state file (`$XDG_CONFIG_HOME/homebrew/trust.json`, else `~/.homebrew/trust.json`) and
-# `--json v1` prints it, so the trusted taps are readable directly — per CLAUDE.md, "diff
+# `--json v1` prints it, so the trusted taps are readable directly — per AGENTS.md, "diff
 # state, don't grep output". The old gate matched `'Already trusted tap' not in stdout`,
 # a NEGATED sentinel: any rewording upstream, or any path printing nothing, reports a
 # phantom change forever.

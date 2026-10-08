@@ -116,7 +116,7 @@
 
 # The update below decides `changed` by diffing the ledger around it, not by reading its own
 # stdout. It used to do the latter, with a NEGATED pair of sentinels — unchanged when stdout
-# said "already" or "refreshed from source" — which is the one shape CLAUDE.md rules out:
+# said "already" or "refreshed from source" — which is the one shape AGENTS.md rules out:
 # "never a negated one". It enumerates the no-op phrasings known at the time, so a third one,
 # or any failure printing neither, reports a phantom change on every plugin; and a failed
 # update would surface as a change rather than as an error.

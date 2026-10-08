@@ -10,7 +10,7 @@
 #
 # Gated on the trust ledger that `brew trust --json v1` prints, not on the command's
 # wording — see roles/cc-switch/tasks/main.yml for the full reasoning. The old gate was a
-# negated stdout sentinel, the shape CLAUDE.md rules out.
+# negated stdout sentinel, the shape AGENTS.md rules out.
 - name: Read the trusted Homebrew entries
   ansible.builtin.command: brew trust --json v1
   register: _multica_trusted

@@ -2,7 +2,7 @@
 # typesafe — everything built on TypeSafe's Jev model: the official `typesafe-ai` skill,
 # and two Claude Code plugins sharing one API key. See vars/main.yml for what each is. The
 # plugin steps are the ponytail role's claude-code.yml generalised to a list, and every gate
-# reads a ledger or a checksum rather than the CLI's wording — CLAUDE.md "Self-update tasks:
+# reads a ledger or a checksum rather than the CLI's wording — AGENTS.md "Self-update tasks:
 # diff state, don't grep output".
 #
 # Deliberately absent: a Claude Code version assert (the claude-code dependency runs
@@ -58,7 +58,7 @@
 
 # changed_when lives on this `find` rather than on a following `debug`: the minimal callback
 # strips everything but `msg` from a debug result before labelling it, so a debug's verdict
-# always prints SUCCESS under `ansible localhost -m include_role` (CLAUDE.md, ponytail role).
+# always prints SUCCESS under `ansible localhost -m include_role` (AGENTS.md, ponytail role).
 - name: Check whether the typesafe-ai skill was updated
   ansible.builtin.find:
     paths: "{{ typesafe_skill_dir }}"

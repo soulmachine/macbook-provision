@@ -10,7 +10,7 @@
 # path, so a check that failed or got rate-limited prints neither the "latest
 # version" sentinel nor an error — and the negated match this used to carry
 # called every one of those a change. Diff `uv --version` instead, per the
-# "diff state, don't grep output" rule in CLAUDE.md.
+# "diff state, don't grep output" rule in AGENTS.md.
 - name: Record the uv version before updating
   ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.local/bin/uv --version"
   register: uv_version_before

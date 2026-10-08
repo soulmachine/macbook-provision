@@ -83,7 +83,7 @@
       changed_when: false
 
     # changed_when on a `slurp`, not a following `debug`: the minimal callback hides a debug's
-    # verdict (CLAUDE.md, ponytail role). `e30=` is base64 `{}`.
+    # verdict (AGENTS.md, ponytail role). `e30=` is base64 `{}`.
     - name: Check whether the pstack Codex plugin was updated
       ansible.builtin.slurp:
         src: "{{ codex_pstack_record }}"

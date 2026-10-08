@@ -23,7 +23,7 @@
 # `ok` — a MISSED change, which two-pass idempotency checking can never surface, because a
 # quiet second pass is also exactly what a correct gate looks like.
 #
-# `component list --installed` is the state to diff, per CLAUDE.md "Self-update tasks: diff
+# `component list --installed` is the state to diff, per AGENTS.md "Self-update tasks: diff
 # state, don't grep output". Comparing the whole listing also sidesteps the target triple:
 # `rust-analyzer` is listed as `rust-analyzer-aarch64-apple-darwin` while `rust-src` is bare,
 # so matching component names one by one would have to know which form each takes.
@@ -52,7 +52,7 @@
   changed_when: rust_components_after.stdout != rust_components_before.stdout
 
 # The enabled plugins ARE the `plugins=(...)` array in ~/.zshrc, so read that rather than
-# the enable command's wording — per CLAUDE.md, "diff state, don't grep output". The old
+# the enable command's wording — per AGENTS.md, "diff state, don't grep output". The old
 # gate gave `changed` from `'already enabled' not in stdout+stderr`, a negated sentinel
 # that reports a phantom change on any rewording or any path printing neither string.
 #

@@ -61,7 +61,7 @@
   failed_when: false
   no_log: true
 
-# Decide `changed` from the observable version, per CLAUDE.md "Self-update tasks: diff state,
+# Decide `changed` from the observable version, per AGENTS.md "Self-update tasks: diff state,
 # don't grep output". self-update prints its own wording on every path and exits 0 whether or
 # not it moved, so no phrase in that output separates the two.
 - name: Check whether mise was updated

@@ -15,7 +15,7 @@
 # so a check that failed or got rate-limited prints neither the "pi is already
 # up to date" sentinel nor an error — and the negated match this used to carry
 # called every one of those a change. Diff `pi --version` (a bare `0.84.3`)
-# instead, per the "diff state, don't grep output" rule in CLAUDE.md.
+# instead, per the "diff state, don't grep output" rule in AGENTS.md.
 #
 # The PATH below is not decoration: `pi update` shells out to `bun` to do the
 # install, so without it the task dies on `Error: spawn bun ENOENT` — but only

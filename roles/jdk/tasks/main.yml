@@ -16,7 +16,7 @@
 # request re-resolves on its own. See that role for the evidence.
 #
 # changed_when compares state before and after, per the "diff state, don't grep
-# output" rule in CLAUDE.md. The old gate here was `'installed' in jdk_mise.stderr`,
+# output" rule in AGENTS.md. The old gate here was `'installed' in jdk_mise.stderr`,
 # which reads one task's wording — and once the upgrade task exists it cannot see it
 # at all, because an upgrade is a different command whose output it never inspects.
 #

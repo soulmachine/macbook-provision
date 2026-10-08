@@ -3,7 +3,7 @@
 # `npm install -g` prints `changed N packages in <time>` on a converged run *and* on a real
 # upgrade alike — measured 2026-09-16, a 0.19.2 → 0.19.3 upgrade of another package was
 # indistinguishable from a no-op. So this role reported `ok` through every Playwright
-# upgrade it performed. Diff the installed version instead, per CLAUDE.md "Self-update
+# upgrade it performed. Diff the installed version instead, per AGENTS.md "Self-update
 # tasks: diff state, don't grep output". An absent package prints `{"name": "lib"}` and
 # exits 1, hence `failed_when: false` on the read, so a first install reads as a change.
 - name: Read the installed Playwright version

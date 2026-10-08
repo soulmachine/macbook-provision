@@ -20,7 +20,7 @@
     ponytail_claude_plugins_content: "{{ ponytail_claude_plugins_raw.content | default('') | b64decode }}"
 
 # Gated on the marketplace ledger, not on the command's wording — the old gate read
-# `'already' not in stdout`, the negated shape CLAUDE.md rules out. Unlike the claude-code
+# `'already' not in stdout`, the negated shape AGENTS.md rules out. Unlike the claude-code
 # role, which diffs the whole key set because it adds five whose names it cannot derive,
 # this adds exactly one whose name is known (`ponytail`, from the repo's
 # .claude-plugin/marketplace.json), so a presence check is enough and skips the call once

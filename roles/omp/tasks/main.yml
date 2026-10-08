@@ -10,7 +10,7 @@
 # a check that fails or gets rate-limited prints neither the "✔ Already up to
 # date" sentinel nor an error, and the negated match this used to carry reported
 # a phantom change on every such run. Diff the version instead, per the
-# "diff state, don't grep output" rule in CLAUDE.md; `omp --version` prints a
+# "diff state, don't grep output" rule in AGENTS.md; `omp --version` prints a
 # bare `omp/18.0.4` that moves only when a new build actually landed.
 - name: Record the oh-my-pi version before updating
   ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.bun/bin/omp --version"

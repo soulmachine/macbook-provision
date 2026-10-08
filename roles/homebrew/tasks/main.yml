@@ -131,7 +131,7 @@
 # their installed versions until something asks for a newer one.
 #
 # Cast with `| bool`: a bare Jinja expression templates to the STRING "False",
-# and a non-empty string is truthy — the same trap CLAUDE.md documents for the
+# and a non-empty string is truthy — the same trap AGENTS.md documents for the
 # always-on gates.
 #
 # A failure here is RECORDED, not raised; main.yml's post_tasks fails the play on

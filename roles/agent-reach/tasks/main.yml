@@ -11,7 +11,7 @@
 #
 # chdir to $HOME so the sub-agent never treats this repo as its workspace —
 # install.md forbids cloning/writing inside the working directory, and pointing
-# it at $HOME also keeps this repo's CLAUDE.md out of the sub-agent's context.
+# it at $HOME also keeps this repo's AGENTS.md out of the sub-agent's context.
 
 - name: Check whether agent-reach is installed
   # `command -v` is a shell builtin, hence shell rather than command. Covers a

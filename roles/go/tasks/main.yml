@@ -11,7 +11,7 @@
 # Adding one would be a command that never has work to do.
 #
 # changed_when compares state before and after, per the "diff state, don't grep
-# output" rule in CLAUDE.md. The old gate was `'installed' in go_mise.stderr`, which
+# output" rule in AGENTS.md. The old gate was `'installed' in go_mise.stderr`, which
 # decides a real upgrade — one that happens here about monthly — from one word in
 # mise's wording.
 #

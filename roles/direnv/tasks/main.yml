@@ -5,7 +5,7 @@
     state: latest
 
 # The enabled plugins ARE the `plugins=(...)` array in ~/.zshrc, so read that rather than
-# the enable command's wording — per CLAUDE.md, "diff state, don't grep output". The old
+# the enable command's wording — per AGENTS.md, "diff state, don't grep output". The old
 # gate gave `changed` from `'already enabled' not in stdout+stderr`, a negated sentinel
 # that reports a phantom change on any rewording or any path printing neither string.
 #

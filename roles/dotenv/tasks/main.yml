@@ -4,7 +4,7 @@
 # `.envrc` runs `dotenv_if_exists .env`, but direnv is hooked from ~/.zshrc by
 # the oh-my-zsh plugin, so it only ever fires in an INTERACTIVE shell. Every
 # non-interactive one sees none of it — including `ssh host 'cmd'`, git hooks,
-# launchd, and the `zsh -lc "... ansible-playbook ..."` form CLAUDE.md documents
+# launchd, and the `zsh -lc "... ansible-playbook ..."` form AGENTS.md documents
 # for driving another host, which is a login shell but not an interactive one.
 # So a remote run of this playbook reached the tailscale and github roles with
 # TAILSCALE_AUTH_KEY and GITHUB_TOKEN unset, and those roles are gated on

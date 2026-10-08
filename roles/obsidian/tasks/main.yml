@@ -12,7 +12,7 @@
 # up on a first install. That is the inverse of the usual phantom — a real change
 # reported as nothing — and it is invisible in a recap by construction.
 #
-# `npm ls -g --depth=0 --json` is the state to diff, per CLAUDE.md "Self-update tasks:
+# `npm ls -g --depth=0 --json` is the state to diff, per AGENTS.md "Self-update tasks:
 # diff state, don't grep output". It carries the installed version and degrades cleanly
 # on a fresh machine: an absent package prints `{"name": "lib"}` and exits 1, hence
 # `failed_when: false` on the read below, so the first install reads as a change.

@@ -6,7 +6,7 @@
 # last30days, baoyu-image-gen and baoyu-post-to-wechat skills all changed).
 #
 # So the installers now run every play, and `changed` comes from fingerprinting the
-# store around them — CLAUDE.md, "Self-update tasks: diff state, don't grep output".
+# store around them — AGENTS.md, "Self-update tasks: diff state, don't grep output".
 # `skills add` is safe to repeat: its `createSymlink` (skills@1.5.26, dist/cli.mjs)
 # returns early when a link already resolves to its target.
 #
@@ -93,7 +93,7 @@
          | map(attribute='item') | map('to_json') | list }}
 
 # The play-level failure below is unreachable from `ansible localhost -m include_role
-# -a name=skills`, because post_tasks only run in a full play — the same ceiling CLAUDE.md
+# -a name=skills`, because post_tasks only run in a full play — the same ceiling AGENTS.md
 # records for `host-facts` and pre_tasks. So say it here too. A single-role run is interactive
 # with someone reading the output, which is the one case where a message is enough.
 - name: Report pinned skills that could not be installed
@@ -274,7 +274,7 @@
 # against 24 on macbook-pro-nickel.
 #
 # Detection only, on purpose. Deleting a store directory is irreversible and not this role's
-# call to make unattended — CLAUDE.md's rule about catastrophic actions — and the list needs
+# call to make unattended — AGENTS.md's rule about catastrophic actions — and the list needs
 # a human eye anyway: `soulmachine/skills` entries show up here as real directories, which is
 # not junk to sweep but a git-backed skill shadowed by a CLI copy (DECISIONS.md Q82).
 #
