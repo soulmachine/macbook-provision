@@ -130,10 +130,6 @@
 # "upgrade everything already installed" is dropped, so Intel packages hold at
 # their installed versions until something asks for a newer one.
 #
-# Cast with `| bool`: a bare Jinja expression templates to the STRING "False",
-# and a non-empty string is truthy — the same trap AGENTS.md documents for the
-# always-on gates.
-#
 # A failure here is RECORDED, not raised; main.yml's post_tasks fails the play on
 # it (DECISIONS Q189). This is the 8th task of the play, and one package that
 # cannot upgrade fails the whole `brew upgrade`, so failing here skipped all 48
@@ -144,12 +140,23 @@
 # the real message in `ansible_failed_result`. The red `fatal:` it still prints
 # is accurate — the upgrade did fail — and the recap's `failed=1` comes from the
 # post_task.
+#
+# Update and upgrade are two calls so preapprove-casks.yml can run between them,
+# once the metadata says what is outdated and before anything is installed.
 - name: Update Homebrew and upgrade all installed packages
   block:
-    - name: Update Homebrew and upgrade all installed packages
+    - name: Update Homebrew
       community.general.homebrew:
         update_homebrew: true
-        upgrade_all: "{{ (ansible_facts['architecture'] != 'x86_64') | bool }}"
+
+    - name: Pre-approve the casks that run their own binary while installing
+      ansible.builtin.include_tasks: preapprove-casks.yml
+      when: ansible_facts['architecture'] != 'x86_64'
+
+    - name: Upgrade all installed packages
+      community.general.homebrew:
+        upgrade_all: true
+      when: ansible_facts['architecture'] != 'x86_64'
   rescue:
     # A host fact, not a role var, so main.yml's post_tasks can read it.
     - name: Record that the Homebrew upgrade failed

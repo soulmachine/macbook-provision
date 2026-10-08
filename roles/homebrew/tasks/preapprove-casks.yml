@@ -1,0 +1,36 @@
+---
+# Runs between `brew update` and `brew upgrade` (main.yml). A cask that runs its own binary
+# while installing — `generate_completions_from_executable`, as the codex cask did and
+# 1password-cli does — launches that binary for the first time inside this unattended run, and
+# on some hosts Gatekeeper answers that first launch with a prompt nobody is there to click, so
+# `brew upgrade` waits for hours (2026-10-08, DECISIONS Q198). Which hosts, and why, is not
+# known: an identical binary and quarantine passed silently on m6 and prompted on m3.
+#
+# Marking the cached download user-approved (0x0040, the bit Homebrew itself carries across app
+# upgrades) is the unattended equivalent of clicking Open. Homebrew leaves a download that is
+# already quarantined alone and copies its flags onto every extracted file, adding 0x0100, so
+# the binary ends up 01c1 — what an Open click writes. Only outdated casks of that shape: every
+# other cask keeps its first-launch check.
+- name: List outdated casks
+  ansible.builtin.command: brew outdated --cask --quiet
+  register: homebrew_outdated_casks
+  changed_when: false
+
+- name: Read the outdated casks' definitions
+  ansible.builtin.command:
+    argv: "{{ ['brew', 'info', '--json=v2', '--cask'] + homebrew_outdated_casks.stdout_lines }}"
+  register: homebrew_outdated_info
+  changed_when: false
+  when: homebrew_outdated_casks.stdout_lines | length > 0
+
+- name: Pre-approve the downloads of outdated casks that run their own binary while installing
+  ansible.builtin.shell: |
+    set -eu
+    brew fetch --cask {{ item.token | quote }}
+    xattr -w com.apple.quarantine "$(printf '00c1;%x;Homebrew Cask;' "$(date +%s)")" \
+      "$(brew --cache --cask {{ item.token | quote }})"
+  loop: "{{ (homebrew_outdated_info.stdout | default('{\"casks\": []}', true) | from_json).casks }}"
+  loop_control:
+    label: "{{ item.token }}"
+  when: "'generate_completions_from_executable' in (item.artifacts | to_json)"
+  changed_when: true
