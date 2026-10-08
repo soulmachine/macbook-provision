@@ -5,8 +5,8 @@
 # under HOMEBREW_REQUIRE_TAP_TRUST, refuses the untrusted formula, failing this
 # role before the owning role's guarded `brew trust` step ever runs.
 
-# Gathered up front because TWO tasks below gate on it: the x86_64 exception to
-# `upgrade_all`, and the Apple-Silicon-only casks at the end. The full play sets
+# Gathered up front because the x86_64 exception to `upgrade_all` below gates on
+# it. (`chatgpt`, once an arm64-only cask here, is the codex role's.) The full play sets
 # it already (`gather_facts: true`); this is what keeps a standalone
 # `ansible localhost -m include_role -a name=homebrew` working, which gathers no
 # facts, and it must run before the first gate rather than after it.
@@ -202,10 +202,3 @@
       - sublime-text
       - visual-studio-code
     state: present
-
-- name: Install Apple Silicon-only Homebrew cask apps
-  community.general.homebrew_cask:
-    name:
-      - chatgpt
-    state: present
-  when: ansible_facts['architecture'] == "arm64"

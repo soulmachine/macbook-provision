@@ -1,15 +1,14 @@
 ---
-# Codex ships inside ChatGPT.app (the homebrew role's arm64 `chatgpt` cask), which keeps it
-# current by updating itself, so `codex` is a link to that copy: no cask, no npm. The cask ran
-# `codex completion` on every upgrade, and on some hosts that first launch stopped on a
-# Gatekeeper prompt nobody was there to click (2026-10-08, DECISIONS Q197). bin/codex is the
-# entrypoint the bundle's codex-package.json names.
-#
-# Intel has no ChatGPT.app, so there the role leaves whatever codex the host already has.
-- name: Find the Codex CLI inside ChatGPT.app
-  ansible.builtin.stat:
-    path: "{{ codex_chatgpt_cli }}"
-  register: codex_chatgpt
+# Codex ships inside ChatGPT.app, which keeps it current by updating itself, so this role
+# installs the `chatgpt` cask and links `codex` to that copy: no codex cask, no npm. The codex
+# cask ran `codex completion` on every upgrade, and on some hosts that first launch stopped on
+# a Gatekeeper prompt nobody was there to click (2026-10-08, DECISIONS Q197). bin/codex is the
+# entrypoint the bundle's codex-package.json names. The cask has an Intel (x64) build with
+# codex at the same path, so this runs on every host, mac-mini-2018 included (DECISIONS Q200).
+- name: Install ChatGPT.app, which carries the Codex CLI
+  community.general.homebrew_cask:
+    name: chatgpt
+    state: present
 
 - name: Link codex to the copy inside ChatGPT.app
   ansible.builtin.file:
@@ -17,14 +16,12 @@
     dest: "{{ lookup('env', 'HOME') }}/.local/bin/codex"
     state: link
     force: true
-  when: codex_chatgpt.stat.exists
 
 # After the link, so `codex` never goes missing between the two.
 - name: Remove the Codex cask
   community.general.homebrew_cask:
     name: codex
     state: absent
-  when: codex_chatgpt.stat.exists
 
 # --- open-pstack --------------------------------------------------------------
 # The ponytail role's codex.yml, one plugin's worth; its comments carry the reasoning. The

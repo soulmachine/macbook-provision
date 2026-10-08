@@ -103,7 +103,7 @@ pre-commit run --all-files
 | Role | 说明 |
 |------|------|
 | host-facts | 机器判定（`mac_family` / `mac_is_vm` / `mac_is_always_on`）；不装任何软件 |
-| homebrew | 通用 Homebrew 包与 GUI 应用：git、curl、wget、jq、ripgrep、fd、tree、htop、docker、ffmpeg、gh、gnupg、tmux；cask 含 claude、gemini、pearcleaner、sublime-text、visual-studio-code，Apple Silicon 另加 chatgpt；`brew upgrade` 失败时记录下来、在 play 末尾才报错，不阻断后面的 role |
+| homebrew | 通用 Homebrew 包与 GUI 应用：git、curl、wget、jq、ripgrep、fd、tree、htop、docker、ffmpeg、gh、gnupg、tmux；cask 含 claude、gemini、pearcleaner、sublime-text、visual-studio-code（chatgpt 归 codex role）；`brew upgrade` 失败时记录下来、在 play 末尾才报错，不阻断后面的 role |
 | github | gh CLI（brew）；若环境中有 `GITHUB_TOKEN`（由 `gh-token-fleet` 写入 `~/.zshenv`，不再来自 `.env`），另外配置 SSH key 与 git 签名 |
 | oh-my-zsh | Zsh 框架及插件管理 |
 | direnv | 目录级环境变量管理 |
@@ -201,7 +201,7 @@ ioreg `BatteryInstalled` 的保守规则：那条规则要求硬件明确报告"
 | 工具 | 安装渠道 | 落地位置 / 命令名 |
 |------|----------|-------------------|
 | claude-code | 官方 `install.sh` | `~/.local/bin/claude` |
-| codex | **ChatGPT.app 自带**（`chatgpt` cask，仅 Apple Silicon） | `~/.local/bin/codex` → `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`，随 ChatGPT.app 自更新 |
+| codex | **ChatGPT.app 自带**（`chatgpt` cask，由 codex role 安装，Apple Silicon 与 Intel 都装） | `~/.local/bin/codex` → `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`，随 ChatGPT.app 自更新 |
 | opencode | npm 全局 `opencode-ai` | 命令 `opencode` |
 | kimi-code | 官方 `install.sh`（curl \| bash） | `~/.kimi-code/bin/kimi`，命令是 **`kimi`** 而不是 `kimi-code` |
 | omp | bun 全局 `@oh-my-pi/pi-coding-agent` | `~/.bun/bin/omp`，命令是 **`omp`** |
@@ -212,8 +212,9 @@ ioreg `BatteryInstalled` 的保守规则：那条规则要求硬件明确报告"
 
 `codex` 不单独装（既不用 cask 也不用 npm）是刻意的：ChatGPT.app 里本来就带了一份并会自更新；
 codex cask 每次升级都会运行 `codex completion`，在部分主机上这次首次启动会卡在没人点的
-Gatekeeper 弹窗上（DECISIONS Q197）。role 会卸载旧的 codex cask。Intel 主机没有 ChatGPT.app，
-role 不动那里已有的 codex。role 表里的「依赖 nodejs」指的是运行期依赖，不是安装渠道。
+Gatekeeper 弹窗上（DECISIONS Q197）。role 会先装 `chatgpt` cask、再卸载旧的 codex cask。
+`chatgpt` cask 有 Intel（x64）版，codex 在包里的路径相同，所以 mac-mini-2018 也一样处理（DECISIONS Q200）。
+role 表里的「依赖 nodejs」指的是运行期依赖，不是安装渠道。
 
 #### 每次运行都会被覆盖的配置文件
 
