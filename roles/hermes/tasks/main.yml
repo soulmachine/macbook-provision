@@ -12,6 +12,10 @@
   ansible.builtin.include_tasks: install.yml
   when: mac_is_always_on | bool
 
+- name: Point hermes at the shared agent instructions
+  ansible.builtin.include_tasks: instructions.yml
+  when: mac_is_always_on | bool
+
 # Defaulted as belt-and-braces: the `host-facts` dependency always defines
 # `mac_family`, so the default only covers a play that reaches this task
 # without that role. Safe for a display string, never for the gate above.

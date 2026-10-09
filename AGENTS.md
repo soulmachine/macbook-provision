@@ -20,7 +20,7 @@ ssh -o BatchMode=yes -o ConnectTimeout=15 <host> \
 
 - **Runs per-host only.** `inventory` holds only `127.0.0.1 ansible_connection=local`, so each host
   provisions itself. Keep it that way, and reach other hosts with the ssh command above. The roles read
-  `lookup('env', 'HOME')` in 99 places across 27 roles (`scripts/check-home-lookup-count.sh` checks
+  `lookup('env', 'HOME')` in 103 places across 27 roles (`scripts/check-home-lookup-count.sh` checks
   this), with zero uses of `ansible_env.HOME`. Ansible evaluates every `lookup()` on the control node,
   so a fan-out writes one host's `$HOME` and `.env` secrets onto every target. The nightly sweep
   (`update-packages` on mac-mini-m6) therefore runs the playbook on each host over ssh.

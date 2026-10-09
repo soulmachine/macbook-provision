@@ -2138,3 +2138,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Frank reviewed the proposal and answered its questions without objecting to the layout. `roles/<name>/README.md` is Ansible's convention for role docs. The heading "Self-update tasks: diff state, don't grep output" stays in the root because about 20 role comments cite it there. The "in N places across M roles" sentence stays in the root because `scripts/check-home-lookup-count.sh` reads it from AGENTS.md.
 **Outcome:** applied. All pre-commit hooks pass (ansible-lint, README role table, lookup count 99/27, skills orphan self-test).
 **Ref:** (pending)
+
+## Q205 — interactive/agents-md-refactor — tradeoff
+
+**Question:** hermes was linked to `~/.agents/AGENTS.md` by hand on 2026-10-09 (coding-agent Q295). How should a new host get that link?
+**Options considered:** a task in the hermes role / a feature in agent-sync, which already links codex, pi and omp / leave it manual
+**Chosen:** `roles/hermes/tasks/instructions.yml`, included from `main.yml` under the same `mac_is_always_on` gate as the install. It links `~/.hermes/SOUL.md` to `../.agents/AGENTS.md`, the same relative target as the hand-made links. It runs only when `~/.agents/AGENTS.md` exists, so a host that sync-agentsmd does not reach yet is skipped, not given a dangling link. A regular `SOUL.md` is first renamed to `SOUL.md.bak-<UTC timestamp>`, because it may be a persona someone wrote.
+**Decided-by:** agent (Frank chose the role over agent-sync)
+**Justification:** The role is the only place that installs hermes, so it is the one place sure to run on a new hermes host. agent-sync is a separate tool with its own release cycle. MacBooks get no hermes from this playbook, so the gate loses nothing. Verified: a scratch-HOME run covered all three cases (no shared file: skipped; regular SOUL.md: kept as a backup, then linked; second run: no change). Two include_role runs on m6 gave 1 change, then 0. The one change was `hermes update` moving the checkout at 13:21, and the existing link kept its 12:57 timestamp, so the link also survives a real update.
+**Outcome:** applied. All pre-commit hooks pass; the lookup count is now 103/27.
+**Ref:** (pending)
