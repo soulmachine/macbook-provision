@@ -3,7 +3,7 @@
 # Twelve roles here are hyphenated — claude-code, host-facts, agent-reach,
 # multica-cli, oh-my-zsh, playwright-cli and the rest — and the names are load
 # bearing: they match the upstream tool each role installs, they appear in
-# main.yml, in every meta/main.yml `dependencies:`, throughout AGENTS.md, and in
+# main.yml, in every meta/main.yml `dependencies:`, throughout AGENTS.md and docs/, and in
 # the documented ad-hoc form `ansible localhost -m include_role -a name=host-facts`.
 # Renaming twelve directories to satisfy a cosmetic rule would touch all of that
 # for no functional gain, so the rule is skipped rather than obeyed. Every other

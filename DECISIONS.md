@@ -2118,3 +2118,23 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Research found no skill that beats openclaw's at its job. gstack, notque, AsafDafna and T0mSIlver all derive from it. openclaw's copy calls repo-only scripts (`run-vitest.mjs`, `check-changed.mjs`, `$crabbox`, `$autoreview`). T0mSIlver keeps its rules, removes that tooling, and adds superpowers' and mattpocock's authoring rules. gstack's version needs gstack itself. supertest and mutation-testing make tests stronger; they do not prune them. The skill goes through the role, not a one-off `skills add`, so every host gets it and the orphan detector stays quiet. Risk accepted: upstream has 1★, and the nightly `skills add` takes whatever it pushes.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q203 — interactive/agents-md-split — gate-resolution
+
+**Question:** The `agent-reach` role ran native `claude -p`, but `~/.agents/docs/agent-clis.md` says unattended work on a Mac must use `claude-gw`, and the nightly sweep runs this playbook over non-interactive ssh. Which wins?
+**Options considered:** switch the role to `claude-gw` / keep `claude` and document an exception
+**Chosen:** `claude-gw -p "…"` in both the install and update tasks, without the role's own `--dangerously-skip-permissions --effort xhigh` (the wrapper already passes them). The role comment, `meta/main.yml` comment and `roles/agent-reach/README.md` say why.
+**Decided-by:** human
+**Justification:** Measured on mac-mini-m2 over non-interactive ssh: native `claude -p` printed "Not logged in · Please run /login", while `claude-gw -p` answered. `claude-gw` exists on all eight playbook hosts. It is installed by `gateway/cliproxy-tier`, not by this playbook, so a fresh host fails this task until `cliproxy-tier <host>` has run on m2. That failure is loud, and the role comment records it.
+**Outcome:** applied. `ansible localhost -m ansible.builtin.command -a 'claude-gw -p …'` over ssh on m2 returned OK. The role alone on m6 converged: `changed=0 failed=0` (install and update skipped, as expected on a current host).
+**Ref:** (pending)
+
+## Q204 — interactive/agents-md-split — deviation
+
+**Question:** How should the 555-line AGENTS.md be split for progressive disclosure?
+**Options considered:** role sections under `docs/roles/` / role sections as `roles/<name>/README.md`; keep the self-update rule in `docs/` only / keep its heading in the root
+**Chosen:** A 39-line root (description, commands, three every-task rules, a "Read before you act" table). `docs/writing-roles.md` (adding a role, shared conventions, self-update details), `docs/host-facts.md`, `docs/secrets.md`, and `roles/{agent-reach,paseo,ponytail,tailscale,typesafe}/README.md`. Deleted: boilerplate, the OpenClaw and Tailscale-PAT-tripwire history, the 2026-10-04 host-classification table, "Role Structure" and "Common Task Patterns", most of the bootstrap.sh paragraph, the control-node-safe paragraph, and every census count that had drifted (vars files 10→12, "role 31 of 44", "seven roles later"). Nine pointers in role comments and config files were updated.
+**Decided-by:** agent
+**Justification:** Frank reviewed the proposal and answered its questions without objecting to the layout. `roles/<name>/README.md` is Ansible's convention for role docs. The heading "Self-update tasks: diff state, don't grep output" stays in the root because about 20 role comments cite it there. The "in N places across M roles" sentence stays in the root because `scripts/check-home-lookup-count.sh` reads it from AGENTS.md.
+**Outcome:** applied. All pre-commit hooks pass (ansible-lint, README role table, lookup count 99/27, skills orphan self-test).
+**Ref:** (pending)

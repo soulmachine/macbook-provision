@@ -18,8 +18,8 @@
 # Ansible evaluates every lookup on the CONTROL node, so a lookup here would let
 # the control node's hardware decide what a target installs — a worse bug than
 # the `lookup('env', 'HOME')` debt AGENTS.md already tracks, and one with no
-# `ansible_*` equivalent to migrate to. See "Runs per-host only, never from a
-# control node".
+# `ansible_*` equivalent to migrate to. See AGENTS.md
+# "Runs per-host only".
 #
 # `set_fact` rather than `vars/main.yml` is also load-bearing: role vars are
 # scoped to the role, host facts are global — which is what lets hermes read

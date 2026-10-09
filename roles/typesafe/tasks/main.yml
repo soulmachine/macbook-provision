@@ -58,7 +58,7 @@
 
 # changed_when lives on this `find` rather than on a following `debug`: the minimal callback
 # strips everything but `msg` from a debug result before labelling it, so a debug's verdict
-# always prints SUCCESS under `ansible localhost -m include_role` (AGENTS.md, ponytail role).
+# always prints SUCCESS under `ansible localhost -m include_role` (docs/writing-roles.md).
 - name: Check whether the typesafe-ai skill was updated
   ansible.builtin.find:
     paths: "{{ typesafe_skill_dir }}"

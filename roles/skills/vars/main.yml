@@ -44,7 +44,7 @@ skills_selfauthored_repos:
 # both, so the change adopts the existing entries rather than duplicating them.
 #
 # The last three were installed by hand and had gone stale the same way — `log-decisions`
-# is the skill ~/github.com/AGENTS.md mandates and was frozen at 2026-08-11. Each ships
+# is the skill ~/.agents/AGENTS.md mandates and was frozen at 2026-08-11. Each ships
 # exactly one skill upstream, already a CLI-owned real directory in the store, so adopting
 # them changes nothing but who refreshes them. `lavish-design` stays behind as an orphan
 # store directory: it is in the lock but no longer shipped, and `skills add` never deletes.

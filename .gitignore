@@ -5,6 +5,6 @@ roles/elliotweiser.osx-command-line-tools/
 
 # Codex's interactive `/import` writes a byte-identical duplicate of the TRACKED
 # .claude/skills/ansible-idempotency-check/SKILL.md, which is the canonical copy
-# and the one AGENTS.md refers to.
+# and the one docs/writing-roles.md refers to.
 .agents/
 

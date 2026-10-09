@@ -93,7 +93,7 @@
          | map(attribute='item') | map('to_json') | list }}
 
 # The play-level failure below is unreachable from `ansible localhost -m include_role
-# -a name=skills`, because post_tasks only run in a full play — the same ceiling AGENTS.md
+# -a name=skills`, because post_tasks only run in a full play — the same ceiling docs/host-facts.md
 # records for `host-facts` and pre_tasks. So say it here too. A single-role run is interactive
 # with someone reading the output, which is the one case where a message is enough.
 - name: Report pinned skills that could not be installed
@@ -308,8 +308,8 @@
 # Installing and adopting fills the STORE; nothing so far fans it out. `skills add` writes the
 # per-agent farms as a side effect of the agents it is told about, but the Commons is also fed by
 # `agent-sync adopt` above and by skills retired elsewhere, and only `agent-sync sync` reconciles
-# the farms with it — which is why this repo's own AGENTS.md says to run it "after adding or
-# removing any skill". Until now no role ever did: `roles/agent-sync` taps, trusts and installs the
+# the farms with it — which is why ~/.agents/docs/skills.md says to run it "after every
+# skill add or removal". Until now no role ever did: `roles/agent-sync` taps, trusts and installs the
 # binary and stops there, so a rebuilt host got agent-sync and never invoked it, leaving the
 # symlink farms and the instruction wiring (codex's AGENTS.md symlink, opencode's `instructions`
 # entry, gemini's `context.fileName`) to whoever remembered to run it by hand.
