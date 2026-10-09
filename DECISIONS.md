@@ -2098,3 +2098,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** (pending)
 **Supersedes:** Q199 — its premise that ChatGPT.app has no Intel build was wrong.
+
+## Q201 — interactive/backpass-gw — tradeoff
+
+**Question:** Frank chose Claude through the gateway for backpass in `~/coding-agent` and `~/personal-agent`. personal-agent had its own `scripts/backpass-gw.sh` for that. Where should one shared wrapper live, and on which hosts?
+**Options considered:** a copy per repo / one repo calls the other's script / a fourth wrapper from `cliproxy-tier-host.py`, on every host or only where `backpass` resolves.
+**Chosen:** A fourth wrapper, `backpass-gw`, written on every host like `claude-gw`. It runs `backpass` with the same two Anthropic variables and no `cd`.
+**Decided-by:** agent
+**Justification:** The wrappers already live here, and key rotation already rewrites them. backpass finds the repo root itself, so the old script's `cd` was the only repo-specific line. backpass runs only on m6, but `backpass` sits in mise's Node global `bin`, which a non-interactive ssh shell may lack (the "resolve binaries on disk" lesson), so a `which` gate could skip m6 itself. A 4-line wrapper on hosts without backpass costs nothing; there it fails with "command not found". The agent pins are not here: they live in m6's `~/.config/backpass/config.json` (personal-agent Q96).
+**Outcome:** applied on m6 only, by running this script there: it changed only `~/.local/bin/backpass-gw`. Other hosts get the wrapper at their next `cliproxy-tier` run. Verified: a `backpass-gw analyze` run reached the gateway as mac-mini-m6.
+**Ref:** (pending); personal-agent Q96, coding-agent Q277

@@ -2,7 +2,7 @@
 """cliproxy-tier-host — per-host half of cliproxy-tier. Runs ON the target host.
 
 Optional tier (Claude Code, Codex, kimi): native login is the default, the gateway is
-opt-in via claude-gw / codex-gw / kimi-gw. Mandatory tier (pi, omp, hermes, opencode):
+opt-in via claude-gw / codex-gw / kimi-gw (backpass-gw for backpass's Claude passes). Mandatory tier (pi, omp, hermes, opencode):
 gateway only, vendor logins removed. Idempotent: every step checks before it writes,
 backs up to <file>.bak-<ts> (mode 600) and prints one status line at the end.
 The key comes from this host's own environment (CLIPROXY_API_KEY), never over the wire.
@@ -76,6 +76,9 @@ wrappers = {
                 '# codex may live only in mise shims (dev-server-frank), which non-interactive shells lack.\n'
                 'command -v codex >/dev/null 2>&1 || export PATH="$HOME/.local/share/mise/shims:$PATH"\n'
                 '# -p before the subcommand: `codex-gw --yolo exec …` still works.\nexec codex -p cliproxy --yolo -c model_reasoning_effort=xhigh "$@"\n',
+    # backpass cannot route its acpx Claude passes itself; the agent pins live in ~/.config/backpass/config.json.
+    "backpass-gw": hdr + ': "${CLIPROXY_API_KEY:?}" "${CLIPROXY_BASE_URL:?}"\n'
+                   'exec env ANTHROPIC_BASE_URL="$CLIPROXY_BASE_URL" ANTHROPIC_AUTH_TOKEN="$CLIPROXY_API_KEY" backpass "$@"\n',
 }
 kimi_bin = which("kimi") or (str(H / ".kimi-code/bin/kimi") if (H / ".kimi-code/bin/kimi").exists() else None)
 if kimi_bin:
