@@ -1,0 +1,23 @@
+---
+# OpenCLI (@jackwener/opencli) is agent-reach's X fallback: `opencli twitter search`
+# reads through the logged-in Chrome, while twitter-cli 0.8.5's search returns HTTP 404
+# (2026-10-09). agent-reach's install doc adds it only on a fresh install, and an npm
+# global lives inside mise's Node directory, so a Node upgrade drops it. Installing it here
+# puts it back on the next run. Its Chrome extension is a one-time click, not provisioned.
+# Same version diff as playwright-cli: `npm install -g` prints the same line either way.
+- name: Read the installed OpenCLI version
+  ansible.builtin.command: npm ls -g --depth=0 --json @jackwener/opencli
+  register: opencli_before
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Install OpenCLI globally
+  ansible.builtin.command: npm install -g @jackwener/opencli@latest
+  changed_when: false
+
+- name: Check whether OpenCLI changed
+  ansible.builtin.command: npm ls -g --depth=0 --json @jackwener/opencli
+  register: opencli_after
+  changed_when: opencli_after.stdout != opencli_before.stdout
+  check_mode: false

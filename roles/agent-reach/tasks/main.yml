@@ -73,3 +73,6 @@
     - agent_reach_probe.rc == 0
     - "'有更新' in (agent_reach_check.stdout | default(''))"
   changed_when: true
+
+- name: Install OpenCLI
+  ansible.builtin.import_tasks: opencli.yml

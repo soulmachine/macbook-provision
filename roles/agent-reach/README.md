@@ -20,3 +20,6 @@
 - **Optional channels are not provisioned.** Twitter, 小红书, Reddit and others need cookies or a
   Chrome-extension click, and headless `claude -p` cannot answer the doc's "which channels?" prompt.
   Only the zero-config core channels are set up. Run `agent-reach doctor` interactively for the rest.
+- **OpenCLI is installed separately** (`tasks/opencli.yml`). It is agent-reach's X fallback, and
+  agent-reach's own installer adds it only on a fresh install, so a Node upgrade through mise would
+  drop it for good. Its Chrome extension still needs one manual click.

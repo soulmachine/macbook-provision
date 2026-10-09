@@ -2169,3 +2169,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** (this commit)
 **Supersedes:** Q206 — the key is back in `.env`
+
+## Q208 — interactive/whats-next — tradeoff
+
+**Question:** OpenCLI 1.8.8 was installed by hand on mac-mini-m6 on 2026-10-09 as agent-reach's X fallback. How does it survive a Node upgrade, which empties mise's global npm directory?
+**Options considered:** leave it to agent-reach's installer / a new `opencli` role / three tasks in the `agent-reach` role
+**Chosen:** Tasks in the `agent-reach` role, in `roles/agent-reach/tasks/opencli.yml`, imported at the end of `tasks/main.yml`. They copy `playwright-cli`'s version diff: read `npm ls -g --json`, run `npm install -g @jackwener/opencli@latest` with `changed_when: false`, and read the version again.
+**Decided-by:** agent
+**Justification:** agent-reach's installer adds OpenCLI only when agent-reach itself is missing, so a Node upgrade drops OpenCLI and nothing restores it. OpenCLI serves only agent-reach, so a separate role would add a README row and an ordering check for no gain. A separate task file can be tested without the role's `claude-gw` update step. Tested on m6: two runs with 1.8.8 installed reported `changed=0`. After `npm uninstall -g`, a run reported `changed=1`, and `opencli twitter search` worked again. `@latest` follows the repo's other npm roles; 1.8.8 (2026-09-23) is the latest release today.
+**Outcome:** applied
+**Ref:** (this commit)
