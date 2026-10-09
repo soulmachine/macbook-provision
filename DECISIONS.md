@@ -2148,3 +2148,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The role is the only place that installs hermes, so it is the one place sure to run on a new hermes host. agent-sync is a separate tool with its own release cycle. MacBooks get no hermes from this playbook, so the gate loses nothing. Verified: a scratch-HOME run covered all three cases (no shared file: skipped; regular SOUL.md: kept as a backup, then linked; second run: no change). Two include_role runs on m6 gave 1 change, then 0. The one change was `hermes update` moving the checkout at 13:21, and the existing link kept its 12:57 timestamp, so the link also survives a real update.
 **Outcome:** applied. All pre-commit hooks pass; the lookup count is now 103/27.
 **Ref:** (pending)
+
+## Q206 — interactive/guide-review — gate-resolution
+
+**Question:** `TYPESAFE_API_KEY` lived in each Mac's `.env`, so the `dotenv` role wrote it inside the managed `~/.zshenv` block. `jev-fleet` on m6 rotates the jev keys by rewriting the first `export TYPESAFE_API_KEY=` line on each host, which was that in-block line, so the next playbook run put the old value back. Where should the key live?
+**Options considered:** keep it in `.env` and rotate through `.env` / move it out of `.env`, below the block, owned by `jev-fleet`
+**Chosen:** Out of `.env`, as `GITHUB_TOKEN` was moved for `gh-token-fleet`. On the seven Macs that had it (m2, macbook-air, mac-mini-2018, mac-studio-m3, macbook-pro-nickel, archs-mac-mini, dev-server-frank-lume), the line left `.env`, and the `~/.zshenv` line moved from inside the block to just below it, with a comment naming its owner. m6 has no `.env`; its line moved the same way. `docs/secrets.md`, the typesafe README, the role's skip message and `.env.example` now say so. The `typesafe` role still reads the key from the environment.
+**Decided-by:** human
+**Justification:** Frank chose it over documenting rotation through `.env`. Checked on every host: the value hash was identical before and after, `zsh -n ~/.zshenv` passed, a new zsh still loads the key, and each `.env` still holds three assignments, so the role's empty-parse assert cannot fire. `ansible-playbook --syntax-check` passes.
+**Outcome:** applied
+**Ref:** (this commit); coding-agent guide review

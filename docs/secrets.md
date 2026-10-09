@@ -9,8 +9,10 @@ different tailnets carry different keys. That divergence is correct, not drift t
 - The `tailscale` role reads `TAILSCALE_AUTH_KEY` (to run `tailscale up`) and, optionally, a
   `devices:core` OAuth client as `TAILSCALE_OAUTH_CLIENT_ID` + `TAILSCALE_OAUTH_CLIENT_SECRET` (to
   disable node-key expiry). See `roles/tailscale/README.md`.
-- The `typesafe` role reads `TYPESAFE_API_KEY`. `GITHUB_SSH_KEY` is optional and unset across the
-  fleet.
+- **`TYPESAFE_API_KEY` is not in `.env` on any host** (since 2026-10-09). `~/.local/bin/jev-fleet`
+  on mac-mini-m6 owns it with the other jev keys and exports it in `~/.zshenv` below the `dotenv`
+  managed block. A copy in `.env` made the `dotenv` role undo each rotation. The `typesafe` role reads
+  it from the environment. `GITHUB_SSH_KEY` is optional and unset across the fleet.
 - **`GITHUB_TOKEN` is not in `.env` on any host** (since 2026-10-03). `~/.local/bin/gh-token-fleet`
   owns the PAT and exports it in `~/.zshenv` below the `dotenv` managed block. A copy in `.env` made
   the two overwrite each other. See `~/.agents/docs/github-auth.md`. The `github`, `bun` and `mise`
