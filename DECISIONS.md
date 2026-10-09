@@ -2158,3 +2158,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Frank chose it over documenting rotation through `.env`. Checked on every host: the value hash was identical before and after, `zsh -n ~/.zshenv` passed, a new zsh still loads the key, and each `.env` still holds three assignments, so the role's empty-parse assert cannot fire. `ansible-playbook --syntax-check` passes.
 **Outcome:** applied
 **Ref:** (this commit); coding-agent guide review
+
+## Q207 — interactive/guide-review — deviation
+
+**Question:** Frank asked to move `TYPESAFE_API_KEY` back into macbook-provision's `.env`, minutes after Q206 moved it out. How is it restored?
+**Options considered:** restore by hand in the role's format / re-run the `dotenv` role on each host
+**Chosen:** By hand. On the seven Macs with a `.env`, `TYPESAFE_API_KEY=<value>` went back at the end of `.env`. On those seven and on m6, the `~/.zshenv` line and its owner comment left the spot below the block, and `export TYPESAFE_API_KEY='<value>'` went back as the block's last line, as the role renders it. The four files Q206 edited (`.env.example`, `docs/secrets.md`, the typesafe README and the role's skip message) are back to their text before `a11406b`.
+**Decided-by:** human (the reversal) / agent (the method)
+**Justification:** Every host ended with the same line numbers as before Q206, the same value hash, four `.env` assignments, a passing `zsh -n`, and the key loaded in a new zsh. `ansible localhost -m include_role -a name=dotenv --check` on m2 reported no change, so the hand-made block matches the role's output.
+**Outcome:** applied
+**Ref:** (this commit)
+**Supersedes:** Q206 — the key is back in `.env`

@@ -77,9 +77,9 @@
   ansible.builtin.debug:
     msg: >-
       TYPESAFE_API_KEY is empty — skipping the Jev plugins (the typesafe-ai skill above
-      needs no key and is installed either way). Run ~/.local/bin/jev-fleet
-      <host> on mac-mini-m6, which exports it in ~/.zshenv (docs/secrets.md), then
-      re-run.
+      needs no key and is installed either way). Add it to the repo .env
+      (see .env.example), then re-run; the dotenv role exports it to ~/.zshenv so
+      non-interactive runs see it too.
   when: typesafe_api_key | length == 0
 
 - name: Install the Jev plugins into Claude Code

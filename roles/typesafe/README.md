@@ -19,10 +19,10 @@ Facts that are easy to get wrong:
   hooks are on the first time fast-jev loads. Not the keychain: it is locked in the non-interactive
   ssh sessions the fleet is provisioned from, and a value set through an install-time flag cannot be
   rotated by re-running.
-- **The plugins gate on the key; the skill does not.** `TYPESAFE_API_KEY` comes from `~/.zshenv`,
-  where `~/.local/bin/jev-fleet` on mac-mini-m6 exports it below the `dotenv` block, never from `.env`
-  (see `docs/secrets.md`). Without it, the role reports why and installs no plugins, so a host gets
-  them only after `jev-fleet` has run there. The skill is guidance for writing code against TypeSafe, useful before a key exists, and
+- **The plugins gate on the key; the skill does not.** `TYPESAFE_API_KEY` comes from the repo `.env`,
+  so it reaches a non-interactive run only through the `dotenv` role's `~/.zshenv` block. Without it,
+  the role reports why and installs no plugins, so a host gets them only after its `.env` carries the
+  key. The skill is guidance for writing code against TypeSafe, useful before a key exists, and
   `roles/skills` installed it unconditionally on every host, so gating it would have silently narrowed
   where it lands.
 - **The skill install is unguarded and diffed by checksum.** No `creates:`: re-running
