@@ -134,6 +134,12 @@ skills_sources_partial:
     skills: [unslop]
   - source: cursor/plugins/cursor-team-kit
     skills: [thermo-nuclear-code-quality-review]
+  # A portable fork of openclaw's `test-audit`: the gate for new tests, plus evidence-backed
+  # pruning of tests that cannot fail. openclaw's own copy calls its repo-only scripts. 15
+  # skills upstream; only this one is wanted. 1★ upstream, so the nightly refresh takes
+  # whatever it pushes. See DECISIONS.md Q202.
+  - source: T0mSIlver/skills
+    skills: [test-audit]
 
 # Partial sources that a DIFFERENT role installs. The orphan detector below groups the lock
 # by source and flags anything no source accounts for, so without this every such skill reads

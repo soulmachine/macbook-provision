@@ -2108,3 +2108,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The wrappers already live here, and key rotation already rewrites them. backpass finds the repo root itself, so the old script's `cd` was the only repo-specific line. backpass runs only on m6, but `backpass` sits in mise's Node global `bin`, which a non-interactive ssh shell may lack (the "resolve binaries on disk" lesson), so a `which` gate could skip m6 itself. A 4-line wrapper on hosts without backpass costs nothing; there it fails with "command not found". The agent pins are not here: they live in m6's `~/.config/backpass/config.json` (personal-agent Q96).
 **Outcome:** applied on m6 only, by running this script there: it changed only `~/.local/bin/backpass-gw`. Other hosts get the wrapper at their next `cliproxy-tier` run. Verified: a `backpass-gw analyze` run reached the gateway as mac-mini-m6.
 **Ref:** (pending); personal-agent Q96, coding-agent Q277
+
+## Q202 — interactive/test-audit-skill — tradeoff
+
+**Question:** Frank asked whether GitHub has a better test-pruning skill than openclaw's `test-audit`, and which one the fleet should carry.
+**Options considered:** openclaw's skill as-is / T0mSIlver/skills `test-audit` (a portable MIT fork) / gstack `/test-audit` / supertest / Trail of Bits `mutation-testing` / a fork in `soulmachine/skills`.
+**Chosen:** Pin T0mSIlver/skills `test-audit` as a partial source in `roles/skills/vars/main.yml`. Add no companion skill for now.
+**Decided-by:** human
+**Justification:** Research found no skill that beats openclaw's at its job. gstack, notque, AsafDafna and T0mSIlver all derive from it. openclaw's copy calls repo-only scripts (`run-vitest.mjs`, `check-changed.mjs`, `$crabbox`, `$autoreview`). T0mSIlver keeps its rules, removes that tooling, and adds superpowers' and mattpocock's authoring rules. gstack's version needs gstack itself. supertest and mutation-testing make tests stronger; they do not prune them. The skill goes through the role, not a one-off `skills add`, so every host gets it and the orphan detector stays quiet. Risk accepted: upstream has 1★, and the nightly `skills add` takes whatever it pushes.
+**Outcome:** applied
+**Ref:** (pending)
