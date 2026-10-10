@@ -2179,3 +2179,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** agent-reach's installer adds OpenCLI only when agent-reach itself is missing, so a Node upgrade drops OpenCLI and nothing restores it. OpenCLI serves only agent-reach, so a separate role would add a README row and an ordering check for no gain. A separate task file can be tested without the role's `claude-gw` update step. Tested on m6: two runs with 1.8.8 installed reported `changed=0`. After `npm uninstall -g`, a run reported `changed=1`, and `opencli twitter search` worked again. `@latest` follows the repo's other npm roles; 1.8.8 (2026-09-23) is the latest release today.
 **Outcome:** applied
 **Ref:** (this commit)
+
+## Q209 — interactive/node-hook-path — tradeoff
+
+**Question:** A `claude-gw -p` run over ssh on mac-mini-2018 ended with "SessionEnd hook … `node`: command not found". The hook belongs to the openai-codex Claude plugin and calls bare `node`. A non-interactive ssh shell reads only `~/.zshenv`, and `shell-startup.md` keeps `PATH` edits out of that file. How should `node` reach the hook?
+**Options considered:** add mise's shims to `PATH` in `~/.zshenv` (against `shell-startup.md`) / a guard in the `claude-gw` wrapper, like the one `codex-gw` already has / remove the plugin from the two hosts
+**Chosen:** `cliproxy-tier-host.py` writes one more line into `claude-gw`: when `node` is not on `PATH`, it appends `~/.local/share/mise/shims`. Rolled out with `cliproxy-tier macbook-air` and `cliproxy-tier mac-mini-2018`, the only two hosts that have both the plugin and no `node` on the ssh `PATH`. The other hosts get the line on the next full `cliproxy-tier` run. Until then nothing changes for them, because `node` is already on their ssh `PATH` or no hook needs it.
+**Decided-by:** human (asked to fix it); agent (the mechanism and the scope)
+**Justification:** A survey on 2026-10-09 found `node` missing from the ssh `PATH` on macbook-air, mac-mini-2018, dev-server-frank and m6. Only the first two have the openai-codex plugin. The other hosts already reach `node` four different ways: hermes's `~/.local/bin/node` link, a mise path or Homebrew in `~/.zshenv`, and `/usr/bin/node` on supermicro. A wrapper guard changes no startup file, matches the `codex-gw` precedent, and only acts when `node` is missing. Appending, not prepending, keeps each host's own tools first, so mise's other shims (python, go) never shadow them. Checked: the rendered wrapper passes `zsh -n` and `bash -n`, and with a bare `PATH` the guard resolves `node` to mise's shim. Native `claude` over ssh is not covered, but on a Mac it cannot log in over ssh anyway (agent-clis.md).
+**Outcome:** applied
+**Ref:** (this commit)
