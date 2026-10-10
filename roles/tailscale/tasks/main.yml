@@ -322,11 +322,21 @@
             method: GET
             headers:
               Authorization: "Bearer {{ tailscale_api_token }}"
-            status_code: [200]
+            # 403/404: the OAuth client belongs to another tailnet than this node,
+            # as on archs-mac-mini, whose client is ArchAuto's but whose node is on Frank's tailnet.
+            status_code: [200, 403, 404]
           register: _tailscale_device
           changed_when: false
           check_mode: false
           no_log: true
+
+        - name: Report that the OAuth client cannot see this node
+          ansible.builtin.debug:
+            msg: >-
+              Skipping key-expiry: the OAuth client got HTTP {{ _tailscale_device.status }}
+              for this node, so the node is on another tailnet than the client.
+              Manage its key expiry in that tailnet's admin console.
+          when: _tailscale_device.status != 200
 
         - name: Disable key expiry for this node
           ansible.builtin.uri:
@@ -339,4 +349,6 @@
               keyExpiryDisabled: true
             status_code: [200]
           no_log: true
-          when: not (_tailscale_device.json.keyExpiryDisabled | default(false) | bool)
+          when:
+            - _tailscale_device.status == 200
+            - not (_tailscale_device.json.keyExpiryDisabled | default(false) | bool)
