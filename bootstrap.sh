@@ -143,5 +143,6 @@ Next steps:
          Ctrl-R opens atuin, Tab opens the fzf picker
        - time zsh -i -c exit   # expect ~100-300 ms (the oh-my-zsh tax)
   3. Cross-machine history sync:  atuin login && atuin sync
-  4. Credentials go in ~/.zshenv (chmod 600); PATH edits in ~/.zprofile.
+  4. Credentials go in ~/.zshenv (chmod 600); PATH edits in ~/.zprofile, except a folder
+     appended last for ssh commands (~/.agents/docs/shell-startup.md).
 EOF
