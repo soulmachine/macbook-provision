@@ -72,7 +72,8 @@ skills_selfauthored_repos:
 #     `release-plannotator`, `review-renovate`, `update-deps`). Its six store directories
 #     were deleted fleet-wide on 2026-09-15 (Q88), so a line here would *install* those
 #     four rather than adopt anything. Claude's `plannotator-annotate`/`-last`/`-review`
-#     survive as per-agent variants and are not managed by this role.
+#     variants and the plannotator program were removed from the fleet on 2026-10-09
+#     (coding-agent Q329-Q331), with backups in `~/backups/` on m2 and macbook-air.
 skills_sources:
   - jimliu/baoyu-skills
   - mattpocock/skills
