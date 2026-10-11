@@ -53,6 +53,7 @@
     - obsidian
     - cloudflare
     - multica-cli
+    - purelymail
     - tailscale
     - apple-container
     - role: moshi
