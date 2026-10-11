@@ -1,8 +1,8 @@
 #!/bin/bash
-# Re-apply the CLIProxyAPI limits patches to Omarchy's agent usage collectors
-# (coding-agent Q365, Q366). /etc/pacman.d/hooks/95-omarchy-cliproxy-usage.hook
-# runs this each time the omarchy package rewrites one of them. Each patch
-# names its target in its +++ line.
+# Re-apply the CLIProxyAPI patches to Omarchy's agent launcher (coding-agent
+# Q374) and its agent usage collectors (Q365, Q366).
+# /etc/pacman.d/hooks/95-omarchy-cliproxy-usage.hook runs this each time the
+# omarchy package rewrites one of them. Each patch names its target in its +++ line.
 set -uo pipefail
 status=0
 for patch_file in /usr/local/share/omarchy-cliproxy/*.patch; do
@@ -12,7 +12,7 @@ for patch_file in /usr/local/share/omarchy-cliproxy/*.patch; do
   elif patch --dry-run --forward --silent "$target" "$patch_file" >/dev/null 2>&1; then
     patch --forward --silent --no-backup-if-mismatch "$target" "$patch_file" && echo "omarchy-cliproxy: patched $target"
   else
-    echo "omarchy-cliproxy: $patch_file no longer applies to $target, so its Agents bar tab falls back to the login message. Rebase the patch." >&2
+    echo "omarchy-cliproxy: $patch_file no longer applies to $target, so that file keeps Omarchy's stock behavior (a login message, or a launcher that skips the gateway). Rebase the patch." >&2
     status=1
   fi
 done

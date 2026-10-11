@@ -1,0 +1,43 @@
+--- a/usr/bin/omarchy-agent
++++ b/usr/bin/omarchy-agent
+@@ -53,17 +53,20 @@
+ 
+ # Agents launched from the keybinding or menu run unattended, so each one starts
+ # with its own spelling of "don't stop to ask". Pi has no approval prompts.
++# CLIProxyAPI (coding-agent Q374): this host has no vendor logins, so Claude,
++# Codex, Copilot and Gemini start through their *-gw wrappers, which already run
++# without approval prompts. Cursor and Muse have no gateway route.
+ case "$agent" in
+ opencode)
+   command=(opencode --auto)
+   [[ -n ${prompt:-} ]] && command+=(--prompt "$prompt")
+   ;;
+ gemini)
+-  command=(gemini --yolo)
++  command=(gemini-gw)
+   [[ -n ${prompt:-} ]] && command+=(--prompt-interactive "$prompt")
+   ;;
+ copilot)
+-  command=(copilot --allow-all)
++  command=(copilot-gw)
+   [[ -n ${prompt:-} ]] && command+=(--interactive "$prompt")
+   ;;
+ crush)
+@@ -75,7 +78,7 @@
+   fi
+   ;;
+ claude)
+-  command=(claude --permission-mode auto)
++  command=(claude-gw)
+   [[ -n ${prompt:-} ]] && command+=(-- "$prompt")
+   ;;
+ grok)
+@@ -92,7 +95,7 @@
+   [[ -n ${prompt:-} ]] && command+=(--message "$prompt")
+   ;;
+ codex)
+-  command=(codex --approve-for-me)
++  command=(codex-gw)
+   [[ -n ${prompt:-} ]] && command+=(-- "$prompt")
+   ;;
+ cursor-agent)
