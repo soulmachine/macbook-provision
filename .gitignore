@@ -8,3 +8,6 @@ roles/elliotweiser.osx-command-line-tools/
 # and the one docs/writing-roles.md refers to.
 .agents/
 
+
+# gateway/ runs in place on mac-mini-m2 (AGENTS.md), so Python leaves its cache there.
+__pycache__/
