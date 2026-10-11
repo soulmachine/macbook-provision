@@ -105,7 +105,7 @@
     state: present
     block: |
       # herdr: title the terminal "herdr <hostname>" instead of just "herdr".
-      # The bare "herdr" title comes from oh-my-zsh/ghostty preexec; herdr itself never
+      # The bare "herdr" title comes from the terminal's shell-integration preexec; herdr itself never
       # sets a title, so retitling here after preexec sticks for the whole session.
       herdr() {
         printf '\e]0;herdr %s\a' "${HOST%%.*}"

@@ -1,0 +1,22 @@
+# History. Omarchy's bash numbers (32768, ignore dups and space-prefixed lines, append)
+# in zsh terms; macOS's /etc/zshrc gives 2000 in memory and 1000 on disk.
+HISTSIZE=32768
+SAVEHIST=$HISTSIZE
+setopt hist_ignore_dups hist_ignore_space share_history
+
+# Completion. compinit must run before the `compdef` lines other roles append to
+# ~/.zshrc (omp, bun, uv), which is why ~/.zshrc sources this file first.
+zmodload zsh/complist
+autoload -Uz compinit && compinit
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
+zstyle ':completion:*' menu select
+
+# Up/Down search history by the prefix typed so far, as Omarchy's inputrc does.
+# Both sequences: terminals send ESC O A in application mode, ESC [ A otherwise.
+autoload -Uz up-line-or-beginning-search down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey '^[[A' up-line-or-beginning-search
+bindkey '^[OA' up-line-or-beginning-search
+bindkey '^[[B' down-line-or-beginning-search
+bindkey '^[OB' down-line-or-beginning-search

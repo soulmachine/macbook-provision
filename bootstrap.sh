@@ -1,8 +1,8 @@
 #!/bin/bash
 # Bootstrap a new macOS machine (MacBook, Mac mini, etc) for the Ansible
 # playbook: Xcode CLI Tools, Homebrew, uv-managed Python, mise, Ansible.
-# oh-my-zsh and the modern CLI stack (starship, zoxide, atuin, fzf-tab) are
-# provisioned by the oh-my-zsh role in main.yml, not here.
+# starship, zoxide and fzf, and Omarchy's aliases, are provisioned by the shell and
+# omarchy roles in main.yml, not here.
 #
 # Usage: bash bootstrap.sh
 # Idempotent: safe to re-run. One sudo password prompt on a fresh machine; the
@@ -102,7 +102,7 @@ if ! command -v uv >/dev/null 2>&1 && [[ ! -x "$HOME/.local/bin/uv" ]]; then
   curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 export PATH="$HOME/.local/bin:$PATH"
-# (the uv omz plugin is enabled by the oh-my-zsh role, with the rest of the plugin set)
+# (uv's zsh completion line is added by the uv role)
 # --managed-python is load-bearing: a bare `uv python find` also matches Homebrew's
 # python@3.14 and mise's python, so on a host carrying either, the install would
 # short-circuit and never create the ~/.local/bin/python|python3 shims.
@@ -136,13 +136,12 @@ ansible --version | head -1
 log "Bootstrap complete"
 cat <<'EOF'
 Next steps:
-  1. Run the playbook (oh-my-zsh, the modern CLI stack, and everything else):
+  1. Run the playbook (starship, zoxide, fzf, Omarchy's aliases, and everything else):
        ansible-playbook main.yml
   2. Then open a NEW terminal tab (login+interactive shell) and verify:
        - starship prompt renders, `z <fragment>` jumps after a few cd's,
-         Ctrl-R opens atuin, Tab opens the fzf picker
-       - time zsh -i -c exit   # expect ~100-300 ms (the oh-my-zsh tax)
-  3. Cross-machine history sync:  atuin login && atuin sync
-  4. Credentials go in ~/.zshenv (chmod 600); PATH edits in ~/.zprofile, except a folder
+         Ctrl-R opens fzf history search, Tab cycles a completion menu
+       - time zsh -i -c exit   # expect under 200 ms
+  3. Credentials go in ~/.zshenv (chmod 600); PATH edits in ~/.zprofile, except a folder
      appended last for ssh commands (~/.agents/docs/shell-startup.md).
 EOF

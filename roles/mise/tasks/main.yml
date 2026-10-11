@@ -78,3 +78,48 @@
       - "If mise was reinstalled from Homebrew, self-update refuses by design — use `brew upgrade mise` and drop this role for that host."
       - "Diagnose: run `mise self-update --yes --no-plugins` by hand to see mise's own error."
   when: mise_self_update.rc != 0
+
+# The three startup-file lines mise needs. They lived in the oh-my-zsh role until
+# 2026-10-11, only because that role's installer rewrote ~/.zshrc and dropped them.
+#
+# bootstrap.sh appends the first two as well; the regexps match any existing spelling
+# (e.g. a full ~/.local/bin/mise path), so an existing line is normalized in place, not
+# duplicated.
+- name: Ensure ~/.local/bin is prepended to PATH in .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    regexp: '^export PATH=".*\$HOME/\.local/bin.*"$'
+    line: 'export PATH="$HOME/.local/bin:$PATH"'
+    state: present
+
+- name: Ensure mise is activated in .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    regexp: 'mise activate zsh'
+    line: 'eval "$(mise activate zsh)"'
+    state: present
+
+# The activation above only reaches *interactive* shells — .zshrc is the sole
+# file zsh sources for those, while every provisioning run is `zsh -lc`, login
+# but not interactive. So node and npm were missing from exactly the shell that
+# provisions: `claude-extras : Install cux` failed on mac-mini-m2 with
+# `Failed to find required executable "npm"` while npm resolved fine by hand.
+# The shims directory carries the same tools without needing activation.
+#
+# .zprofile, not .zshenv, because macOS's /etc/zprofile runs path_helper and
+# rebuilds PATH afterwards, demoting anything .zshenv prepended — the same
+# reason bootstrap.sh puts `brew shellenv` here. Prepending is load-bearing: it
+# makes mise's node win over a Homebrew one, and on 2026-09-10 every host but
+# mac-mini-m2 was silently provisioning against a Homebrew node that the
+# `nodejs` role does not manage (m2 had no such fallback, which is why it was
+# the only one that failed rather than the only one that worked). Interactive
+# shells are unaffected — `mise activate` runs later, from .zshrc, and puts the
+# real install directory ahead of these shims.
+- name: Ensure mise shims are on PATH in .zprofile
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zprofile"
+    regexp: '^export PATH=".*mise/shims.*"$'
+    line: 'export PATH="$HOME/.local/share/mise/shims:$PATH"'
+    create: true
+    mode: "0644"
+    state: present

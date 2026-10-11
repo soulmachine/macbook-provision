@@ -1,0 +1,19 @@
+# Omarchy's shell environment, ported from bash to zsh. Source: /usr/share/omarchy/default/bash
+# on mac-mini-2018-omarchy, Omarchy 4.0.0.alpha, read 2026-10-11. To refresh, diff these
+# files against that directory. Deployed by the omarchy role of macbook-provision and
+# sourced from ~/.zshrc after ~/.config/zsh/rc (shell role).
+#
+# Not ported, and why:
+#   shell, inputrc   history and completion: the shell role's ~/.config/zsh/shell
+#   init             mise (mise role), fzf / zoxide / starship (shell role); only `try` stays
+#   completions      completes the `omarchy` command, which does not exist here
+#   envs             BROWSER (macOS opens URLs itself), the locale block (macOS sets LANG),
+#                    the PATH append (mise role)
+#   aliases          open() (macOS has its own), sff (GNU find -printf), a (omarchy-agent)
+#   fns/drives       lsblk, parted, wipefs: Linux only
+#   fns/rsyncing     setsid, inotifywait: Linux only
+# What changed for zsh is in the first line of each file under fns/.
+source ~/.config/omarchy/zsh/envs
+source ~/.config/omarchy/zsh/aliases
+source ~/.config/omarchy/zsh/functions
+source ~/.config/omarchy/zsh/init

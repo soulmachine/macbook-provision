@@ -15,7 +15,8 @@
     - host-facts
     - homebrew
     - github
-    - oh-my-zsh
+    - shell
+    - omarchy
     - direnv
     - dotenv
     - uv

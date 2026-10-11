@@ -1,0 +1,4 @@
+# The three tools, each guarded like Omarchy's init so a shell without them still starts.
+(( $+commands[fzf] )) && source <(fzf --zsh)   # Ctrl-R, Ctrl-T, Alt-C, **<Tab>
+(( $+commands[zoxide] )) && eval "$(zoxide init zsh)"
+(( $+commands[starship] )) && eval "$(starship init zsh)"

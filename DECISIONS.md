@@ -2189,3 +2189,43 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** A survey on 2026-10-09 found `node` missing from the ssh `PATH` on macbook-air, mac-mini-2018, dev-server-frank and m6. Only the first two have the openai-codex plugin. The other hosts already reach `node` four different ways: hermes's `~/.local/bin/node` link, a mise path or Homebrew in `~/.zshenv`, and `/usr/bin/node` on supermicro. A wrapper guard changes no startup file, matches the `codex-gw` precedent, and only acts when `node` is missing. Appending, not prepending, keeps each host's own tools first, so mise's other shims (python, go) never shadow them. Checked: the rendered wrapper passes `zsh -n` and `bash -n`, and with a bare `PATH` the guard resolves `node` to mise's shim. Native `claude` over ssh is not covered, but on a Mac it cannot log in over ssh anyway (agent-clis.md).
 **Outcome:** applied
 **Ref:** (this commit)
+
+## Q210 — interactive/omz-to-shell-omarchy — gate-resolution
+
+**Question:** The shell role strips the oh-my-zsh template out of `~/.zshrc` on every already-provisioned host. Where should the strip be anchored, and in what order relative to the new `source ~/.config/zsh/rc` line?
+**Options considered:** from the start of the file through `source $ZSH/oh-my-zsh.sh` / from the template's own first comment line through that source line, plus the commented "User configuration" block as a second strip / hand-migrate each host
+**Chosen:** Anchored on the template's first line (`# If you come from bash…`) and on `# User configuration` … `# alias ohmyzsh=…`, two `replace` tasks; the BOF `lineinfile` runs before them.
+**Decided-by:** agent
+**Justification:** All seven Macs carry the identical template with those three anchors (probed 2026-10-11), so the regexps match everywhere; anchoring on the template rather than `\A` keeps anything a host put above it, and lets the BOF line go in first so `replace` always has a file. Verified on m6: 137 lines → 33, every line after the template kept, second run changed nothing.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q211 — interactive/omz-to-shell-omarchy — deviation
+
+**Question:** The grilled plan called the `fns/` port "verbatim with the `[0]` index fix". Probing zsh found more that bash accepts and zsh does not. How far does the port deviate from upstream?
+**Options considered:** verbatim and let the functions fail at the first zsh-only difference / fix only what a probe proved broken, one line each, named in the file's first comment / rewrite the functions in idiomatic zsh
+**Chosen:** Five one-line fixes, each named in its file's header: `columns[index+1]` and `panes[1]` (1-based arrays), `(N)` on the two `*/` globs (a no-match glob is an error in zsh), `${letters:$i:1}` (a bare `i` reads as a modifier), `pgrep -lf` (macOS `-a` means ancestors), and `tdl`'s final `select-pane` targeting `$editor_pane`, where upstream names an unset `$opencode_pane`.
+**Decided-by:** agent
+**Justification:** Each was shown by a probe (`zsh -c` one-liners, `pgrep -af` vs `-lf` on macOS) rather than guessed, and the file stays a line-for-line diff against `/usr/share/omarchy/default/bash/fns` for the next refresh. `tsl 3`, `tdl` and `hsl 3` were run on m6 after the port.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q212 — interactive/omz-to-shell-omarchy — tradeoff
+
+**Question:** The oh-my-zsh `uv` plugin installed completions for both `uv` and `uvx`, plus `uvr`/`uvs`-style aliases. What does the uv role write in its place?
+**Options considered:** one line, `uv generate-shell-completion zsh` / two lines, adding `uvx --generate-shell-completion zsh` / nothing
+**Chosen:** One line, for `uv` only.
+**Decided-by:** agent
+**Justification:** The plan named exactly that line (grill Q6); `uvx` is a thin alias for `uv tool run` and its completion is a second eval on every shell start for a command rarely tab-completed. The aliases were never asked for. Cheap to add later.
+**Outcome:** assumed
+**Ref:** (pending)
+
+## Q213 — interactive/omz-to-shell-omarchy — gate-resolution
+
+**Question:** After the switch, an interactive zsh started without a tty (`zsh -i -c …` from a script, or `ssh host 'zsh -ic …'`) prints `(eval):1: can't change option: zle` four times. Suppress it, or accept it?
+**Options considered:** accept / wrap `fzf --zsh` in a `[[ -t 0 ]]` guard / redirect its stderr
+**Chosen:** Accept.
+**Decided-by:** agent
+**Justification:** Bisected 2026-10-11: it comes from `fzf --zsh`, whose key-binding and completion halves each save the shell's options and restore them with `setopt`, and `zle` cannot be turned on without a tty. Under a pseudo-terminal (`script -q /dev/null zsh -i -c exit`) the count is zero, so no terminal user sees it, and the playbook no longer runs any `zsh -ic` task now that the oh-my-zsh plugin enables are gone. A guard would hide fzf from exactly the shells that need no bindings and add a line to maintain for a cosmetic message.
+**Outcome:** applied
+**Ref:** (pending)

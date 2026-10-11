@@ -1,0 +1,5 @@
+# Plain-zsh baseline, deployed by the shell role of macbook-provision and sourced first
+# from ~/.zshrc. shell: history and completion. init: fzf, zoxide, starship.
+# Omarchy's aliases, envs and functions are the omarchy role's ~/.config/omarchy/zsh/rc.
+source ~/.config/zsh/shell
+source ~/.config/zsh/init

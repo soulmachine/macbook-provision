@@ -41,5 +41,9 @@
       - "Diagnose: run `uv self update` by hand to see uv's own error."
   when: uv_self_update.rc != 0
 
-# (the uv oh-my-zsh plugin is enabled by the oh-my-zsh role, with the rest of
-# the plugin set)
+# Replaces the completions the oh-my-zsh uv plugin used to provide.
+- name: Add uv shell completions to .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    line: 'eval "$(uv generate-shell-completion zsh)"'
+    regexp: 'uv generate-shell-completion zsh'

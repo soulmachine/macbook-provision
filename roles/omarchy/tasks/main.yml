@@ -1,0 +1,35 @@
+---
+# Omarchy's shell environment (aliases, envs, functions, try, the starship prompt), ported
+# from bash to zsh so a Mac and the Omarchy box feel the same. Provenance and every skip
+# are in files/zsh/rc. Depends on shell, which owns history, completion and the
+# fzf / zoxide / starship hooks.
+- name: Install the tools Omarchy's aliases and functions use
+  community.general.homebrew:
+    name:
+      - eza # ls
+      - bat # ff, man pager
+      - neovim # n, EDITOR
+      - try
+      - gum # gd
+    state: latest
+
+- name: Deploy the Omarchy zsh port
+  ansible.builtin.copy:
+    src: zsh/
+    dest: "{{ lookup('env', 'HOME') }}/.config/omarchy/zsh/"
+    mode: "0644"
+    directory_mode: "0755"
+
+- name: Deploy Omarchy's starship prompt
+  ansible.builtin.copy:
+    src: starship.toml
+    dest: "{{ lookup('env', 'HOME') }}/.config/starship.toml"
+    mode: "0644"
+
+# Right after the shell role's line, which the meta dependency guarantees is there.
+- name: Source the Omarchy port from .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    line: 'source ~/.config/omarchy/zsh/rc'
+    regexp: '^source ~/\.config/omarchy/zsh/rc$'
+    insertafter: '^source ~/\.config/zsh/rc$'

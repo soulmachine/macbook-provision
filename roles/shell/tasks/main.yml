@@ -1,0 +1,90 @@
+---
+# The default macOS zsh with starship, zoxide and fzf, no framework. Replaced oh-my-zsh
+# on 2026-10-11 to match the Omarchy box (bash + the same three tools). The migration
+# tasks at the end converge a host that was provisioned with oh-my-zsh and are no-ops
+# elsewhere.
+- name: Check current login shell
+  ansible.builtin.shell:
+    cmd: set -o pipefail && dscl . -read ~ UserShell | awk '{print $2}'
+  register: shell_login_shell
+  changed_when: false
+
+- name: Set zsh as default shell
+  ansible.builtin.command: dscl . -change ~ UserShell {{ shell_login_shell.stdout }} /bin/zsh
+  changed_when: true
+  when: shell_login_shell.stdout != '/bin/zsh'
+
+- name: Install starship, zoxide and fzf
+  community.general.homebrew:
+    name:
+      - starship
+      - zoxide
+      - fzf
+    state: latest
+
+# Guard against compinit "insecure directories" complaints from brew-owned dirs.
+- name: Ensure brew share dirs are not group/world-writable
+  ansible.builtin.shell: chmod -R go-w "$(brew --prefix)/share"
+  changed_when: false
+  failed_when: false
+
+- name: Deploy the zsh baseline
+  ansible.builtin.copy:
+    src: zsh/
+    dest: "{{ lookup('env', 'HOME') }}/.config/zsh/"
+    mode: "0644"
+    directory_mode: "0755"
+
+# BOF, so compinit precedes the completion lines other roles append at the end. Done
+# before the migration below: the file then exists for `replace`, and the strip is
+# anchored on the oh-my-zsh template's own first line, so this one survives it.
+- name: Source the zsh baseline from .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    line: 'source ~/.config/zsh/rc'
+    regexp: '^source ~/\.config/zsh/rc$'
+    insertbefore: BOF
+    create: true
+    mode: "0644"
+
+# --- Migration off oh-my-zsh. Each task is a no-op on a host that never had it. ---
+# The installer's template runs from its first comment line through the line that
+# sources oh-my-zsh.sh (ZSH_THEME= and plugins=() sit inside), then a commented
+# "User configuration" block. Both go whole; whatever follows them, the lines
+# bootstrap.sh and other roles append, stays. Anchored on the template's first line
+# rather than on the start of the file, so anything a host put above it survives.
+- name: Remove the oh-my-zsh template from .zshrc
+  ansible.builtin.replace:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    regexp: '(?s)^# If you come from bash you might have to change your \$PATH\.\n.*?^source \$ZSH/oh-my-zsh\.sh\n'
+    replace: ''
+
+- name: Remove the oh-my-zsh "User configuration" comments from .zshrc
+  ansible.builtin.replace:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    regexp: '(?s)^# User configuration\n.*?^# alias ohmyzsh="mate ~/\.oh-my-zsh"\n'
+    replace: ''
+
+# starship now starts from ~/.config/zsh/init; atuin is gone, fzf owns Ctrl-R.
+- name: Remove the hook lines the oh-my-zsh role appended to .zshrc
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    regexp: "{{ item }}"
+    state: absent
+  loop:
+    - '^eval "\$\(starship init zsh\)"$'
+    - '^eval "\$\(atuin init zsh\)"$'
+
+- name: Remove oh-my-zsh
+  ansible.builtin.file:
+    path: "{{ lookup('env', 'HOME') }}/{{ item }}"
+    state: absent
+  loop:
+    - .oh-my-zsh
+    - .zshrc.pre-oh-my-zsh
+
+# Its history database in ~/.local/share/atuin stays.
+- name: Uninstall atuin
+  community.general.homebrew:
+    name: atuin
+    state: absent

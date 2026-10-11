@@ -105,7 +105,8 @@ pre-commit run --all-files
 | host-facts | 机器判定（`mac_family` / `mac_is_vm` / `mac_is_always_on`）；不装任何软件 |
 | homebrew | 通用 Homebrew 包与 GUI 应用：git、curl、wget、jq、ripgrep、fd、tree、htop、docker、ffmpeg、gh、gnupg、tmux；cask 含 claude、gemini、pearcleaner、sublime-text、visual-studio-code（chatgpt 归 codex role）；`brew upgrade` 失败时记录下来、在 play 末尾才报错，不阻断后面的 role |
 | github | gh CLI（brew）；若环境中有 `GITHUB_TOKEN`（由 `gh-token-fleet` 写入 `~/.zshenv`，不再来自 `.env`），另外配置 SSH key 与 git 签名 |
-| oh-my-zsh | Zsh 框架及插件管理 |
+| shell | 默认 zsh 的基础配置：brew 装 starship、zoxide、fzf；`~/.config/zsh/` 设历史记录、补全与三者的 hook；登录 shell 设为 `/bin/zsh`；并从 oh-my-zsh 迁移（去掉其模板与 `~/.oh-my-zsh`，卸载 atuin） |
+| omarchy | 从 Omarchy 移植的 shell 环境（bash → zsh）：aliases、envs、fns、`try` 与 Omarchy 的 `starship.toml`；brew 装 eza、bat、neovim、try、gum（依赖 shell） |
 | direnv | 目录级环境变量管理 |
 | dotenv | 不装任何软件；把 `.env` 以托管块写入 `~/.zshenv`，让非交互式 shell（`ssh host 'cmd'`、git hook、launchd）也能读到其中的变量 |
 | uv | Python 包与工具管理器（通过官方 astral.sh 脚本安装） |
@@ -136,7 +137,7 @@ pre-commit run --all-files
 | hermes | Hermes 个人 agent（Nous Research）；**仅限常驻开机的机器** |
 | ponytail | 给所有 agent 安装 [ponytail](https://github.com/DietrichGebert/ponytail) 插件——Claude Code / Codex / OpenCode / pi / oh-my-pi / Hermes 各用其原生安装方式；其中 Hermes 部分**仅限常驻开机的机器** |
 | paseo | agent 多路复用：MacBook 装桌面版（cask `paseo`）；常驻开机的机器改装 npm `@getpaseo/cli`（CLI + daemon），并卸载 cask、移除 mise 里的旧版本 pin，同时安装并加载由本 role 管理的 `sh.paseo.daemon` LaunchAgent（`paseo daemon run`），并开启 relay（配对仍需手动 `paseo daemon pair`），打开 `pluginsEnabled` 并安装插件 `npm:@oliexe/paseo-bots`（只装不自动更新）；tag `agent-multiplexer`（依赖 host-facts、claude-code、codex） |
-| ghostty | 终端模拟器（cask `ghostty`）（依赖 oh-my-zsh） |
+| ghostty | 终端模拟器（cask `ghostty`） |
 | cmux | 多 agent 工作区：tap `manaflow-ai/cmux` + cask `cmux`，并把 CLI 链接到 `~/.local/bin`（依赖 ghostty） |
 | obsidian | Obsidian（cask）+ npm 全局 `defuddle`（依赖 claude-code） |
 | cloudflare | Cloudflare CLI：npm 全局 `cf`（依赖 claude-code） |
