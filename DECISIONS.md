@@ -2279,3 +2279,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** npm is the one channel all five publish on, and it matches ubuntu-provision. OpenClaw keeps a gateway daemon running, the reason hermes is gated (docs/host-facts.md). The stale check exists because m6's LaunchAgent pins mise's `node/24.21.0`, and the `nodejs` role moves Node to each new LTS. OpenClaw's own status audit flags this. Tested on mac-mini-m6 from a scratch copy of this tree: each new role installed on run 1 and changed nothing on run 2; `herdr` changed nothing, since m6 already had the hook. A simulated newer Node made the stale check fire, and `install --force` rewrote and restarted the LaunchAgent. The cliproxy-tier half is in coding-agent Q401.
 **Outcome:** applied
 **Ref:** (this commit); coding-agent Q401; omarchy-provision Q11, Q13, Q15
+
+## Q219 — interactive/provision-repos-agents-sync — deviation
+
+**Question:** Q218 installs the five agents as npm globals. A fleet survey after it was pushed found other channels on some hosts: m2 runs Grok from xAI's installer in `~/.local/bin`, and macbook-air runs Gemini from mise. A blind npm install would put a second copy on `PATH`, each copy with its own updater. Change the install?
+**Options considered:** keep the blind npm install / install from npm only when npm already owns the package or no other copy exists
+**Chosen:** The second. `roles/nodejs/tasks/npm_global.yml` checks `npm ls -g --depth=0 <package>` first: if npm owns the package it updates it to the latest version. If not, `which <cmd>` looks for another channel's copy. Finding one prints its path and installs nothing; finding none installs from npm. The five roles include it with `nodejs_npm_package` and `nodejs_npm_cmd`. The `homebrew` role's comment about Google's Gemini CLI no longer says its role is gone.
+**Decided-by:** agent
+**Justification:** It matches Omarchy's own rule that a user's own install at a command's path is left alone (`omarchy-default-agent`). Two copies leave the host running whichever comes first on `PATH`, so one of them goes stale. Tested from a scratch copy of this tree. On mac-mini-m6, where npm owns all five, each role changed nothing on two runs. On m2, Grok printed the other channel's path and changed nothing. Copilot was an outdated npm global there, so it was updated: npm's logs show `ls`, `outdated`, `update`. The survey also found a Google login on m2 and macbook-air. `cliproxy-tier` leaves Gemini native there (coding-agent Q401).
+**Outcome:** applied
+**Ref:** (this commit); Q218

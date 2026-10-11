@@ -222,6 +222,8 @@ ioreg `BatteryInstalled` 的保守规则：那条规则要求硬件明确报告"
 | cc-switch | tap `farion1231/ccswitch` + **cask** | GUI 应用 |
 | agent-reach | **没有包管理器**，见下 | 由 `claude -p` 按上游文档安装 |
 
+这五个 agent（copilot、crush、gemini、grok、openclaw）只在没有别的渠道（mise 工具、`~/.local/bin` 里的原生安装器、Homebrew）提供同名命令时才用 npm 安装和升级，否则 role 只打印已有的路径，交给那个渠道去升级，免得 `PATH` 上出现两份。
+
 `codex` 不单独装（既不用 cask 也不用 npm）是刻意的：ChatGPT.app 里本来就带了一份并会自更新；
 codex cask 每次升级都会运行 `codex completion`，在部分主机上这次首次启动会卡在没人点的
 Gatekeeper 弹窗上（DECISIONS Q197）。role 会先装 `chatgpt` cask、再卸载旧的 codex cask。
