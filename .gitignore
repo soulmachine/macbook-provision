@@ -11,3 +11,7 @@ roles/elliotweiser.osx-command-line-tools/
 
 # gateway/ runs in place on mac-mini-m2 (AGENTS.md), so Python leaves its cache there.
 __pycache__/
+
+# JVM crash reports: mise installs Java from this checkout, and a build that dies at
+# startup drops its report here (m2, 2026-10-11).
+hs_err_pid*.log
