@@ -9,7 +9,7 @@ openclaw. Cursor CLI and Muse Code have no route and stay native. Idempotent: ev
 backs up to <file>.bak-<ts> (mode 600) and prints one status line at the end.
 The key comes from this host's own environment (CLIPROXY_API_KEY), never over the wire.
 """
-import json, os, re, shutil, subprocess, sys, time, tomllib
+import json, os, pwd, re, shutil, subprocess, sys, time, tomllib
 from pathlib import Path
 
 H = Path.home()
@@ -66,6 +66,9 @@ def run(*cmd):
 
 
 ZSH = shutil.which("zsh")
+# The wrapper header follows the LOGIN shell, not the presence of a zsh binary: dev-server-frank
+# keeps zsh installed but logs in to bash since 2026-10-11, and its keys live in ~/.bashrc.
+LOGIN_ZSH = pwd.getpwuid(os.getuid()).pw_shell.endswith("zsh")
 which = lambda c: shutil.which(c)
 
 
@@ -80,7 +83,7 @@ def installed(cmd):
 
 # ---------- wrappers ----------
 bindir = H / ".local/bin"; bindir.mkdir(parents=True, exist_ok=True)
-if ZSH:
+if ZSH and LOGIN_ZSH:
     hdr = "#!/bin/zsh\n# zsh sources ~/.zshenv even for scripts, so CLIPROXY_* is always here.\n"
 else:
     hdr = '#!/bin/bash\n[ -n "${CLIPROXY_API_KEY:-}" ] || . "$HOME/.bashrc"\n'

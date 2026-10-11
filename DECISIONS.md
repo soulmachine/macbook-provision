@@ -2249,3 +2249,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Every recent JDK build crashes on m2 and none does on the two Macs that run macOS 27.0.1, so the fault is the host, most likely its macOS 27.0 (26A428), which has the 27.0.1 update pending with a restart. That restart touches the gateway host and is Frank's call, so the role gets the smallest change that makes the sweep green and leaves a working `java` on m2: an exact pin `mise upgrade` cannot move. The hostname key is the first in this repo; the host-facts gates cannot express "this one Mac". Remove the entry after the macOS update if 25 runs.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q216 — interactive/dev-server-frank-bash — bugfix
+
+**Question:** `cliproxy-tier` ran its host script under `zsh -lc` and wrote `#!/bin/zsh` wrappers whenever a zsh binary existed, on the assumption that such a host keeps `CLIPROXY_*` in `~/.zshenv`. dev-server-frank switched its login shell to bash on 2026-10-11 (ubuntu-provision Q25), moved its keys to `~/.bashrc` and retired `~/.zshenv`, but still has zsh installed. A rerun would have started the host script with no keys and left wrappers that work only when the caller already exports them.
+**Options considered:** uninstall zsh on that host / key on the login shell / key on whether `~/.zshenv` exists (jev-fleet's rule)
+**Chosen:** the login shell, in both places: the driver dispatches on the remote `$SHELL`, and the host script sets `LOGIN_ZSH` from the passwd entry and writes the bash header unless both a zsh binary and a zsh login shell are present. Hosts that log in to zsh are unchanged; hosts without zsh are unchanged.
+**Decided-by:** agent
+**Justification:** The login shell is what sshd and the fleet's `-lc` runs actually use, so it is the one fact that decides which rc file carries the keys. jev-fleet's "does `~/.zshenv` exist" rule agrees with it on every host today.
+**Outcome:** validated: `cliproxy-tier dev-server-frank` rewrote the four wrappers as bash scripts, and `claude-gw --version` runs from an empty environment there.
+**Ref:** ubuntu-provision Q25, dot-agents 8d506ef

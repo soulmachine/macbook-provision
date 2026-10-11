@@ -12,7 +12,9 @@ for h in ${*:-$ALL}; do
     if [ "$h" = mac-mini-m2 ]; then
         out=$(zsh -lc 'python3 "$HOME/.local/bin/cliproxy-tier-host.py"' 2>&1)
     else
-        out=$(ssh -o BatchMode=yes -o ConnectTimeout=10 "$h" "echo $B | base64 -d > /tmp/cliproxy-tier-host.py; if command -v zsh >/dev/null 2>&1; then zsh -lc 'python3 /tmp/cliproxy-tier-host.py'; else bash -lc 'python3 /tmp/cliproxy-tier-host.py'; fi; rc=\$?; rm -f /tmp/cliproxy-tier-host.py; exit \$rc" 2>&1)
+        # The remote LOGIN shell picks the rc file that holds CLIPROXY_* (~/.zshenv or ~/.bashrc), not
+        # whether a zsh binary exists: dev-server-frank has zsh installed but logs in to bash.
+        out=$(ssh -o BatchMode=yes -o ConnectTimeout=10 "$h" "echo $B | base64 -d > /tmp/cliproxy-tier-host.py; case \$SHELL in */zsh) zsh -lc 'python3 /tmp/cliproxy-tier-host.py';; *) bash -lc 'python3 /tmp/cliproxy-tier-host.py';; esac; rc=\$?; rm -f /tmp/cliproxy-tier-host.py; exit \$rc" 2>&1)
     fi
     rc=$?
     printf '%s\n' "$out"; [ $rc -ne 0 ] && printf '  [%s] FAILED rc=%s\n' "$h" "$rc"
