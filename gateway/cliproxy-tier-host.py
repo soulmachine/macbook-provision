@@ -3,9 +3,10 @@
 
 Optional tier (Claude Code, Codex, kimi): native login is the default, the gateway is
 opt-in via claude-gw / codex-gw / kimi-gw (backpass-gw for backpass's Claude passes). Mandatory tier (pi, omp, hermes, opencode):
-gateway only, vendor logins removed. Gateway-only hosts (GATEWAY_ONLY, coding-agent Q374) also
-route Omarchy's other agents: copilot-gw and gemini-gw wrappers, built-in config for grok, crush and
-openclaw. Cursor CLI and Muse Code have no route and stay native. Idempotent: every step checks before it writes,
+gateway only, vendor logins removed. Omarchy's other agents, on every host where they are installed
+(coding-agent Q374, Q401): copilot-gw and gemini-gw wrappers (Gemini keeps a native Google login where
+one exists, except on GATEWAY_ONLY hosts), built-in config for grok, crush and openclaw, and OpenClaw's
+one-time onboarding. Cursor CLI and Muse Code have no route and stay native. Idempotent: every step checks before it writes,
 backs up to <file>.bak-<ts> (mode 600) and prints one status line at the end.
 The key comes from this host's own environment (CLIPROXY_API_KEY), never over the wire.
 """
@@ -108,19 +109,35 @@ if kimi_bin:
         '# already runs unattended, so drop --yolo only then.\n'
         'yolo=--yolo\nfor a in "$@"; do case "$a" in -p|--prompt|-p=*|--prompt=*) yolo=;; esac; done\n'
         f'exec "{kimi_bin}" -m cliproxy/opus5.5 ${{yolo:+"$yolo"}} "$@"\n')
-if GATEWAY_ONLY and installed("copilot"):
+if installed("copilot"):
     # BYOK through env vars only. Copilot refuses a classic PAT in GITHUB_TOKEN even in BYOK mode,
     # and its catalog spells models with dots (limits, prompting); the wire model is the gateway's name.
     wrappers["copilot-gw"] = hdr + (
         ': "${CLIPROXY_API_KEY:?}" "${CLIPROXY_BASE_URL:?}"\n'
+        'command -v copilot >/dev/null 2>&1 || export PATH="$HOME/.local/share/mise/shims:$PATH"\n'
         'exec env -u GITHUB_TOKEN -u GH_TOKEN -u COPILOT_GITHUB_TOKEN COPILOT_PROVIDER_TYPE=anthropic \\\n'
         '  COPILOT_PROVIDER_BASE_URL="$CLIPROXY_BASE_URL" COPILOT_PROVIDER_API_KEY="$CLIPROXY_API_KEY" \\\n'
         '  COPILOT_PROVIDER_MODEL_ID=claude-opus-5.5 COPILOT_PROVIDER_WIRE_MODEL=claude-opus-5-5 copilot --allow-all "$@"\n')
-if GATEWAY_ONLY and installed("gemini"):
+GEMINI_SETTINGS = H / ".gemini/settings.json"
+
+
+def gemini_native():
+    """A Google login of the host's own: its OAuth file, or an auth type other than the gateway's api key."""
+    if GATEWAY_ONLY:
+        return False
+    try:
+        sel = json.loads(GEMINI_SETTINGS.read_text()).get("security", {}).get("auth", {}).get("selectedType")
+    except (OSError, ValueError):
+        sel = None
+    return (H / ".gemini/oauth_creds.json").exists() or sel not in (None, "gemini-api-key")
+
+
+if installed("gemini") and not gemini_native():
     # ~/.gemini/settings.json (below) pins the api-key auth type and the models; the env vars alone
     # select an auth type gemini-cli then rejects (#27550). Headless runs refuse an untrusted folder.
     wrappers["gemini-gw"] = hdr + (
         ': "${CLIPROXY_API_KEY:?}" "${CLIPROXY_BASE_URL:?}"\n'
+        'command -v gemini >/dev/null 2>&1 || export PATH="$HOME/.local/share/mise/shims:$PATH"\n'
         'exec env GOOGLE_GEMINI_BASE_URL="$CLIPROXY_BASE_URL" GEMINI_API_KEY="$CLIPROXY_API_KEY" gemini --yolo --skip-trust "$@"\n')
 for name, body in wrappers.items():
     p = bindir / name
@@ -324,7 +341,7 @@ if p.exists() and re.search(rf"^ANTHROPIC_BASE_URL={re.escape(BASE)}/?$", p.read
     upsert_env(p, {"ANTHROPIC_API_KEY": KEY})
     status["claude-mem"] = "gw"
 
-# ---------- gateway-only hosts: Omarchy's other agents (coding-agent Q374) ----------
+# ---------- Omarchy's other agents, every host (coding-agent Q374, Q401) ----------
 # Each is configured only once really installed. Cursor CLI and Muse Code have no gateway route.
 MANAGED = re.compile(r"^# --- cliproxyapi \(managed\) ---\n.*?^# --- end cliproxyapi ---\n", flags=re.M | re.S)
 
@@ -348,140 +365,159 @@ def subset(have, want):
     return have == want
 
 
-if GATEWAY_ONLY:
-    for name in ("copilot-gw", "gemini-gw"):
-        if installed(name[:-3]):
-            status[name[:-3]] = "gw" if (bindir / name).exists() else "NOT-gw"
+for name in ("copilot-gw", "gemini-gw"):
+    if installed(name[:-3]):
+        status[name[:-3]] = "gw" if (bindir / name).exists() else "NOT-gw"
+if installed("gemini") and gemini_native():
+    status["gemini"] = "native"
 
-    # Gemini: its helper tasks (classifier, summarizers, web fetch, loop detection, compression) call
-    # Gemini model names the gateway does not serve; overrides swap only the model, keeping each config.
-    p = H / ".gemini/settings.json"
-    if installed("gemini"):
-        flash = ["flash-lite", "flash", "gemini-3-flash-preview", "gemini-3.1-flash-lite", "gemini-3.1-flash-lite-preview",
-                 "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"]
-        pro = ["pro", "gemini-3-pro-preview", "gemini-3.1-pro-preview", "gemini-3.1-pro-preview-customtools", "gemini-2.5-pro"]
-        d = json.loads(p.read_text()) if p.exists() else {}
-        new = json.loads(json.dumps(d))
-        new.setdefault("security", {}).setdefault("auth", {})["selectedType"] = "gemini-api-key"
-        name = new.setdefault("model", {}).get("name", "")
-        if not name or name.startswith(("gemini", "gemma")) or name in ("auto", "pro", "flash", "flash-lite"):
-            new["model"]["name"] = "claude-opus-5-5"  # a gateway model the user picked stays
-        new.setdefault("privacy", {})["usageStatisticsEnabled"] = False
-        new.setdefault("general", {})["enableAutoUpdate"] = False
-        new.setdefault("modelConfigs", {})["customOverrides"] = (
-            [{"match": {"model": m}, "modelConfig": {"model": "claude-haiku-5-5"}} for m in flash] +
-            [{"match": {"model": m}, "modelConfig": {"model": "claude-sonnet-5-5"}} for m in pro])
-        if new != d:
-            p.parent.mkdir(parents=True, exist_ok=True)
-            write(p, json.dumps(new, indent=2) + "\n")
+# Gemini: its helper tasks (classifier, summarizers, web fetch, loop detection, compression) call
+# Gemini model names the gateway does not serve; overrides swap only the model, keeping each config.
+p = GEMINI_SETTINGS
+if installed("gemini") and not gemini_native():
+    flash = ["flash-lite", "flash", "gemini-3-flash-preview", "gemini-3.1-flash-lite", "gemini-3.1-flash-lite-preview",
+             "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"]
+    pro = ["pro", "gemini-3-pro-preview", "gemini-3.1-pro-preview", "gemini-3.1-pro-preview-customtools", "gemini-2.5-pro"]
+    d = json.loads(p.read_text()) if p.exists() else {}
+    new = json.loads(json.dumps(d))
+    new.setdefault("security", {}).setdefault("auth", {})["selectedType"] = "gemini-api-key"
+    name = new.setdefault("model", {}).get("name", "")
+    if not name or name.startswith(("gemini", "gemma")) or name in ("auto", "pro", "flash", "flash-lite"):
+        new["model"]["name"] = "claude-opus-5-5"  # a gateway model the user picked stays
+    new.setdefault("privacy", {})["usageStatisticsEnabled"] = False
+    new.setdefault("general", {})["enableAutoUpdate"] = False
+    new.setdefault("modelConfigs", {})["customOverrides"] = (
+        [{"match": {"model": m}, "modelConfig": {"model": "claude-haiku-5-5"}} for m in flash] +
+        [{"match": {"model": m}, "modelConfig": {"model": "claude-sonnet-5-5"}} for m in pro])
+    if new != d:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        write(p, json.dumps(new, indent=2) + "\n")
 
-    # grok: custom models read the key from the environment; no xAI login, catalog fetch or telemetry.
-    # grok rewrites config.toml itself and appends its own tables at the end, so this checks the parsed
-    # file and rewrites only when a gateway setting is missing: grok's tables and a gateway model the
-    # user picked as default survive a rerun.
-    p = H / ".grok/config.toml"
-    if installed("grok"):
-        gw_models = {"claude-opus-5-5": "messages", "claude-sonnet-5-5": "messages",
-                     "claude-haiku-5-5": "messages", "gpt-6.1-sol": "responses"}
-        roles = ("session_summary", "image_description", "prompt_suggestion")
+# grok: custom models read the key from the environment; no xAI login, catalog fetch or telemetry.
+# grok rewrites config.toml itself and appends its own tables at the end, so this checks the parsed
+# file and rewrites only when a gateway setting is missing: grok's tables and a gateway model the
+# user picked as default survive a rerun.
+p = H / ".grok/config.toml"
+if installed("grok"):
+    gw_models = {"claude-opus-5-5": "messages", "claude-sonnet-5-5": "messages",
+                 "claude-haiku-5-5": "messages", "gpt-6.1-sol": "responses"}
+    roles = ("session_summary", "image_description", "prompt_suggestion")
 
-        def grok_on_gw(doc):
-            models, defs, feats = doc.get("models", {}), doc.get("model", {}), doc.get("features", {})
-            return (all(subset(defs.get(m), {"model": m, "base_url": f"{BASE}/v1", "api_backend": api, "env_key": "CLIPROXY_API_KEY"})
-                        for m, api in gw_models.items())
-                    and all(models.get(k) in gw_models for k in ("default",) + roles)
-                    and all(feats.get(k) is False for k in ("telemetry", "feedback", "remote_fetch")))
-        text = p.read_text() if p.exists() else ""
+    def grok_on_gw(doc):
+        models, defs, feats = doc.get("models", {}), doc.get("model", {}), doc.get("features", {})
+        return (all(subset(defs.get(m), {"model": m, "base_url": f"{BASE}/v1", "api_backend": api, "env_key": "CLIPROXY_API_KEY"})
+                    for m, api in gw_models.items())
+                and all(models.get(k) in gw_models for k in ("default",) + roles)
+                and all(feats.get(k) is False for k in ("telemetry", "feedback", "remote_fetch")))
+    text = p.read_text() if p.exists() else ""
+    try:
+        on_gw = grok_on_gw(tomllib.loads(text))
+    except tomllib.TOMLDecodeError:
+        on_gw = None
+    if on_gw is False:
+        block = ("# cliproxyapi (managed by cliproxy-tier, coding-agent Q374): every model goes through CLIProxyAPI.\n"
+                 '[models]\ndefault = "claude-opus-5-5"\n' +
+                 "".join(f'{k} = "claude-haiku-5-5"\n' for k in roles) +
+                 "".join(f'\n[model."{m}"]\nmodel = "{m}"\nbase_url = "{BASE}/v1"\napi_backend = "{api}"\nenv_key = "CLIPROXY_API_KEY"\n'
+                         for m, api in gw_models.items()) +
+                 "\n[features]\ntelemetry = false\nfeedback = false\nremote_fetch = false\n")
+        # Drop the managed tables (and an earlier block's comment lines) from the rest, keep the others.
+        managed = {"[models]", "[features]"} | {f'[model."{m}"]' for m in gw_models}
+        keep, skip = [], False
+        for ln in text.splitlines(keepends=True):
+            if re.match(r"^\s*\[", ln):
+                skip = ln.strip() in managed
+            if not skip and not re.match(r"^# (cliproxyapi|--- (end )?cliproxyapi)", ln):
+                keep.append(ln)
+        rest = "".join(keep).strip("\n")
+        cand = block + ("\n" + rest + "\n" if rest else "")
         try:
-            on_gw = grok_on_gw(tomllib.loads(text))
-        except tomllib.TOMLDecodeError:
-            on_gw = None
-        if on_gw is False:
-            block = ("# cliproxyapi (managed by cliproxy-tier, coding-agent Q374): every model goes through CLIProxyAPI.\n"
-                     '[models]\ndefault = "claude-opus-5-5"\n' +
-                     "".join(f'{k} = "claude-haiku-5-5"\n' for k in roles) +
-                     "".join(f'\n[model."{m}"]\nmodel = "{m}"\nbase_url = "{BASE}/v1"\napi_backend = "{api}"\nenv_key = "CLIPROXY_API_KEY"\n'
-                             for m, api in gw_models.items()) +
-                     "\n[features]\ntelemetry = false\nfeedback = false\nremote_fetch = false\n")
-            # Drop the managed tables (and an earlier block's comment lines) from the rest, keep the others.
-            managed = {"[models]", "[features]"} | {f'[model."{m}"]' for m in gw_models}
-            keep, skip = [], False
-            for ln in text.splitlines(keepends=True):
-                if re.match(r"^\s*\[", ln):
-                    skip = ln.strip() in managed
-                if not skip and not re.match(r"^# (cliproxyapi|--- (end )?cliproxyapi)", ln):
-                    keep.append(ln)
-            rest = "".join(keep).strip("\n")
-            cand = block + ("\n" + rest + "\n" if rest else "")
-            try:
-                ok = grok_on_gw(tomllib.loads(cand))
-            except tomllib.TOMLDecodeError:  # e.g. managed keys set as dotted keys or inline tables elsewhere
-                ok = False
-            if ok:
-                p.parent.mkdir(parents=True, exist_ok=True)
-                write(p, cand)
-                on_gw = True
-        status["grok"] = "gw" if on_gw else "NOT-gw(conflict)"
+            ok = grok_on_gw(tomllib.loads(cand))
+        except tomllib.TOMLDecodeError:  # e.g. managed keys set as dotted keys or inline tables elsewhere
+            ok = False
+        if ok:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            write(p, cand)
+            on_gw = True
+    status["grok"] = "gw" if on_gw else "NOT-gw(conflict)"
 
-    # crush: a provider id outside the Catwalk catalog (crush #3504, #2649); no /v1 on an anthropic URL.
-    p = H / ".config/crush/crushrc"
-    if installed("crush"):
-        block = ("# --- cliproxyapi (managed) ---\n"
-                 "# Every model goes through CLIProxyAPI (coding-agent Q374). The key stays in the environment.\n"
-                 "# No /v1 on an anthropic base URL: the SDK adds /v1/messages.\n"
-                 "option default-providers false\noption metrics false\n"
-                 f'provider add cliproxy --name CLIProxyAPI --type anthropic \\\n  --base-url "{BASE}" \\\n'
-                 '  --api-key "${CLIPROXY_API_KEY:?set CLIPROXY_API_KEY}"\n'
-                 'model add cliproxy/claude-opus-5-5 --name "Claude Opus 5.5" --context-window 200000 --default-max-tokens 32000 --can-reason true --supports-images true\n'
-                 'model add cliproxy/claude-sonnet-5-5 --name "Claude Sonnet 5.5" --context-window 200000 --default-max-tokens 32000 --can-reason true --supports-images true\n'
-                 'model add cliproxy/claude-haiku-5-5 --name "Claude Haiku 5.5" --context-window 200000 --default-max-tokens 16000 --supports-images true\n'
-                 "model large cliproxy/claude-opus-5-5\nmodel small cliproxy/claude-haiku-5-5\n# --- end cliproxyapi ---\n")
+# crush: a provider id outside the Catwalk catalog (crush #3504, #2649); no /v1 on an anthropic URL.
+p = H / ".config/crush/crushrc"
+if installed("crush"):
+    block = ("# --- cliproxyapi (managed) ---\n"
+             "# Every model goes through CLIProxyAPI (coding-agent Q374). The key stays in the environment.\n"
+             "# No /v1 on an anthropic base URL: the SDK adds /v1/messages.\n"
+             "option default-providers false\noption metrics false\n"
+             f'provider add cliproxy --name CLIProxyAPI --type anthropic \\\n  --base-url "{BASE}" \\\n'
+             '  --api-key "${CLIPROXY_API_KEY:?set CLIPROXY_API_KEY}"\n'
+             'model add cliproxy/claude-opus-5-5 --name "Claude Opus 5.5" --context-window 200000 --default-max-tokens 32000 --can-reason true --supports-images true\n'
+             'model add cliproxy/claude-sonnet-5-5 --name "Claude Sonnet 5.5" --context-window 200000 --default-max-tokens 32000 --can-reason true --supports-images true\n'
+             'model add cliproxy/claude-haiku-5-5 --name "Claude Haiku 5.5" --context-window 200000 --default-max-tokens 16000 --supports-images true\n'
+             "model large cliproxy/claude-opus-5-5\nmodel small cliproxy/claude-haiku-5-5\n# --- end cliproxyapi ---\n")
 
-        def crush_ok(cand):
-            tmp = p.with_name("crushrc.cand"); tmp.parent.mkdir(parents=True, exist_ok=True); tmp.write_text(cand)
-            ok = run("bash", "-n", str(tmp)).returncode == 0; tmp.unlink()
-            assert ok, "crushrc candidate fails bash -n"
-        managed_block(p, block, crush_ok)
-        status["crush"] = "gw"
+    def crush_ok(cand):
+        tmp = p.with_name("crushrc.cand"); tmp.parent.mkdir(parents=True, exist_ok=True); tmp.write_text(cand)
+        ok = run("bash", "-n", str(tmp)).returncode == 0; tmp.unlink()
+        assert ok, "crushrc candidate fails bash -n"
+    managed_block(p, block, crush_ok)
+    status["crush"] = "gw"
 
-    # openclaw: its gateway daemon (a systemd user unit) makes the model calls and never sees the
-    # session environment, so the key sits in ~/.openclaw/.env, read at daemon start. Onboarding is
-    # a one-time manual step (dot-agents gateway-ops.md); this only re-asserts the result.
-    p = H / ".openclaw/openclaw.json"
-    if which("openclaw"):
-        if not p.exists():
-            status["openclaw"] = "NOT-onboarded"
+# openclaw: its gateway daemon (launchd or a systemd user unit) makes the model calls and never sees
+# the session environment, so the key sits in ~/.openclaw/.env, read at daemon start. A host where
+# OpenClaw is installed but not yet onboarded gets the non-interactive onboarding first; it needs
+# the gateway up, since it sends a test request. Its output can carry the daemon's token, so it
+# goes to a mode-600 log instead of stdout.
+p = H / ".openclaw/openclaw.json"
+if which("openclaw"):
+    if not p.exists():
+        log = H / ".cache/cliproxy-tier/openclaw-onboard.log"; log.parent.mkdir(parents=True, exist_ok=True)
+        cmd = ["openclaw", "onboard", "--non-interactive", "--accept-risk", "--mode", "local", "--flow", "quickstart",
+               "--auth-choice", "custom-api-key", "--custom-compatibility", "anthropic", "--custom-base-url", BASE,
+               "--custom-model-id", "claude-opus-5-5", "--custom-provider-id", "cliproxy", "--custom-image-input",
+               "--secret-input-mode", "ref", "--gateway-bind", "loopback", "--install-daemon", "--skip-channels",
+               "--skip-search", "--skip-skills", "--skip-hooks", "--skip-ui", "--skip-health"]
+        try:
+            r = subprocess.run(cmd, env=dict(os.environ, CUSTOM_API_KEY=KEY), stdin=subprocess.DEVNULL,
+                               capture_output=True, text=True, errors="replace", timeout=600)
+            out, rc = r.stdout + r.stderr, r.returncode
+        except subprocess.TimeoutExpired as e:
+            out, rc = f"{e.stdout or ''}{e.stderr or ''}\ntimed out after 600 s", "timeout"
+        log.write_text(out if isinstance(out, str) else out.decode(errors="replace")); os.chmod(log, 0o600)
+        if p.exists():  # only an onboarding that reached the gateway writes the config
+            changed.append(str(p))
         else:
-            before = len(changed)
-            upsert_env(H / ".openclaw/.env", {"CLIPROXY_API_KEY": KEY})
-            free = {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}
-            want = {"models": {"providers": {"cliproxy": {
-                        "baseUrl": BASE, "api": "anthropic-messages",
-                        "apiKey": {"source": "env", "provider": "default", "id": "CLIPROXY_API_KEY"},
-                        "models": [dict(id=f"claude-{m}-5-5", name=f"Claude {m.title()} 5.5", contextWindow=200000,
-                                        maxTokens=16000 if m == "haiku" else 32000, input=["text", "image"],
-                                        reasoning=m != "haiku", cost=free) for m in ("opus", "sonnet", "haiku")]}}},
-                    "agents": {"defaults": {
-                        "models": {f"cliproxy/claude-{m}-5-5": {} for m in ("opus", "sonnet", "haiku")}}}}
-            try:
-                d = json.loads(p.read_text())
-            except ValueError:  # hand-edited JSON5: leave it to `openclaw config`
-                d = None
-            # A gateway model the user picked as primary or utility model stays.
-            dflt = (d or {}).get("agents", {}).get("defaults", {})
-            if not str(dflt.get("model", {}).get("primary", "")).startswith("cliproxy/"):
-                want["agents"]["defaults"]["model"] = {"primary": "cliproxy/claude-opus-5-5"}
-            if not str(dflt.get("utilityModel", "")).startswith("cliproxy/"):
-                want["agents"]["defaults"]["utilityModel"] = "cliproxy/claude-haiku-5-5"
-            if d is not None and not subset(d, want):
-                backup(p)
-                r = subprocess.run(["openclaw", "config", "patch", "--stdin"], input=json.dumps(want),
-                                   capture_output=True, text=True, errors="replace")
-                assert r.returncode == 0, f"openclaw config patch failed: {r.stderr[-300:]}"
-                changed.append(str(p)); d = json.loads(p.read_text())
-            if len(changed) > before:
-                run("systemctl", "--user", "try-restart", "openclaw-gateway.service")
-            status["openclaw"] = "NOT-parsed" if d is None else ("gw" if subset(d, want) else "NOT-gw")
+            status["openclaw"] = f"NOT-onboarded(rc={rc}, see {log})"
+    if p.exists():
+        before = len(changed)
+        upsert_env(H / ".openclaw/.env", {"CLIPROXY_API_KEY": KEY})
+        free = {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}
+        want = {"models": {"providers": {"cliproxy": {
+                    "baseUrl": BASE, "api": "anthropic-messages",
+                    "apiKey": {"source": "env", "provider": "default", "id": "CLIPROXY_API_KEY"},
+                    "models": [dict(id=f"claude-{m}-5-5", name=f"Claude {m.title()} 5.5", contextWindow=200000,
+                                    maxTokens=16000 if m == "haiku" else 32000, input=["text", "image"],
+                                    reasoning=m != "haiku", cost=free) for m in ("opus", "sonnet", "haiku")]}}},
+                "agents": {"defaults": {
+                    "models": {f"cliproxy/claude-{m}-5-5": {} for m in ("opus", "sonnet", "haiku")}}}}
+        try:
+            d = json.loads(p.read_text())
+        except ValueError:  # hand-edited JSON5: leave it to `openclaw config`
+            d = None
+        # A gateway model the user picked as primary or utility model stays.
+        dflt = (d or {}).get("agents", {}).get("defaults", {})
+        if not str(dflt.get("model", {}).get("primary", "")).startswith("cliproxy/"):
+            want["agents"]["defaults"]["model"] = {"primary": "cliproxy/claude-opus-5-5"}
+        if not str(dflt.get("utilityModel", "")).startswith("cliproxy/"):
+            want["agents"]["defaults"]["utilityModel"] = "cliproxy/claude-haiku-5-5"
+        if d is not None and not subset(d, want):
+            backup(p)
+            r = subprocess.run(["openclaw", "config", "patch", "--stdin"], input=json.dumps(want),
+                               capture_output=True, text=True, errors="replace")
+            assert r.returncode == 0, f"openclaw config patch failed: {r.stderr[-300:]}"
+            changed.append(str(p)); d = json.loads(p.read_text())
+        if len(changed) > before:
+            run("openclaw", "gateway", "restart")
+        status["openclaw"] = "NOT-parsed" if d is None else ("gw" if subset(d, want) else "NOT-gw")
 
 # ---------- pi: converged by Ansible + cliproxy-assert-pi; just assert here ----------
 p = H / ".pi/agent/settings.json"

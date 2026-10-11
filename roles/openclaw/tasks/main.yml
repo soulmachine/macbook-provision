@@ -1,0 +1,14 @@
+---
+# OpenClaw runs a gateway daemon of its own (launchd), which earns its keep only on a Mac that
+# stays up, so it is gated on `mac_is_always_on` like hermes. The gate lives here so it holds for
+# a single-role run too.
+- name: Install OpenClaw
+  ansible.builtin.include_tasks: install.yml
+  when: mac_is_always_on | bool
+
+- name: Report that OpenClaw was skipped
+  ansible.builtin.debug:
+    msg: >-
+      Skipping OpenClaw on this {{ mac_family | default('machine') }}: its always-on daemon is
+      installed on every Mac except a MacBook.
+  when: not (mac_is_always_on | bool)

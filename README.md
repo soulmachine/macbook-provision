@@ -125,6 +125,11 @@ pre-commit run --all-files
 | kimi-code | Kimi Code CLI（通过官方 code.kimi.com 脚本安装） |
 | omp | oh-my-pi：bun 全局 `@oh-my-pi/pi-coding-agent`（依赖 bun） |
 | pi | pi coding agent：bun 全局 `@earendil-works/pi-coding-agent`，并下发 `~/.pi/agent/settings.json`（依赖 bun） |
+| copilot | GitHub Copilot CLI（npm `@github/copilot`）；只经 CLIProxyAPI 使用：`copilot-gw` 由 mac-mini-m2 上的 `cliproxy-tier` 写入（依赖 nodejs） |
+| crush | Crush（Charm，npm `@charmland/crush`）；`~/.config/crush/crushrc` 里的网关 provider 由 `cliproxy-tier` 写入（依赖 nodejs） |
+| gemini | Gemini CLI（npm `@google/gemini-cli`）；`gemini-gw` 与（没有 Google 登录时）`~/.gemini/settings.json` 由 `cliproxy-tier` 写入（依赖 nodejs） |
+| grok | Grok CLI（xAI，npm `@xai-official/grok`，首次运行时下载原生二进制到 `~/.grok/bin`）；`~/.grok/config.toml` 的网关模型由 `cliproxy-tier` 写入（依赖 nodejs） |
+| openclaw | OpenClaw（npm `openclaw`），只装在常驻 Mac 上（`mac_is_always_on`，同 hermes）；onboarding、网关 provider 与常驻 daemon 由 `cliproxy-tier` 负责（依赖 host-facts、nodejs） |
 | agent-sync | tap `agent-sync-sh/tap`（按 URL tap）+ `brew trust` + brew `agent-sync`；把 `~/.agents/` 扇出到各 agent，并在技能被删除后清理悬空符号链接 |
 | skills | 用 `npx skills@latest add` 安装十个整源 + 四个只取指定技能的源，并扇出到各 agent 的 skills 目录；详见下文「Agent CLI 与技能」（依赖 claude-code、codex） |
 | agent-reach | 多渠道触达工具；上游只提供面向 AI agent 的安装文档，故由 `claude -p` 按文档驱动安装（依赖 claude-code、python） |
@@ -148,7 +153,7 @@ pre-commit run --all-files
 | moshi | tap `rjyo/moshi` + brew `moshi-hook`，并通过 brew services 常驻；tag `agent-multiplexer` |
 | zellij | 终端复用器（brew `zellij`）；tag `terminal-multiplexer` |
 | tmux | 终端复用器（brew `tmux`）；tag `terminal-multiplexer`（`homebrew` 的通用包列表中也有，两处都是 `state: latest`，重复无害） |
-| herdr | 用 `npx skills add herdrdev/herdr` 安装 herdr skill，并以相对符号链接接入 `~/.claude/skills`；tag `terminal-multiplexer` |
+| herdr | 用 `npx skills add herdrdev/herdr` 安装 herdr skill，并以相对符号链接接入 `~/.claude/skills`；并用 herdr-rename-hook skill 的 `install.sh` 接上 `/rename` 钩子（Claude Code 与 Codex 的 `/rename` 同步成 Herdr 的 agent、pane 和 tab 名）；tag `terminal-multiplexer` |
 
 ### 仅限常驻开机的机器
 
@@ -208,6 +213,11 @@ ioreg `BatteryInstalled` 的保守规则：那条规则要求硬件明确报告"
 | kimi-code | 官方 `install.sh`（curl \| bash） | `~/.kimi-code/bin/kimi`，命令是 **`kimi`** 而不是 `kimi-code` |
 | omp | bun 全局 `@oh-my-pi/pi-coding-agent` | `~/.bun/bin/omp`，命令是 **`omp`** |
 | pi | bun 全局 `@earendil-works/pi-coding-agent` | `~/.bun/bin/pi` |
+| copilot | npm 全局 `@github/copilot` | 命令 `copilot`；经网关用 `copilot-gw` |
+| crush | npm 全局 `@charmland/crush` | 命令 `crush` |
+| gemini | npm 全局 `@google/gemini-cli` | 命令 `gemini`；经网关用 `gemini-gw` |
+| grok | npm 全局 `@xai-official/grok` | 命令 `grok`；原生二进制在 `~/.grok/bin` |
+| openclaw | npm 全局 `openclaw` | 命令 `openclaw`；常驻 daemon 由 `cliproxy-tier` 的 onboarding 安装 |
 | claude-mem | `npx -y claude-mem install` | 不是独立命令，而是 Claude Code 插件，同时接线 codex-cli 和 opencode |
 | cc-switch | tap `farion1231/ccswitch` + **cask** | GUI 应用 |
 | agent-reach | **没有包管理器**，见下 | 由 `claude -p` 按上游文档安装 |
@@ -278,6 +288,8 @@ role 表里的「依赖 nodejs」指的是运行期依赖，不是安装渠道�
   SubagentStart），然后开一个新 thread。role 只负责提醒——替你写入信任就等于预先信任了
   上游下次推送的任何内容，而这正是这道审核存在的意义。
 - **opencode 的 provider 认证**没有做：安装器带的是 `--skip-auth`。
+- **新装的 agent 要在 mac-mini-m2 上跑一次 `cliproxy-tier <host>`。** `copilot-gw`、`gemini-gw`（主机有自己的 Google 登录时 Gemini 保持原生）、grok、crush、openclaw 的网关配置以及 OpenClaw 的 onboarding 都由它完成，而它只处理已经装好的 agent。
+- **rename 钩子装上或更新后**，Codex 下次启动会问是否信任这个钩子，选「Trust all and continue」；已经在跑的 Claude Code 会话要打开一次 `/hooks` 或重启才会用上。
 - **agent-reach 只配好了零配置的渠道。** 其余渠道要 cookie 或点一下浏览器扩展，headless
   的 `claude -p` 回答不了文档里「你要哪些渠道」这个问题。要补齐就自己交互式跑一次
   `agent-reach doctor`。

@@ -2269,3 +2269,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Frank chose the token files on 2026-10-11 (`~/.zshenv` on macOS, `~/.profile` on Linux). The tarball avoids a Rust toolchain on hosts that have none (supermicro, mac-mini-2018-omarchy) and a minute of compile on the rest.
 **Outcome:** applied
 **Ref:** purelymail DECISIONS Q30, release v0.1.0
+
+## Q218 — interactive/provision-repos-agents-sync — tradeoff
+
+**Question:** Frank asked to sync the latest omarchy-provision commits here. Of its five new agent roles (Copilot, Crush, Gemini, Grok, OpenClaw) and its herdr `/rename` hook, how should each be shaped on a Mac?
+**Options considered:** npm globals / Homebrew formulae / mise tools; OpenClaw on every Mac / on always-on Macs only; copy the hook wiring / call the skill's installer
+**Chosen:** The five agents are npm globals behind a `nodejs` dependency, the way `opencode` installs. `openclaw` is gated on `mac_is_always_on` with a `host-facts` dependency, the same shape as `hermes`. It also rewrites a stale daemon with `openclaw gateway install --force`, when the LaunchAgent's mise Node no longer matches the current Node or its OpenClaw version lags the CLI. The `herdr` role calls `~/.agents/skills/herdr-rename-hook/scripts/install.sh` only when `install.sh --check` fails, and reports `changed` when the `--check` output differs; `HERDR_ENV` is cleared so the installer's in-pane self-check never runs in a play. No role writes gateway config: `gateway/cliproxy-tier-host.py` configures the agents on every host and onboards OpenClaw (coding-agent Q401). AGENTS.md's lookup count goes to 110 places across 30 roles. The purelymail role had left it at 105 across 29.
+**Decided-by:** agent
+**Justification:** npm is the one channel all five publish on, and it matches ubuntu-provision. OpenClaw keeps a gateway daemon running, the reason hermes is gated (docs/host-facts.md). The stale check exists because m6's LaunchAgent pins mise's `node/24.21.0`, and the `nodejs` role moves Node to each new LTS. OpenClaw's own status audit flags this. Tested on mac-mini-m6 from a scratch copy of this tree: each new role installed on run 1 and changed nothing on run 2; `herdr` changed nothing, since m6 already had the hook. A simulated newer Node made the stale check fire, and `install --force` rewrote and restarted the LaunchAgent. The cliproxy-tier half is in coding-agent Q401.
+**Outcome:** applied
+**Ref:** (this commit); coding-agent Q401; omarchy-provision Q11, Q13, Q15

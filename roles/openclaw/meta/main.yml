@@ -1,0 +1,6 @@
+---
+dependencies:
+  # Sets `mac_is_always_on`, the fact this role's gate reads, so a standalone
+  # `include_role` run classifies the machine itself (docs/host-facts.md).
+  - host-facts
+  - nodejs
