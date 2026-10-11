@@ -3,14 +3,19 @@
 # while installing — `generate_completions_from_executable`, as the codex cask did and
 # 1password-cli does — launches that binary for the first time inside this unattended run, and
 # on some hosts Gatekeeper answers that first launch with a prompt nobody is there to click, so
-# `brew upgrade` waits for hours (2026-10-08, DECISIONS Q198). Which hosts, and why, is not
-# known: an identical binary and quarantine passed silently on m6 and prompted on m3.
+# `brew upgrade` waits for hours (2026-10-08, DECISIONS Q198). Which hosts: the ones where the
+# app was never approved by a click. Homebrew copies the previous install's quarantine flags
+# onto an upgrade, so a Mac that once approved the app keeps 0x0040 (01c1) across upgrades,
+# while a Mac that never did stays 0181 and prompts on every upgrade (m3 vs m6, identical
+# binary, 2026-10-11, DECISIONS Q214).
 #
 # Marking the cached download user-approved (0x0040, the bit Homebrew itself carries across app
 # upgrades) is the unattended equivalent of clicking Open. Homebrew leaves a download that is
 # already quarantined alone and copies its flags onto every extracted file, adding 0x0100, so
-# the binary ends up 01c1 — what an Open click writes. Only outdated casks of that shape: every
-# other cask keeps its first-launch check.
+# the binary ends up 01c1 — what an Open click writes. Only outdated casks of that shape, plus
+# homebrew_preapprove_casks: casks whose binary a LATER ROLE execs in the same unattended run
+# (chatgpt carries codex, which the codex role runs minutes after the upgrade), which this
+# heuristic cannot see. Every other cask keeps its first-launch check.
 - name: List outdated casks
   ansible.builtin.command: brew outdated --cask --quiet
   register: homebrew_outdated_casks
@@ -32,5 +37,7 @@
   loop: "{{ (homebrew_outdated_info.stdout | default('{\"casks\": []}', true) | from_json).casks }}"
   loop_control:
     label: "{{ item.token }}"
-  when: "'generate_completions_from_executable' in (item.artifacts | to_json)"
+  when: >-
+    'generate_completions_from_executable' in (item.artifacts | to_json)
+    or item.token in homebrew_preapprove_casks
   changed_when: true

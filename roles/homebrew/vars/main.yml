@@ -1,0 +1,6 @@
+---
+# Casks whose binary a LATER ROLE of this play execs in the same unattended run, so an
+# upgrade of them needs the first-launch pre-approval in preapprove-casks.yml as much as a
+# cask that runs its own binary while installing. chatgpt carries codex (codex role).
+homebrew_preapprove_casks:
+  - chatgpt

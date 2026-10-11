@@ -2229,3 +2229,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Bisected 2026-10-11: it comes from `fzf --zsh`, whose key-binding and completion halves each save the shell's options and restore them with `setopt`, and `zle` cannot be turned on without a tty. Under a pseudo-terminal (`script -q /dev/null zsh -i -c exit`) the count is zero, so no terminal user sees it, and the playbook no longer runs any `zsh -ic` task now that the oh-my-zsh plugin enables are gone. A guard would hide fzf from exactly the shells that need no bindings and add a line to maintain for a cosmetic message.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q214 — interactive/m3-codex-hang — gate-resolution
+
+**Question:** mac-studio-m3's play hung for hours, twice on 2026-10-11, on the codex role's first exec of the Codex binary after the same run's `brew upgrade` replaced ChatGPT.app. Q198's pre-approval did not fire, because the chatgpt cask runs no binary while installing, and Q198 recorded the m6-vs-m3 difference as unknown. What explains it, and what changes?
+**Options considered:** approve on m3's screen after every upgrade / pre-approve chatgpt the way Q198 pre-approves completion-generating casks / a task timeout only / strip quarantine from the bundle
+**Chosen:** Three things. `preapprove-casks.yml` also pre-approves the casks listed in `homebrew_preapprove_casks` (chatgpt), the casks a later role execs. Every task that execs codex (three in codex, three in ponytail) carries `timeout: 120`, so a prompt fails the task in two minutes instead of holding the host. One-time on m3: wrote `01c1` onto ChatGPT.app recursively and force-restarted CoreServicesUIAgent to drop the queued prompt, after which `codex --version` returned at once.
+**Decided-by:** human (the three measures); agent (their shape)
+**Justification:** The difference is the quarantine flag byte, not the host's session or the binary: m6's attribute was `01c1` at install time, the user-approved bit 0x0040 carried over from a previously approved ChatGPT.app, while m3's was `0181`, never approved, so every upgrade there prompts. Both Macs had a logged-in console session. A stack sample of the hung process sat at `_dyld_start` with no sockets, the point where macOS evaluates a quarantined binary. Writing the bit alone did not release it, as Q198 predicted: Gatekeeper queues launches behind the open prompt, and only killing the prompt agent cleared it. `killall` was ignored; `kill -9` worked.
+**Outcome:** applied
+**Ref:** (pending)
