@@ -294,14 +294,16 @@ p = H / ".config/opencode/opencode.json"
 if p.exists():
     d = json.loads(p.read_text())
     prov = d.setdefault("provider", {})
-    want = {"options": {"baseURL": f"{BASE}/v1", "apiKey": "{env:CLIPROXY_API_KEY}"},
-            "models": {"claude-haiku-4-5": {"id": "claude-haiku-4-5-20251001"}}}
     a = prov.setdefault("anthropic", {})
-    a.setdefault("options", {}).update(want["options"])
-    a.setdefault("models", {}).update(want["models"])
+    a.setdefault("options", {}).update({"baseURL": f"{BASE}/v1", "apiKey": "{env:CLIPROXY_API_KEY}"})
+    # opencode's own catalog has claude-haiku-5-5; drop the haiku-4-5 pin this script used to add (coding-agent Q385).
+    if a.get("models", {}).get("claude-haiku-4-5") == {"id": "claude-haiku-4-5-20251001"}:
+        del a["models"]["claude-haiku-4-5"]
+        if not a["models"]:
+            del a["models"]
     enabled = ["anthropic"] + (["google"] if "google" in prov else [])
     new = dict(d, enabled_providers=enabled, model="anthropic/claude-opus-5-5",
-               small_model="anthropic/claude-haiku-4-5-20251001")
+               small_model="anthropic/claude-haiku-5-5")
     if new != json.loads(p.read_text()):
         write(p, json.dumps(new, indent=2) + "\n")
     auth = H / ".local/share/opencode/auth.json"
