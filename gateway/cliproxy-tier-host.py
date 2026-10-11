@@ -122,7 +122,7 @@ if GATEWAY_ONLY and installed("gemini"):
 for name, body in wrappers.items():
     p = bindir / name
     if not p.exists() or p.read_text() != body:
-        p.write_text(body); changed.append(str(p))
+        write(p, body, 0o755)  # backs up a copy that differs, e.g. a hand edit
     os.chmod(p, 0o755)
 
 # ---------- Claude Code: native default ----------
