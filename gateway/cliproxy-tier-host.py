@@ -71,7 +71,7 @@ else:
     hdr = '#!/bin/bash\n[ -n "${CLIPROXY_API_KEY:-}" ] || . "$HOME/.bashrc"\n'
 wrappers = {
     "claude-gw": hdr + ': "${CLIPROXY_API_KEY:?}" "${CLIPROXY_BASE_URL:?}"\n'
-                 '# Plugin hooks call bare `node`, which non-interactive shells may lack (macbook-air, mac-mini-2018).\n'
+                 '# Plugin hooks call bare `node`, which non-interactive shells may lack (macbook-air).\n'
                  '# Appended, so a host\'s own node and tools still come first.\n'
                  'command -v node >/dev/null 2>&1 || export PATH="$PATH:$HOME/.local/share/mise/shims"\n'
                  'exec env ANTHROPIC_BASE_URL="$CLIPROXY_BASE_URL" ANTHROPIC_AUTH_TOKEN="$CLIPROXY_API_KEY" claude --dangerously-skip-permissions --effort xhigh "$@"\n',
@@ -190,10 +190,13 @@ if p.exists():
 
 # ---------- omp: gateway only, vault purged ----------
 omp = H / ".bun/bin/omp"; bun = H / ".bun/bin/bun"
+if not omp.exists():  # Omarchy: a bash stub in ~/.local/bin that runs omp through mise
+    omp = Path(which("omp") or omp)
 # omp is a `#!/usr/bin/env bun` JS shim on some hosts (bun is not on PATH there) and a
-# compiled Mach-O binary on others; pick the invocation by looking at the first bytes.
+# compiled Mach-O binary on others; pick the invocation by looking at the shebang.
 OMP = [str(omp)]
-if omp.exists() and omp.resolve().read_bytes()[:2] == b"#!":
+shebang = omp.resolve().read_bytes().split(b"\n", 1)[0] if omp.exists() else b""
+if shebang.startswith(b"#!") and shebang.endswith(b"bun"):
     OMP = [str(bun), str(omp)]
 if (H / ".omp/agent/agent.db").exists() and omp.exists() and (OMP[0] != str(bun) or bun.exists()):
     upsert_env(H / ".omp/agent/.env", {"ANTHROPIC_BASE_URL": BASE, "ANTHROPIC_API_KEY": KEY})
