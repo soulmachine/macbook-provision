@@ -2,11 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>Label</key><string>com.cliproxy.claude-usage</string>
+    <key>Label</key><string>com.cliproxy.agent-usage</string>
     <key>ProgramArguments</key>
-    <array><string>/Users/frankdai/.local/bin/cliproxy-claude-usage</string></array>
+    <array><string>/Users/frankdai/.local/bin/cliproxy-agent-usage</string></array>
     <key>StartInterval</key><integer>300</integer>
     <key>RunAtLoad</key><true/>
-    <key>StandardErrorPath</key><string>/Users/frankdai/Library/Logs/cliproxy-claude-usage.err.log</string>
+    <key>StandardErrorPath</key><string>/Users/frankdai/Library/Logs/cliproxy-agent-usage.err.log</string>
 </dict>
 </plist>

@@ -1,0 +1,76 @@
+--- a/usr/bin/omarchy-agent-usage-codex
++++ b/usr/bin/omarchy-agent-usage-codex
+@@ -571,6 +571,64 @@
+   return result
+ 
+ 
++# ------------------------------------------------------------ CLIProxyAPI
++#
++# Local patch for gateway-only hosts (coding-agent Q366). Codex here reaches
++# OpenAI only through CLIProxyAPI on mac-mini-m2, so the app-server has no
++# login to read limits with. m2 holds the account token: its
++# cliproxy-agent-usage job asks ChatGPT's usage endpoint and pushes the plan
++# and the rate-limit windows here, with no token in them.
++
++GATEWAY_USAGE = Path(os.environ.get("XDG_STATE_HOME") or (Path.home() / ".local" / "state")) / "cliproxy" / "codex-usage.json"
++GATEWAY_STALE_SECONDS = 30 * 60
++GATEWAY_HELP = "Codex runs through CLIProxyAPI on mac-mini-m2, whose cliproxy-agent-usage job pushes these limits"
++
++
++def native_login():
++  home = Path(os.environ.get("CODEX_HOME") or (Path.home() / ".codex")).expanduser()
++  return (home / "auth.json").exists()
++
++
++def gateway_limits():
++  result = {"limits": [], "tierLabel": "CLIProxyAPI", "usageStatusText": "", "authHelpText": ""}
++  try:
++    pushed = json.loads(GATEWAY_USAGE.read_text(encoding="utf-8"))
++  except Exception:
++    result["usageStatusText"] = "Waiting for gateway"
++    result["authHelpText"] = GATEWAY_HELP + ". It has not pushed any yet."
++    return result
++
++  account = str(pushed.get("account") or "")
++  if account:
++    result["tierLabel"] = "CLIProxyAPI · " + account
++  # The usage endpoint names its windows in seconds; the app-server shape
++  # limit_window() reads names them in minutes.
++  rate = (pushed.get("usage") or {}).get("rate_limit") or {}
++  for window in (rate.get("primary_window"), rate.get("secondary_window")):
++    if not isinstance(window, dict):
++      continue
++    # A window that has reset since the push describes a period that is over.
++    if 0 < number(window.get("reset_at")) <= time.time():
++      continue
++    entry = limit_window({
++      "usedPercent": window.get("used_percent"),
++      "windowDurationMins": number(window.get("limit_window_seconds")) // 60,
++      "resetsAt": window.get("reset_at"),
++    })
++    if entry:
++      result["limits"].append(entry)
++
++  if not rate:
++    result["usageStatusText"] = "Codex limits unavailable"
++    result["authHelpText"] = GATEWAY_HELP + ", but its last push held no limits."
++    return result
++  age_minutes = round((time.time() - number(pushed.get("fetchedAtMs")) / 1000) / 60)
++  if age_minutes * 60 > GATEWAY_STALE_SECONDS:
++    result["usageStatusText"] = "Gateway limits stale"
++    result["authHelpText"] = GATEWAY_HELP + f". The last push is {age_minutes} minutes old."
++  return result
++
++
+ def main():
+   parser = argparse.ArgumentParser()
+   # --force rescans everything and rewrites the cache. --limits-only is kept
+@@ -584,7 +642,7 @@
+ 
+   max_age = 0 if args.force else (LIMITS_ONLY_REUSE_SECONDS if args.limits_only else SCAN_REUSE_SECONDS)
+   stats = cached_local_stats(max_age)
+-  rpc = fetch_codex_rpc()
++  rpc = fetch_codex_rpc() if native_login() else gateway_limits()
+ 
+   record = {
+     "schemaVersion": 1,

@@ -3,8 +3,9 @@ Operation = Install
 Operation = Upgrade
 Type = Path
 Target = usr/bin/omarchy-agent-usage-claude
+Target = usr/bin/omarchy-agent-usage-codex
 
 [Action]
-Description = Re-applying the CLIProxyAPI limits patch to omarchy-agent-usage-claude...
+Description = Re-applying the CLIProxyAPI limits patches to Omarchy's agent usage collectors...
 When = PostTransaction
 Exec = /usr/local/bin/omarchy-cliproxy-patch

@@ -11,21 +11,23 @@
    weekly = usage_bucket(payload, "seven_day_oauth_apps") or usage_bucket(payload, "seven_day")
    session = usage_bucket(payload, "five_hour")
    raw = [session.get("utilization") if session else None, weekly.get("utilization") if weekly else None]
-@@ -846,6 +850,48 @@
+@@ -846,6 +850,52 @@
    return result
  
  
 +# ------------------------------------------------------------ CLIProxyAPI
 +#
-+# Local patch for gateway-only hosts (coding-agent Q365). Claude Code here
-+# reaches Anthropic only through CLIProxyAPI on mac-mini-m2, so there is no
-+# login to probe with. m2 holds the account tokens: its cliproxy-claude-usage
-+# job probes the usage endpoint for the account this host is routed to first
-+# and pushes the raw answer here, with no token in it.
++# Local patch for gateway-only hosts (coding-agent Q365, Q366). Claude Code
++# here reaches Anthropic only through CLIProxyAPI on mac-mini-m2, so there is
++# no login to probe with. m2 holds the account tokens: its cliproxy-agent-usage
++# job probes the usage endpoint for the account the gateway now routes this
++# host to, and pushes the raw answer here, with no token in it. That is the
++# first account in the host's order that has not hit its limit; the accounts
++# it passed over are listed in fallbackFrom.
 +
 +GATEWAY_USAGE = Path(os.environ.get("XDG_STATE_HOME") or (Path.home() / ".local" / "state")) / "cliproxy" / "claude-usage.json"
 +GATEWAY_STALE_SECONDS = 30 * 60
-+GATEWAY_HELP = "Claude Code runs through CLIProxyAPI on mac-mini-m2, whose cliproxy-claude-usage job pushes these limits"
++GATEWAY_HELP = "Claude Code runs through CLIProxyAPI on mac-mini-m2, whose cliproxy-agent-usage job pushes these limits"
 +
 +
 +def gateway_limits() -> dict[str, Any]:
@@ -40,6 +42,8 @@
 +  account = str(pushed.get("account") or "")
 +  if account:
 +    result["tierLabel"] = "CLIProxyAPI · " + account
++    if pushed.get("fallbackFrom"):
++      result["tierLabel"] += " · fallback"
 +  parsed = limits_from_payload(pushed.get("usage") or {})
 +  if not parsed["ok"]:
 +    result["usageStatusText"] = "Claude limits unavailable"
@@ -60,7 +64,7 @@
  # -------------------------------------------------------------------- record
  
  
-@@ -880,7 +926,11 @@
+@@ -880,7 +930,11 @@
      stats = merge_stats(stats, opencode)
  
    access_token, expires_at_ms, plan = oauth_login(claude_dir)
