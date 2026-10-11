@@ -92,11 +92,11 @@ wrappers = {
                  '# Plugin hooks call bare `node`, which non-interactive shells may lack (macbook-air).\n'
                  '# Appended, so a host\'s own node and tools still come first.\n'
                  'command -v node >/dev/null 2>&1 || export PATH="$PATH:$HOME/.local/share/mise/shims"\n'
-                 'exec env ANTHROPIC_BASE_URL="$CLIPROXY_BASE_URL" ANTHROPIC_AUTH_TOKEN="$CLIPROXY_API_KEY" claude --dangerously-skip-permissions --effort xhigh "$@"\n',
+                 'exec env ANTHROPIC_BASE_URL="$CLIPROXY_BASE_URL" ANTHROPIC_AUTH_TOKEN="$CLIPROXY_API_KEY" claude --dangerously-skip-permissions --effort high "$@"\n',
     "codex-gw": hdr + ': "${CLIPROXY_API_KEY:?}"\n'
                 '# codex may live only in mise shims (dev-server-frank), which non-interactive shells lack.\n'
                 'command -v codex >/dev/null 2>&1 || export PATH="$HOME/.local/share/mise/shims:$PATH"\n'
-                '# -p before the subcommand: `codex-gw --yolo exec …` still works.\nexec codex -p cliproxy --yolo -c model_reasoning_effort=xhigh "$@"\n',
+                '# -p before the subcommand: `codex-gw --yolo exec …` still works.\nexec codex -p cliproxy --yolo -c model_reasoning_effort=high "$@"\n',
     # backpass cannot route its acpx Claude passes itself; the agent pins live in ~/.config/backpass/config.json.
     "backpass-gw": hdr + ': "${CLIPROXY_API_KEY:?}" "${CLIPROXY_BASE_URL:?}"\n'
                    'exec env ANTHROPIC_BASE_URL="$CLIPROXY_BASE_URL" ANTHROPIC_AUTH_TOKEN="$CLIPROXY_API_KEY" backpass "$@"\n',

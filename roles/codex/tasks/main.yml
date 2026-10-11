@@ -99,6 +99,6 @@
 - name: Add codex-yolo alias to .zshrc
   ansible.builtin.lineinfile:
     path: "{{ lookup('env', 'HOME') }}/.zshrc"
-    line: 'alias codex-yolo="codex --yolo -c model_reasoning_effort=xhigh"'
+    line: 'alias codex-yolo="codex --yolo -c model_reasoning_effort=high"'
     regexp: '^alias codex-yolo='
     state: present
