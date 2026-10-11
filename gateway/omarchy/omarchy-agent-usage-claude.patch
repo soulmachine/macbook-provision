@@ -1,0 +1,75 @@
+--- a/usr/bin/omarchy-agent-usage-claude
++++ b/usr/bin/omarchy-agent-usage-claude
+@@ -739,6 +739,10 @@
+       "helpText": "Couldn't reach Anthropic's usage endpoint. Retrying shortly. Local Claude Code stats are still shown.",
+     }
+ 
++  return limits_from_payload(payload)
++
++
++def limits_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
+   weekly = usage_bucket(payload, "seven_day_oauth_apps") or usage_bucket(payload, "seven_day")
+   session = usage_bucket(payload, "five_hour")
+   raw = [session.get("utilization") if session else None, weekly.get("utilization") if weekly else None]
+@@ -846,6 +850,48 @@
+   return result
+ 
+ 
++# ------------------------------------------------------------ CLIProxyAPI
++#
++# Local patch for gateway-only hosts (coding-agent Q365). Claude Code here
++# reaches Anthropic only through CLIProxyAPI on mac-mini-m2, so there is no
++# login to probe with. m2 holds the account tokens: its cliproxy-claude-usage
++# job probes the usage endpoint for the account this host is routed to first
++# and pushes the raw answer here, with no token in it.
++
++GATEWAY_USAGE = Path(os.environ.get("XDG_STATE_HOME") or (Path.home() / ".local" / "state")) / "cliproxy" / "claude-usage.json"
++GATEWAY_STALE_SECONDS = 30 * 60
++GATEWAY_HELP = "Claude Code runs through CLIProxyAPI on mac-mini-m2, whose cliproxy-claude-usage job pushes these limits"
++
++
++def gateway_limits() -> dict[str, Any]:
++  result = {"limits": [], "usageStatusText": "", "authHelpText": "", "tierLabel": "CLIProxyAPI"}
++  try:
++    pushed = json.loads(GATEWAY_USAGE.read_text(encoding="utf-8"))
++  except Exception:
++    result["usageStatusText"] = "Waiting for gateway"
++    result["authHelpText"] = GATEWAY_HELP + ". It has not pushed any yet."
++    return result
++
++  account = str(pushed.get("account") or "")
++  if account:
++    result["tierLabel"] = "CLIProxyAPI · " + account
++  parsed = limits_from_payload(pushed.get("usage") or {})
++  if not parsed["ok"]:
++    result["usageStatusText"] = "Claude limits unavailable"
++    result["authHelpText"] = GATEWAY_HELP + ", but its last push held no limits."
++    return result
++
++  # Same rule as the probe cache: a window that has reset since the push
++  # describes a period that is over, so it goes.
++  now = dt.datetime.now(dt.timezone.utc)
++  result["limits"] = [entry for entry in parsed["limits"] if limit_window_open(entry, now)]
++  age_minutes = round((time.time() - number(pushed.get("fetchedAtMs")) / 1000) / 60)
++  if age_minutes * 60 > GATEWAY_STALE_SECONDS:
++    result["usageStatusText"] = "Gateway limits stale"
++    result["authHelpText"] = GATEWAY_HELP + f". The last push is {age_minutes} minutes old."
++  return result
++
++
+ # -------------------------------------------------------------------- record
+ 
+ 
+@@ -880,7 +926,11 @@
+     stats = merge_stats(stats, opencode)
+ 
+   access_token, expires_at_ms, plan = oauth_login(claude_dir)
+-  limits = collect_limits(access_token, expires_at_ms, args.force)
++  if access_token == "":
++    limits = gateway_limits()
++    plan = limits["tierLabel"]
++  else:
++    limits = collect_limits(access_token, expires_at_ms, args.force)
+ 
+   record = {
+     "schemaVersion": 1,
