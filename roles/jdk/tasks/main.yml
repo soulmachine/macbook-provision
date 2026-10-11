@@ -1,5 +1,6 @@
 ---
-# `mise use --global java@lts` only guarantees *an* LTS is installed: the request
+# `mise use --global java@lts` (or the per-host pin in vars/main.yml) only guarantees *an*
+# LTS is installed: the request
 # "lts" is satisfied by any already-installed LTS release, so on a box that already
 # has one it never pulls a newer one. That is the same finding the `nodejs` role
 # records, and this role carried the same request with no upgrade step beside it.
@@ -35,8 +36,14 @@
   changed_when: false
   failed_when: false
 
-- name: Configure JDK LTS via mise
-  ansible.builtin.command: mise use --global java@lts
+# ansible_hostname picks a per-host pin from vars/main.yml; a single-role run gathers no facts.
+- name: Ensure the hostname fact is gathered
+  ansible.builtin.setup:
+    gather_subset: [min]
+  when: ansible_facts['hostname'] is not defined
+
+- name: Configure the JDK via mise
+  ansible.builtin.command: mise use --global java@{{ jdk_request }}
   changed_when: false
 
 - name: Upgrade the JDK to the newest LTS release

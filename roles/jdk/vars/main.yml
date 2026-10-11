@@ -1,0 +1,9 @@
+---
+# Hosts whose JVM crashes on every recent JDK build. On Franks-Mac-mini-M2 (M2, macOS 27.0)
+# Java 25.0.2, 25.0.4, 21.0.12 and 17.0.20 all die at startup with SIGBUS in
+# CodeHeap::allocate, and only the 2022 build 17.0.2 runs (2026-10-11, DECISIONS Q215); m6 and
+# macbook-air, on macOS 27.0.1, run 25 fine. Keyed by ansible_hostname. An exact pin, so
+# `mise upgrade java` has nothing to move. Drop the entry once the host runs an LTS again.
+jdk_request_by_host:
+  Franks-Mac-mini-M2: "17.0.2"
+jdk_request: "{{ jdk_request_by_host[ansible_facts['hostname']] | default('lts') }}"

@@ -2239,3 +2239,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The difference is the quarantine flag byte, not the host's session or the binary: m6's attribute was `01c1` at install time, the user-approved bit 0x0040 carried over from a previously approved ChatGPT.app, while m3's was `0181`, never approved, so every upgrade there prompts. Both Macs had a logged-in console session. A stack sample of the hung process sat at `_dyld_start` with no sockets, the point where macOS evaluates a quarantined binary. Writing the bit alone did not release it, as Q198 predicted: Gatekeeper queues launches behind the open prompt, and only killing the prompt agent cleared it. `killall` was ignored; `kill -9` worked.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q215 — interactive/m2-java-crash — tradeoff
+
+**Question:** The jdk role has failed on mac-mini-m2 for three nightly sweeps: `mise upgrade java` installs Java 25.0.4 and its first run dies with SIGBUS in `CodeHeap::allocate`, and about a hundred tasks after jdk never run there. The sweep's note blamed Java 25. Java 21.0.12 and 17.0.20 crash the same way on that host; only the 2022 build 17.0.2 runs. m6 and macbook-air run 25.0.4 fine. What does the role do about m2?
+**Options considered:** pin the whole fleet to 17 / skip the jdk role on m2 and leave a crashing java on its PATH / pin m2 alone to the exact build that runs / update m2 to macOS 27.0.1 and see
+**Chosen:** A per-host map in `roles/jdk/vars/main.yml`, keyed by `ansible_hostname`, pins Franks-Mac-mini-M2 to `17.0.2`; every other host keeps `lts`. The task gathers the `min` facts first so a single-role run has the hostname.
+**Decided-by:** human (fix the role for m2); agent (the exact pin and the hostname key)
+**Justification:** Every recent JDK build crashes on m2 and none does on the two Macs that run macOS 27.0.1, so the fault is the host, most likely its macOS 27.0 (26A428), which has the 27.0.1 update pending with a restart. That restart touches the gateway host and is Frank's call, so the role gets the smallest change that makes the sweep green and leaves a working `java` on m2: an exact pin `mise upgrade` cannot move. The hostname key is the first in this repo; the host-facts gates cannot express "this one Mac". Remove the entry after the macOS update if 25 runs.
+**Outcome:** applied
+**Ref:** (pending)
