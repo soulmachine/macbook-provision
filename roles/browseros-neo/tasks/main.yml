@@ -29,10 +29,13 @@
   changed_when: true
 
 # `present`, not `latest`: the cask is `auto_updates true` and neo updates itself (Sparkle).
+# --adopt takes over a BrowserOS neo.app installed by hand (macbook-air had one) instead of
+# failing on "already an App", as roles/codex does.
 - name: Install BrowserOS neo
   community.general.homebrew_cask:
     name: browseros-ai/tap/browseros-neo
     state: present
+    install_options: adopt
 
 # --- the Claude Code MCP entry -------------------------------------------------
 # Writes the same `~/.claude.json` entry neo's "Connect" button writes (type http, same name),
