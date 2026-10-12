@@ -13,7 +13,7 @@
 - name: Install ortie
   ansible.builtin.include_tasks: pimalaya.yml
   vars:
-    pimalaya_tool: ortie
+    email_tool: ortie
 
 # The cask auto-updates, so `brew upgrade` leaves it alone by design.
 - name: Install Proton Mail Bridge
