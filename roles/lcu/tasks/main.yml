@@ -4,7 +4,7 @@
 # /Applications/ChatGPT.app (the codex role's cask). Installed under ~/.local/share/lcu from the
 # GitHub release, kept at the latest release by `lcu update`, and registered in every installed
 # harness in `lcu_agents` with approval `ask`, no Chrome (coding-agent Q223) and computer-audio
-# recording on (DECISIONS Q229). `lcu` is on no PATH by design: the harnesses start it
+# recording on (DECISIONS Q230). `lcu` is on no PATH by design: the harnesses start it
 # by absolute path. Accessibility and Screen Recording grants and the first `lcu doctor` need
 # someone at the screen (coding-agent Q244, Q260), so this role does not run doctor.
 
@@ -144,7 +144,7 @@
 
     # Setup keeps the saved opt-ins in ~/.local/state/lcu/setup.json and rewrites the Claude
     # entry, which drops the `LCU_PYTHON` pin of coding-agent Q223; LCU has needed no Python
-    # since 0.10. `--audio` enables the recording API and its approval flow (Q229); the first
+    # since 0.10. `--audio` enables the recording API and its approval flow (Q230); the first
     # run with it re-registers every installed harness, later runs only the unregistered ones.
     # A failure here is rare and real, so it fails the play.
     - name: Register LCU with each installed harness

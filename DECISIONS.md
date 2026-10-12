@@ -2392,7 +2392,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied. On macbook-air, the first run changed only the tap, trust and install, and the second reported `changed=0`. The probe reports `current` on macbook-air, `stale` for a different export, and `missing` on mac-mini-m6.
 **Ref:** (this commit); coding-agent Q419
 
-## Q229 — interactive/lcu-role — deviation
+## Q230 — interactive/lcu-role — deviation
 
 **Question:** Frank asked the `lcu` role to enable computer-audio recording for every agent (`lcu setup --agent <x> --audio`). Q228 registered with audio off. How does the role turn it on once without re-running setup every night?
 **Options considered:** pass `--audio` only on new registrations / also re-run setup for every installed harness while the account's saved opt-in is off / run setup with `--audio` every night
