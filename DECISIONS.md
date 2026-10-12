@@ -2329,3 +2329,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Frank asked for one role named `email` and for the three tools on macOS, Omarchy and Ubuntu alike, and chose no gate for the company host dev-server-frank (2026-10-12): nothing logs in until an account is configured, so an idle binary there costs nothing. Packaging checked 2026-10-12: himalaya 2.2.1 formula, ortie v2.3.0 release only, Bridge cask 3.27.1.
 **Outcome:** applied
 **Ref:** ubuntu-provision Q28, omarchy-provision Q16
+
+## Q224 — interactive/whats-next-audit — gate-resolution
+
+**Question:** A "what's next" audit on 2026-10-12 listed the journal's open escalations (Q53, Q71, Q162, Q173) and its `assumed` calls (Q63, Q190, Q199, Q212). Frank answered: Q53 delete, Q71 remove, Q162 no, Q173 file, and one batch ratification of the assumed calls. What is still open?
+**Options considered:** act on each answer as given / read each thread first and act only where nothing later closed it
+**Chosen:** Read every thread first. Q53, Q71 and Q173 were already closed by Q54, Q72 and Q174: the OpenClaw data was deleted on 2026-09-08, the three credentials were removed, and the ponytail issue was deliberately not filed because upstream removed the `$schema` on purpose (ponytail#1021); nothing was redone, and no issue was filed. Q162 is closed with no change here: coding-agent Q228 moved the sweep to the `claude-stream` agent on 2026-10-06, so its output keeps openroutine's idle pulse alive, which is the structural fix Q162 named. Q63, Q190 and Q212 are ratified as applied. Q199 is moot: the Intel mac-mini-2018 it concerned was retired on 2026-10-10 and runs Omarchy.
+**Decided-by:** human (the answers); agent (reading the threads before acting)
+**Justification:** Acting on an escalated entry alone once removed a valid credential (coding-agent Q387, Q398), so an answer to a stale escalation is checked against its thread before anything runs. `~/.openclaw` is live again on the always-on Macs since Q218 reinstalled OpenClaw, so repeating Q54's deletion would have destroyed a working install.
+**Outcome:** applied
+**Ref:** (this commit); coding-agent Q228
+**Supersedes:** Q162 — closed by the user, no further change; Q63, Q190, Q212 — assumed calls ratified by the user; Q199 — moot since the host was retired
