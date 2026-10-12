@@ -3,7 +3,8 @@
 # the ChatGPT app's native computer use (Codex has it built in). Apple Silicon only, on
 # /Applications/ChatGPT.app (the codex role's cask). Installed under ~/.local/share/lcu from the
 # GitHub release, kept at the latest release by `lcu update`, and registered in every installed
-# harness in `lcu_agents` with approval `ask`, no Chrome, no audio (coding-agent Q223). `lcu` is on no PATH by design: the harnesses start it
+# harness in `lcu_agents` with approval `ask`, no Chrome (coding-agent Q223) and computer-audio
+# recording on (DECISIONS Q229). `lcu` is on no PATH by design: the harnesses start it
 # by absolute path. Accessibility and Screen Recording grants and the first `lcu doctor` need
 # someone at the screen (coding-agent Q244, Q260), so this role does not run doctor.
 
@@ -128,13 +129,28 @@
       failed_when: false
       check_mode: false
 
+    # The opt-ins setup saved for this account: {"chrome", "audio", "approval"}. Absent until
+    # the first setup, which reads as audio off.
+    - name: Read the saved LCU setup choices
+      ansible.builtin.stat:
+        path: "{{ lcu_home }}/.local/state/lcu/setup.json"
+      register: lcu_setup_file
+
+    - name: Decide whether computer-audio recording is already on
+      ansible.builtin.set_fact:
+        lcu_audio_on: >-
+          {{ lcu_setup_file.stat.exists
+             and (lookup('file', lcu_setup_file.stat.path) | from_json).audio | default(false) }}
+
     # Setup keeps the saved opt-ins in ~/.local/state/lcu/setup.json and rewrites the Claude
     # entry, which drops the `LCU_PYTHON` pin of coding-agent Q223; LCU has needed no Python
-    # since 0.10. A failure here is rare and real, so it fails the play.
+    # since 0.10. `--audio` enables the recording API and its approval flow (Q229); the first
+    # run with it re-registers every installed harness, later runs only the unregistered ones.
+    # A failure here is rare and real, so it fails the play.
     - name: Register LCU with each installed harness
-      ansible.builtin.command: "{{ lcu_bin }} setup --agent {{ item.item.agent }} --yes"
+      ansible.builtin.command: "{{ lcu_bin }} setup --agent {{ item.item.agent }} --audio --yes"
       loop: "{{ lcu_registered.results }}"
       loop_control:
         label: "{{ item.item.agent }}"
-      when: item.rc not in [0, 3]
+      when: item.rc != 3 and (item.rc != 0 or not (lcu_audio_on | bool))
       changed_when: true

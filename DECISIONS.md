@@ -2391,3 +2391,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** `scripts/check-readme-roles.sh` accepts only lowercase role names, and the formula is `removemacai`. macOS 27 installs a configuration profile only from an MDM or after a click in System Settings > General > Device Management, which RemoveMacAI's own app also asks for. RemoveMacAI 1.1.0 exports the same `PayloadUUID` for every tweak set (checked with three exports), so the UUID cannot tell a stale profile from a current one. The installed copy matches the file once each `PayloadContentManagedPreferences` wrapper is removed. Models already downloaded on other Macs are not deleted: `removemacai off` would do that but writes its own profile.
 **Outcome:** applied. On macbook-air, the first run changed only the tap, trust and install, and the second reported `changed=0`. The probe reports `current` on macbook-air, `stale` for a different export, and `missing` on mac-mini-m6.
 **Ref:** (this commit); coding-agent Q419
+
+## Q229 — interactive/lcu-role — deviation
+
+**Question:** Frank asked the `lcu` role to enable computer-audio recording for every agent (`lcu setup --agent <x> --audio`). Q228 registered with audio off. How does the role turn it on once without re-running setup every night?
+**Options considered:** pass `--audio` only on new registrations / also re-run setup for every installed harness while the account's saved opt-in is off / run setup with `--audio` every night
+**Chosen:** The register task passes `--audio --yes` always, and its gate becomes "installed, and (unregistered or the saved `audio` in `~/.local/state/lcu/setup.json` is not true)". The first run re-registers every installed harness with audio, setup saves `audio: true` for the account, and later runs are back to registering only new harnesses. A missing file reads as audio off.
+**Decided-by:** human (audio on: Frank, 2026-10-12); agent (the gate)
+**Justification:** INSTALLATION.md says the opt-in is saved per account and kept by later setups, so the saved value is the state to diff, as writing-roles.md asks. Running setup nightly would rewrite harness files for nothing.
+**Outcome:** applied — mac-mini-m6: one run re-registered claude-code, pi, omp and hermes, `setup.json` now has `audio: true`, the next run reports `changed=0`.
+**Ref:** (this commit); Q228
