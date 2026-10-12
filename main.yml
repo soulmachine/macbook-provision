@@ -64,6 +64,7 @@
     - email
     - tailscale
     - apple-container
+    - removemacai
     - role: moshi
       tags: [agent-multiplexer]
     - role: zellij
@@ -135,6 +136,11 @@
       ansible.builtin.fail:
         msg: "{{ cua_permissions_missing }}"
       when: cua_permissions_missing is defined
+
+    - name: Fail when the RemoveMacAI profile awaits approval
+      ansible.builtin.fail:
+        msg: "{{ removemacai_profile_unapproved }}"
+      when: removemacai_profile_unapproved is defined
 
     - name: Fail when the Paseo daemon is not running
       ansible.builtin.fail:

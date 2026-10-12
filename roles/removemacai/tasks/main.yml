@@ -1,0 +1,115 @@
+---
+# RemoveMacAI (https://github.com/omlahore/RemoveMacAI) — turns Apple Intelligence, analytics,
+# ads and pop-ups off. This role gives every Mac the settings Frank chose on macbook-air on
+# 2026-10-12 (coding-agent Q419): files/RemoveMacAI.mobileconfig holds Apple Intelligence and
+# the locked tweaks, and vars/main.yml lists the per-user ones. Apple silicon only: the tap
+# formula is arm64-only, and Apple Intelligence never runs on Intel.
+#
+# macOS can't install a configuration profile without a click in System Settings unless an MDM
+# sends it, so the role stages the profile and records a manual step, which main.yml's
+# post_tasks fails the play on, the cua role's pattern.
+
+- name: Ensure architecture fact is gathered
+  ansible.builtin.setup:
+    gather_subset: architecture
+  when: ansible_facts['architecture'] is not defined
+
+- name: Provision RemoveMacAI (Apple Silicon only)
+  when: ansible_facts['architecture'] == "arm64"
+  block:
+    - name: Tap omlahore/tap
+      community.general.homebrew_tap:
+        name: omlahore/tap
+        state: present
+
+    # Homebrew refuses formulae from untrusted taps; gated on the trust ledger, as in
+    # roles/multica-cli and roles/cc-switch.
+    - name: Read the trusted Homebrew entries
+      ansible.builtin.command: brew trust --json v1
+      register: _removemacai_trusted
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Trust omlahore/tap
+      ansible.builtin.command:
+        cmd: brew trust --tap omlahore/tap
+      when: >-
+        'omlahore/tap' not in
+        ((_removemacai_trusted.stdout | default('{}', true) | from_json).taps | default([]))
+      changed_when: true
+
+    - name: Install the removemacai CLI
+      community.general.homebrew:
+        name: omlahore/tap/removemacai
+        state: latest
+
+    # Per-user tweaks are defaults writes, so `apply` needs no approval. It records each old
+    # value in its journal first, so `removemacai revert` still undoes them.
+    - name: Read the RemoveMacAI tweak states
+      ansible.builtin.command: removemacai tweaks --json
+      register: _removemacai_tweaks
+      changed_when: false
+      check_mode: false
+
+    - name: Apply the per-user tweaks that are not applied yet
+      vars:
+        _removemacai_missing: >-
+          {{ removemacai_user_tweaks | difference(_removemacai_tweaks.stdout | from_json
+             | selectattr('state', 'eq', 'applied') | map(attribute='id')) }}
+      ansible.builtin.command:
+        argv: "{{ ['removemacai', 'apply'] + _removemacai_missing + ['--yes'] }}"
+      when: _removemacai_missing | length > 0
+      changed_when: true
+
+    - name: Compare the installed RemoveMacAI profile with the role's
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -I
+          - "{{ role_path }}/files/profile_state.py"
+          - "{{ role_path }}/files/RemoveMacAI.mobileconfig"
+      become: true
+      register: _removemacai_profile
+      changed_when: false
+      check_mode: false
+
+    # `open` puts the profile under Downloaded in System Settings. It needs a logged-in GUI
+    # session as the same user, so a failure is only reported, in the message below.
+    - name: Stage the RemoveMacAI profile for approval
+      ansible.builtin.command:
+        argv: [open, "{{ role_path }}/files/RemoveMacAI.mobileconfig"]
+      register: _removemacai_open
+      when: _removemacai_profile.stdout != 'current'
+      changed_when: _removemacai_open.rc == 0
+      failed_when: false
+
+    # A host fact, not a role var, so main.yml's post_tasks can read it.
+    - name: Record that the RemoveMacAI profile awaits approval
+      ansible.builtin.set_fact:
+        removemacai_profile_unapproved: |
+
+          ================================================================
+          Manual step required: approve the RemoveMacAI profile
+          ================================================================
+
+          The RemoveMacAI profile on this Mac is {{ _removemacai_profile.stdout }}.
+          {% if _removemacai_open.rc | default(1) == 0 %}
+          It is staged now. Open System Settings > General > Device Management,
+          double-click RemoveMacAI under Downloaded, and click Install.
+          {% else %}
+          `open` could not stage it ({{ _removemacai_open.stderr | default('no GUI session', true) | trim }}).
+          In a GUI session, open {{ role_path }}/files/RemoveMacAI.mobileconfig,
+          then approve it in System Settings > General > Device Management.
+          {% endif %}
+          On a headless Mac, do it over Screen Sharing. macOS requires the click.
+
+          Then re-run: ansible-playbook main.yml
+          ================================================================
+      when: _removemacai_profile.stdout != 'current'
+
+    # post_tasks only run in a full play, so a single-role run shows the message here.
+    - name: Report that the RemoveMacAI profile awaits approval
+      ansible.builtin.debug:
+        msg: "{{ removemacai_profile_unapproved }}"
+      when: removemacai_profile_unapproved is defined

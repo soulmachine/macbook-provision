@@ -1,0 +1,16 @@
+---
+# The per-user tweaks applied on macbook-air on 2026-10-12. The locked ones (analytics, ads,
+# Siri and Search improvement, Spotlight web results, Look Up and Safari suggestions, Game
+# Center, Apple Music, Book Store) and Apple Intelligence live in files/RemoveMacAI.mobileconfig.
+# Names: `removemacai tweaks`.
+removemacai_user_tweaks:
+  - click-to-desktop
+  - desktop-widgets
+  - media-keys
+  - music-launches
+  - dock-apple-apps
+  - file-extensions
+  - path-bar
+  - folders-first
+  - network-ds-store
+  - dock-recents

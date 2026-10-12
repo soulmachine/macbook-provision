@@ -153,6 +153,7 @@ pre-commit run --all-files
 | email | Himalaya 邮件 CLI（brew）+ ortie OAuth CLI（GitHub release 二进制装入 `~/.local/bin`，跟随最新 release）+ Proton Mail Bridge（cask）；账号配置手工完成 |
 | tailscale | 独立版 Tailscale.app（cask）；若 `.env` 中有 `TAILSCALE_AUTH_KEY` 则自动登录，可选通过 OAuth client 关闭 key 过期 |
 | apple-container | Apple `container`（brew）；**仅限 Apple Silicon**，安装后启动 container system |
+| removemacai | tap `omlahore/tap` + brew `omlahore/tap/removemacai`；按 macbook-air 导出的配置关闭 Apple Intelligence、分析、广告等（`RemoveMacAI.mobileconfig`，每台机器需在系统设置 > 通用 > 设备管理里手动批准一次），并应用 10 项按用户的设置；**仅限 Apple Silicon** |
 | moshi | tap `rjyo/moshi` + brew `moshi-hook`，并通过 brew services 常驻；tag `agent-multiplexer` |
 | zellij | 终端复用器（brew `zellij`）；tag `terminal-multiplexer` |
 | tmux | 终端复用器（brew `tmux`）；tag `terminal-multiplexer`（`homebrew` 的通用包列表中也有，两处都是 `state: latest`，重复无害） |
