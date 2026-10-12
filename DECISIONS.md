@@ -2401,3 +2401,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** INSTALLATION.md says the opt-in is saved per account and kept by later setups, so the saved value is the state to diff, as writing-roles.md asks. Running setup nightly would rewrite harness files for nothing.
 **Outcome:** applied — mac-mini-m6: one run re-registered claude-code, pi, omp and hermes, `setup.json` now has `audio: true`, the next run reports `changed=0`.
 **Ref:** (this commit); Q228
+
+## Q231 — interactive/lcu-role — deviation
+
+**Question:** The Q230 rollout failed on mac-mini-m2 and archs-mac-mini: `lcu setup --agent claude-code` refuses to write its approval mod through `~/.claude/skills/lcu-approve`, a symlink into the agent-sync Commons that a hand `agent-sync adopt` made on 2026-10-09/10 (coding-agent Q338). Setup had already saved `audio: true`, so the role would have skipped the Claude registration on every later run and reported `ok`. How is it fixed?
+**Options considered:** teach the role to replace the symlink / fix the two hosts by hand / leave Claude Code on those hosts without the audio registration
+**Chosen:** By hand, on both hosts: removed the link, moved the Commons copy back to `~/.claude/skills/lcu-approve` as a real directory (the state of the other five Macs), reran `lcu setup --agent claude-code --audio --yes` (mod installed, MCP registered), then `agent-sync sync` pruned the three links that had pointed at the Commons entry from the pi, openclaw and hermes skill directories. The role then reports `changed=0` on both.
+**Decided-by:** agent
+**Justification:** The mod is a Claude Code plugin LCU owns and rewrites on every setup and update, so it does not belong in the Commons, and it had no business in pi, openclaw or hermes skill folders. Two hosts with a hand-made state are a hand fix, not a role branch; a role that deletes links is a blast radius nobody asked for. Nothing adopts `lcu-approve` in the skills role, so it should not come back.
+**Outcome:** applied — both hosts: `claude mcp get lcu` exit 0, `agent-sync status` exit 0, no dangling entries.
+**Ref:** (this commit); Q230; coding-agent Q338
