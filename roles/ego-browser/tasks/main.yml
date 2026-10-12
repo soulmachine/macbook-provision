@@ -35,13 +35,26 @@
   when: not (ego_browser_app.results | map(attribute='stat.exists') | select | list | length > 0)
   changed_when: true
 
-# Onboarding is a GUI step a person does once per host. It is what registers the CLI, as a symlink
-# ~/.local/bin/ego-browser -> ~/.local/share/ego/active_version_dir/Helpers/ego-browser, so this
-# file is the onboarding verdict.
-- name: Check for the ego-browser CLI
-  ansible.builtin.stat:
-    path: "{{ lookup('env', 'HOME') }}/.local/bin/ego-browser"
-  register: ego_browser_cli
+# Onboarding is a GUI step a person does once per host, and the only verdict is the CLI's own
+# answer. The first launch already writes ~/.local/bin/ego-browser and ~/.local/share/ego/* (measured
+# on mac-mini-m2 2026-10-12: 15 s after install.sh opened the app, setup window still open), so the
+# symlink proves nothing. Before onboarding every subcommand prints "Please complete the onboarding
+# process first" and exits 0, so rc proves nothing either: the probe asks the embedded runtime to
+# print a sentinel and reads it back. The sentinel arrives on STDERR when stdout is not a terminal
+# (measured on m6: `command` saw stdout "" and stderr "1"), so both streams are read. The probe opens
+# the setup window when onboarding is pending, which is what the message below asks for anyway.
+- name: Check whether Ego Lite onboarding is complete
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.local/bin/ego-browser nodejs -e 'console.log(1)'"
+  register: ego_browser_probe
+  changed_when: false
+  failed_when: false # absent CLI (app never launched) reads as not onboarded
+  check_mode: false # read-only probe; run in --check so the verdict below sees real state
+
+- name: Decide whether Ego Lite is onboarded
+  ansible.builtin.set_fact:
+    ego_browser_onboarded: >-
+      {{ ego_browser_probe.rc == 0
+         and '1' in (ego_browser_probe.stdout_lines | default([]) + ego_browser_probe.stderr_lines | default([])) }}
 
 # Reported the way the cua role reports its missing permissions: a fact here, a `fail` in main.yml's
 # post_tasks, so the play stays red until someone onboards without stopping the roles after this one.
@@ -53,17 +66,19 @@
       Manual step required: finish Ego Lite onboarding
       ================================================================
 
-      ego lite.app is installed, but ~/.local/bin/ego-browser does not exist,
-      so nobody has completed its first-run onboarding on this host yet.
+      ego lite.app is installed, but `ego-browser nodejs` still answers "Please
+      complete the onboarding process first", so nobody has clicked through its
+      setup window on this host yet.
 
-      Open "ego lite" (install.sh already launched it once), finish the
-      onboarding, then re-run:
+      The setup window is open on the host's screen (install.sh launched the app,
+      and the probe above reopens the window). Finish the onboarding there, then
+      re-run:
 
         ansible localhost -m include_role -a name=ego-browser
 
       Onboarding registers the ego-browser CLI and takes over the ego-browser
       skill; this role does not upgrade the app until that has happened.
-  when: not ego_browser_cli.stat.exists
+  when: not ego_browser_onboarded
 
 # For the standalone `include_role` form, which never runs post_tasks.
 - name: Report that Ego Lite onboarding is pending
@@ -75,7 +90,7 @@
 # upgrade. The updater is the browser's, so Ego restarts after a real upgrade and any browser task
 # in flight at that moment is lost; the nightly play runs at 02:00 for that reason.
 - name: Upgrade Ego Lite
-  when: ego_browser_cli.stat.exists
+  when: ego_browser_onboarded
   vars:
     ego_browser_bin: "{{ lookup('env', 'HOME') }}/.local/bin/ego-browser"
   block:

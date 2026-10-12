@@ -2505,3 +2505,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied. On m2 all ten agent configs hold the 9010 URL, hermes connects with 22 tools, and the third run reports `changed=0`.
 **Ref:** (this commit)
 **Supersedes:** Q237 — the port (9200 → 9010), "an existing entry is left alone", and the skill refresh on every play
+
+## Q241 — interactive/ego-browser — deviation
+
+**Question:** Q239 used `~/.local/bin/ego-browser` as the onboarding verdict. Rolling the role out on 2026-10-12 showed that symlink appears 15 s after the first launch, with the setup window still open, and that every CLI subcommand then prints "Please complete the onboarding process first" and exits 0. What is the verdict?
+**Options considered:** keep the symlink (wrong: six hosts read as onboarded while the play should have failed) / read `ego.welcome_page_shown` in the app's `Local State` (an internal key, and the running app rewrites the file) / ask the embedded runtime to print a sentinel and read it back
+**Chosen:** `ego-browser nodejs -e 'console.log(1)'`, onboarded when rc is 0 and a line `1` comes back on stdout or stderr; the runtime writes `console.log` to stderr when stdout is not a terminal.
+**Decided-by:** agent
+**Justification:** The sentinel is this role's own string, not a phrase of upstream's output, so the match cannot report a phantom. Measured on m6: onboarded hosts answer `1` on stderr under Ansible's `command` module and on stdout in a terminal; the six fresh hosts answer the onboarding message on both runs. The probe also reopens the setup window when onboarding is pending, which the deferred failure asks the person to click through anyway.
+**Outcome:** applied
+**Ref:** (pending)
