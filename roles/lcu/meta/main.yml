@@ -1,0 +1,6 @@
+---
+dependencies:
+  # The codex role installs the `chatgpt` cask LCU runs on, so a standalone
+  # `ansible localhost -m include_role -a name=lcu` needs it first. The other harnesses are
+  # registered when present and skipped otherwise, so they are not dependencies.
+  - codex

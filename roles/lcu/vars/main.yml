@@ -1,0 +1,22 @@
+---
+lcu_home: "{{ lookup('env', 'HOME') }}"
+lcu_prefix: "{{ lcu_home }}/.local/share/lcu"
+lcu_bin: "{{ lcu_prefix }}/current/bin/lcu"
+lcu_app: /Applications/ChatGPT.app
+# Every harness LCU has an adapter for (`lcu setup --list-agents`), except Codex, which has
+# computer use built in (DECISIONS Q228). Kimi, OpenCode, Copilot, Crush, Gemini, Grok and
+# OpenClaw have no adapter upstream. `exe` says whether the harness is installed; `probe`
+# exits 0 when LCU is registered in it (the paths come from INSTALLATION.md's uninstall list).
+lcu_agents:
+  - agent: claude-code
+    exe: claude
+    probe: claude mcp get lcu
+  - agent: pi
+    exe: pi
+    probe: test -f "{{ lcu_prefix }}/pi/extension.mjs"
+  - agent: omp
+    exe: omp
+    probe: test -d "{{ lcu_prefix }}/omp"
+  - agent: hermes
+    exe: hermes
+    probe: test -d "{{ lookup('env', 'HERMES_HOME') | default(lcu_home ~ '/.hermes', true) }}/plugins/lcu-cua"

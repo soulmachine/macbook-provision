@@ -141,6 +141,7 @@ pre-commit run --all-files
 | claude-mem | Claude 记忆插件；`npx -y claude-mem install` 为 claude-code / codex-cli / opencode 三者接线（依赖 nodejs、bun、uv） |
 | cc-switch | Claude 配置切换器：tap `farion1231/ccswitch` + cask `cc-switch`（依赖 claude-code、codex） |
 | hermes | Hermes 个人 agent（Nous Research）；**仅限常驻开机的机器** |
+| lcu | Local Computer Use（[amontlabs/lcu](https://github.com/amontlabs/lcu)）：把 ChatGPT.app 的原生 computer use 作为 MCP server 接给各 agent。首次从 GitHub release 下载 tarball、按 `.sha256` 校验后跑 `scripts/install.sh --runtime-only --yes`；之后每次运行 `lcu update --yes`，按前后版本号判断是否升级，升级后 `lcu prune --yes`（只保留最新两个 release）；再对 `lcu_agents` 里已安装但未注册的 harness 逐个跑 `lcu setup --agent <x> --yes`：claude-code、pi、omp、hermes（codex 自带 computer use，不注册；kimi、opencode、copilot、crush、gemini、grok、openclaw 上游没有 adapter）。`lcu` 刻意不进 PATH（`~/.local/share/lcu/current/bin/lcu`）；Accessibility、Screen Recording 授权与首次 `lcu doctor` 需人在屏幕前；仅 Apple Silicon 且装有 ChatGPT.app，否则跳过（依赖 codex，为了 ChatGPT.app cask） |
 | ponytail | 给所有 agent 安装 [ponytail](https://github.com/DietrichGebert/ponytail) 插件——Claude Code / Codex / OpenCode / pi / oh-my-pi / Hermes 各用其原生安装方式；其中 Hermes 部分**仅限常驻开机的机器** |
 | paseo | agent 多路复用：MacBook 装桌面版（cask `paseo`）；常驻开机的机器改装 npm `@getpaseo/cli`（CLI + daemon），并卸载 cask、移除 mise 里的旧版本 pin，同时安装并加载由本 role 管理的 `sh.paseo.daemon` LaunchAgent（`paseo daemon run`），并开启 relay（配对仍需手动 `paseo daemon pair`），打开 `pluginsEnabled` 并安装插件 `npm:@oliexe/paseo-bots`（只装不自动更新）；tag `agent-multiplexer`（依赖 host-facts、claude-code、codex） |
 | ghostty | 终端模拟器（cask `ghostty`） |
@@ -211,6 +212,7 @@ ioreg `BatteryInstalled` 的保守规则：那条规则要求硬件明确报告"
 |------|----------|-------------------|
 | claude-code | 官方 `install.sh` | `~/.local/bin/claude` |
 | codex | **ChatGPT.app 自带**（`chatgpt` cask，由 codex role 安装，Apple Silicon 与 Intel 都装） | `~/.local/bin/codex` → `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`，随 ChatGPT.app 自更新 |
+| lcu | GitHub release tarball 里的 `scripts/install.sh`，之后由 `lcu update` 自更新 | `~/.local/share/lcu/current/bin/lcu`，**刻意不在 PATH** |
 | opencode | npm 全局 `opencode-ai` | 命令 `opencode` |
 | kimi-code | 官方 `install.sh`（curl \| bash） | `~/.kimi-code/bin/kimi`，命令是 **`kimi`** 而不是 `kimi-code` |
 | omp | bun 全局 `@oh-my-pi/pi-coding-agent` | `~/.bun/bin/omp`，命令是 **`omp`** |

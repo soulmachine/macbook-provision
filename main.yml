@@ -51,6 +51,7 @@
     - claude-mem
     - cc-switch
     - hermes
+    - lcu
     - ponytail
     - role: paseo
       tags: [agent-multiplexer]

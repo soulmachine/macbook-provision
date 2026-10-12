@@ -1,0 +1,140 @@
+---
+# lcu: Local Computer Use (github.com/amontlabs/lcu), the MCP server that gives the agent CLIs
+# the ChatGPT app's native computer use (Codex has it built in). Apple Silicon only, on
+# /Applications/ChatGPT.app (the codex role's cask). Installed under ~/.local/share/lcu from the
+# GitHub release, kept at the latest release by `lcu update`, and registered in every installed
+# harness in `lcu_agents` with approval `ask`, no Chrome, no audio (coding-agent Q223). `lcu` is on no PATH by design: the harnesses start it
+# by absolute path. Accessibility and Screen Recording grants and the first `lcu doctor` need
+# someone at the screen (coding-agent Q244, Q260), so this role does not run doctor.
+
+- name: Check for the ChatGPT app
+  ansible.builtin.stat:
+    path: "{{ lcu_app }}"
+  register: lcu_app_stat
+
+# uname rather than ansible_facts, so `ansible localhost -m include_role` works without a
+# fact-gathering play.
+- name: Decide whether LCU can run here
+  ansible.builtin.set_fact:
+    lcu_supported: "{{ lookup('pipe', 'uname -m') == 'arm64' and lcu_app_stat.stat.exists }}"
+
+- name: Report why LCU is skipped
+  ansible.builtin.debug:
+    msg: "LCU needs Apple Silicon and {{ lcu_app }}; skipping."
+  when: not lcu_supported
+
+- name: Install, update and register LCU
+  when: lcu_supported
+  block:
+    - name: Read the installed LCU version
+      ansible.builtin.command: "{{ lcu_bin }} --version"
+      register: lcu_before
+      changed_when: false
+      failed_when: false
+      check_mode: false # read-only probe; run in --check so the gates below see real state
+
+    # The release page's redirect names the newest tag, so no GitHub API call and no rate limit.
+    - name: Resolve the latest LCU release
+      ansible.builtin.uri:
+        url: https://github.com/amontlabs/lcu/releases/latest
+        follow_redirects: none
+        status_code: [301, 302]
+      register: lcu_release
+      check_mode: false
+      when: lcu_before.rc != 0
+
+    - name: Install LCU
+      when: lcu_before.rc != 0
+      vars:
+        lcu_latest: "{{ lcu_release.location | regex_search('/tag/v([0-9][^/]*)$', '\\1') | first }}"
+        lcu_asset: "lcu-{{ lcu_latest }}-darwin-arm64.tar.gz"
+        lcu_url: "https://github.com/amontlabs/lcu/releases/download/v{{ lcu_latest }}"
+      block:
+        # A fresh empty directory for the untrusted archive, nothing else lives in it.
+        - name: Make a directory for the release
+          ansible.builtin.tempfile:
+            state: directory
+            suffix: lcu
+          register: lcu_tmp
+
+        # The `.sha256` sidecar is one `<hash>  <filename>` line; get_url matches it by
+        # basename and refuses a mismatch, the doc's "continue only after the checksum is OK".
+        - name: Download the LCU release tarball
+          ansible.builtin.get_url:
+            url: "{{ lcu_url }}/{{ lcu_asset }}"
+            dest: "{{ lcu_tmp.path }}/{{ lcu_asset }}"
+            checksum: "sha256:{{ lcu_url }}/{{ lcu_asset }}.sha256"
+            mode: "0644"
+
+        # tar itself, not the unarchive module: that module insists on GNU tar, and macOS ships
+        # bsdtar.
+        - name: Unpack the LCU release # noqa: command-instead-of-module
+          ansible.builtin.command: tar -xzf "{{ lcu_tmp.path }}/{{ lcu_asset }}" -C "{{ lcu_tmp.path }}"
+          changed_when: true
+
+        # The unattended macOS install from INSTALLATION.md; the loop below registers the harnesses.
+        - name: Run the LCU installer
+          ansible.builtin.command:
+            cmd: ./scripts/install.sh --runtime-only --yes
+            chdir: "{{ lcu_tmp.path }}/{{ lcu_asset | regex_replace('\\.tar\\.gz$', '') }}"
+          changed_when: true
+
+        - name: Remove the downloaded release
+          ansible.builtin.file:
+            path: "{{ lcu_tmp.path }}"
+            state: absent
+
+    # `--yes`: without a terminal the updater refuses otherwise. Its exit status is not the
+    # verdict: an unreachable GitHub, or the `~/.claude/skills/lcu-approve` symlink that
+    # agent-sync made on m2 and archs-mac-mini (LCU refuses to write through it, coding-agent
+    # Q338), both exit nonzero and leave the installed version as it was. The diff below decides.
+    - name: Update LCU
+      ansible.builtin.command: "{{ lcu_bin }} update --yes"
+      register: lcu_update
+      changed_when: false
+      failed_when: false
+      when: lcu_before.rc == 0
+
+    # `changed` from the observable version: this is what proves the new release answers.
+    - name: Check whether LCU changed
+      ansible.builtin.command: "{{ lcu_bin }} --version"
+      register: lcu_after
+      changed_when: lcu_after.stdout != (lcu_before.stdout | default(''))
+      check_mode: false
+
+    - name: Warn that LCU could not update cleanly
+      ansible.builtin.debug:
+        msg:
+          - "`lcu update --yes` exited {{ lcu_update.rc }}; {{ lcu_after.stdout }} is installed."
+          - "Its last output: {{ ((lcu_update.stdout_lines | default([])) + (lcu_update.stderr_lines | default([])))[-3:] }}"
+      when: lcu_update is not skipped and lcu_update.rc != 0
+
+    # Frank's choice (DECISIONS Q228): keep the new release and the one before it. A session
+    # still running the pruned release loses its files until it restarts. The verdict task
+    # above already reported this run's change; prune only trims what the update made redundant.
+    - name: Prune LCU releases older than the previous one
+      ansible.builtin.command: "{{ lcu_bin }} prune --yes"
+      changed_when: false
+      when: lcu_update is not skipped and lcu_after.stdout != lcu_before.stdout
+
+    # rc 3: the harness is not installed, so there is nothing to register. rc 0: registered.
+    - name: Read which harnesses are installed and have LCU registered
+      ansible.builtin.shell: "command -v {{ item.exe }} >/dev/null 2>&1 || exit 3; {{ item.probe }}"
+      loop: "{{ lcu_agents }}"
+      loop_control:
+        label: "{{ item.agent }}"
+      register: lcu_registered
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    # Setup keeps the saved opt-ins in ~/.local/state/lcu/setup.json and rewrites the Claude
+    # entry, which drops the `LCU_PYTHON` pin of coding-agent Q223; LCU has needed no Python
+    # since 0.10. A failure here is rare and real, so it fails the play.
+    - name: Register LCU with each installed harness
+      ansible.builtin.command: "{{ lcu_bin }} setup --agent {{ item.item.agent }} --yes"
+      loop: "{{ lcu_registered.results }}"
+      loop_control:
+        label: "{{ item.item.agent }}"
+      when: item.rc not in [0, 3]
+      changed_when: true
