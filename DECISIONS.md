@@ -2340,3 +2340,24 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** (this commit); coding-agent Q228
 **Supersedes:** Q162 — closed by the user, no further change; Q63, Q190, Q212 — assumed calls ratified by the user; Q199 — moot since the host was retired
+
+## Q225 — interactive/omp-update-rate-limit — deviation
+
+**Question:** On 2026-10-12 `omp update` on dev-server-frank-lume failed with "GitHub API rate limit exceeded", and because the task had no `failed_when`, Ansible stopped the play at ok=139; the 40 roles after `omp`, the new `email` role among them, never ran (coding-agent Q417 reported it). Fail the play, pass a token, or tolerate it?
+**Options considered:** leave it failing / give the task `GITHUB_TOKEN` through `gh auth token` as the mise role does / `failed_when: false` with a warning task, as the mise role also does / retry the sweep
+**Chosen:** `failed_when: false` on `omp update`, with a `debug` warning when it exits non-zero, in macbook-provision and ubuntu-provision; omarchy-provision has no `omp update` step. No token: the company hosts hold no GitHub token of Frank's by design (fleet-ssh.md), and lume is one of them, so a token path would not have helped where it failed.
+**Decided-by:** human (tolerate, 2026-10-12); agent (the shape)
+**Justification:** A spent rate limit is an expected outcome, not a broken host: omp stays installed and working, and the version diff that decides `changed` still holds. One tool's update check must not skip every role after it. The mise role already handles the same failure this way.
+**Outcome:** applied
+**Ref:** (this commit); coding-agent Q417
+
+## Q226 — interactive/whats-next-audit — gate-resolution
+
+**Question:** The 2026-10-12 audit left Q137 (`raised`) and nine `assumed` calls, Q1, Q2, Q7, Q30, Q32, Q33, Q36, Q37 and Q49, outside the batch Q224 ratified. Close them?
+**Options considered:** close Q137 and ratify the nine / revisit any / leave them
+**Chosen:** Q137 is closed as moot: on mac-mini-m2 the opencode and gemini instruction files are plain files today, no claude-mem block has been written into `~/.agents/AGENTS.md` (its clone is clean), and the `~/.codex/AGENTS.md` symlink into the Commons is the fleet design agent-sync writes, present on m6 too. The nine assumed calls are ratified as applied, in one batch, on Frank's instruction.
+**Decided-by:** human
+**Justification:** Each of the nine has been running in the nightly sweep for weeks; none was questioned. Q137's hazard was conditional on fanning out the symlink arrangement, which never happened.
+**Outcome:** applied
+**Ref:** (this commit)
+**Supersedes:** Q137 — closed as moot; Q1, Q2, Q7, Q30, Q32, Q33, Q36, Q37, Q49 — assumed calls ratified by the user
