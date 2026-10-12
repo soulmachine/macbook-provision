@@ -2535,3 +2535,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Upstream's unit runs `orca serve --supervise --no-pairing`, which waits while the desktop app serves the same profile. Plain `orca serve` exits 3 in that case, so a role-owned unit with KeepAlive would crash-loop on a Mac with the app open. Upstream's installer leaves nothing to migrate later. Gating on `live` rather than on the unit's content avoids restarting the server, and killing its sessions, when only the pinned PATH differs.
 **Outcome:** applied
 **Ref:** (this commit)
+
+## Q244 — interactive/bitwarden — deviation
+
+**Question:** Q242 made the role install-only. Frank then had `bw` and `rbw` pointed at Vaultwarden by hand on every host but archs-mac-mini, so a rebuilt host would lose that. Should the role set it?
+**Options considered:** keep install-only / set the server and email in the role, skipping archs-mac-mini by hostname
+**Chosen:** The role reads `bw config server` and `rbw config show`, and writes the server URL (and rbw's email) only when they differ. It skips hosts in `bitwarden_unconfigured_hosts`, which holds archs-mac-mini. It does no login and does not touch the desktop app's server.
+**Decided-by:** human (configure every host except archs-mac-mini: Frank, 2026-10-12); agent (the read-then-write shape and the hostname gate)
+**Justification:** archs-mac-mini runs its own Vaultwarden in Docker (Frank). The hostname gate has the same shape as ubuntu-provision's browseros-neo. `bw` refuses to change server while it is logged in elsewhere, so that case is reported, not failed. `rbw config show` exits 1 when no config file exists, which reads as an empty config. Tested on m2: a wrong email was corrected on run 1, and run 2 reported no change.
+**Outcome:** applied
+**Ref:** (this commit)
+**Supersedes:** Q242 — only its "install only" part

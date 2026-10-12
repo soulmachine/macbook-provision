@@ -1,0 +1,8 @@
+---
+# Frank's Vaultwarden (~/coding-agent/docs/vaultwarden.md) and his account on it.
+bitwarden_server_url: https://vaultwarden.soulmachine.me
+bitwarden_email: soulmachine@gmail.com
+
+# archs-mac-mini runs its own Vaultwarden in Docker, so its clients stay unconfigured here.
+bitwarden_unconfigured_hosts:
+  - archs-mac-mini

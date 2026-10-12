@@ -1,8 +1,8 @@
 ---
 # Bitwarden clients for Frank's Vaultwarden (~/coding-agent/docs/vaultwarden.md): the official
 # Electron desktop app, the official `bw` CLI and `rbw`, the unofficial Rust CLI with a
-# background agent. Install only: the server URL, email and login are set by hand
-# (`bw config server`, `rbw config set base_url` / `email`), DECISIONS Q242.
+# background agent. `bw` and `rbw` are then pointed at the server (DECISIONS Q244); the desktop
+# app's server and every login stay manual.
 
 # --adopt takes over a Bitwarden.app installed by hand; the cask sets auto_updates, so `present`
 # and the app updates itself (as roles/1password does).
@@ -19,3 +19,14 @@
       - bitwarden-cli
       - rbw
     state: latest
+
+# The hostname comes from a pipe lookup, not from facts: a single-role `include_role` run gathers
+# none, and the lookup runs on the control node, which is always this host.
+- name: Point bw and rbw at Vaultwarden
+  ansible.builtin.include_tasks: config.yml
+  when: lookup('pipe', 'hostname -s') not in bitwarden_unconfigured_hosts
+
+- name: Report that bw and rbw were left unconfigured
+  ansible.builtin.debug:
+    msg: "Leaving bw and rbw unconfigured: {{ lookup('pipe', 'hostname -s') }} runs its own Vaultwarden."
+  when: lookup('pipe', 'hostname -s') in bitwarden_unconfigured_hosts
