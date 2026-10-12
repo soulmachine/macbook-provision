@@ -2361,3 +2361,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** (this commit)
 **Supersedes:** Q137 — closed as moot; Q1, Q2, Q7, Q30, Q32, Q33, Q36, Q37, Q49 — assumed calls ratified by the user
+
+## Q227 — interactive/npm-global-stale-shim — bugfix
+
+**Question:** On dev-server-frank the nightly play reported the openclaw and gemini roles `ok` while `openclaw` itself failed with mise's "No version is set for shim: openclaw" (coding-agent Q417 read this as a missing global Node and proposed `mise use -g node@24.17.0`). Both binaries sat only under node 24.17.0, which the nodejs role had moved past to 24.21.0. Why did the role not reinstall them, and what is the fix?
+**Options considered:** pin the old Node, as the sweep suggested / reinstall the globals by hand after each LTS move / fix the shared `npm_global` probe so a stale mise shim no longer counts as another channel / make the nodejs role carry npm globals across versions
+**Chosen:** Fix the probe, in `roles/nodejs/tasks/npm_global.yml` here and in ubuntu-provision. When `npm ls -g` does not own the package, a `which` hit under `~/.local/share/mise/shims/` is now treated as nobody's: mise on these hosts manages only node, go and java, so a shim for any other command is an npm global's, and one npm does not own under the current Node is a leftover from an older one. The install then runs under the current Node and the shim answers again. The old Node is left to mise's own prune.
+**Decided-by:** agent
+**Justification:** Pinning node 24.17.0 would have fought the nodejs role every night and kept a Node that mise is already pruning. The probe is the one shared place every npm-global role goes through (copilot, crush, gemini, grok, openclaw, cloudflare, paseo and more), so fixing it there repairs all of them on the next play and prevents the same silent skip on every Mac at the next LTS move. The gemini role still converges on mac-mini-m6 after the change.
+**Outcome:** applied
+**Ref:** (this commit); coding-agent Q417
