@@ -2411,3 +2411,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The mod is a Claude Code plugin LCU owns and rewrites on every setup and update, so it does not belong in the Commons, and it had no business in pi, openclaw or hermes skill folders. Two hosts with a hand-made state are a hand fix, not a role branch; a role that deletes links is a blast radius nobody asked for. Nothing adopts `lcu-approve` in the skills role, so it should not come back.
 **Outcome:** applied — both hosts: `claude mcp get lcu` exit 0, `agent-sync status` exit 0, no dangling entries.
 **Ref:** (this commit); Q230; coding-agent Q338
+
+## Q232 — interactive/lcu-role — deviation
+
+**Question:** Q231 says `agent-sync status` exits 0 on mac-mini-m2 and archs-mac-mini after the fix. Is that right?
+**Options considered:** leave Q231 as written / record what was measured
+**Chosen:** Record it: `agent-sync status` exits 2 on both hosts, before and after the fix, because of pre-existing `variant` and `variant-identical` skill entries (playwright-cli and two cloudflare-tunnel skills on archs-mac-mini) that the skills role already tolerates through `skills_wiring_ok_states`. No `dangling` entry remains on either host, and the three `lcu-approve` links in the pi, openclaw and hermes skill folders are gone. mac-mini-m6, which has no variant entries, exits 0.
+**Decided-by:** agent
+**Justification:** The exit code was read in the same command as the prune and misattributed; the per-state listing afterwards shows what it reports.
+**Outcome:** applied
+**Ref:** (this commit)
+**Supersedes:** Q231 — only its `agent-sync status` exit-code claim; the fix stands
