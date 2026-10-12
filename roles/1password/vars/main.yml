@@ -1,0 +1,7 @@
+---
+onepassword_home: "{{ lookup('env', 'HOME') }}"
+onepassword_cli_cask: 1password-cli
+# GitHub owner/repo of 1Password's official Claude Code plugin.
+onepassword_plugin_repo: 1Password/1password-claude-plugin
+# Plugin `1password` in the marketplace named `1password` (.claude-plugin/marketplace.json).
+onepassword_claude_plugin: 1password@1password
