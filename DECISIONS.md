@@ -2432,3 +2432,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The guide's Chrome section: opt in at registration, then refresh the native host with `lcu browser install` and check with `lcu browser status`. `status` exits 1 for any gap, including an extension nobody has enabled, so its exit code cannot gate the install; the connector line is a positive sentinel, the agent-reach exception in writing-roles.md.
 **Outcome:** applied — mac-mini-m6: one run re-registered claude-code, pi, omp and hermes with Chrome, `setup.json` reads `chrome: true`, `browser status` says "configured for this LCU installation", the next run reports `changed=0`. m6 has no Chrome profile yet, so the extension check there says "could not check" until Chrome is opened once.
 **Ref:** (this commit); Q230
+
+## Q234 — interactive/lcu-role — deviation
+
+**Question:** Frank asked for Chrome control to also reach "Google Chrome CDP.app", the Dock launcher the chrome-cdp-setup skill builds. It runs the same Chrome with `--user-data-dir ~/Library/Application Support/Google/Chrome-CDP`, a clone of the real profile, and Chrome looks for native-messaging-host manifests under its own user data dir, so Q233's manifest in the default profile never reaches it. How does the role cover the clone?
+**Options considered:** `lcu browser install --directory <Chrome-CDP>/NativeMessagingHosts` / copy the default profile's manifest into the clone / leave it to `lcu update`'s relay refresh
+**Chosen:** Copy. `--directory` turned out to select LCU's own relay directory, not Chrome's manifest folder: pointed at the clone it refused with "The browser host directory belongs to another installation". The manifest is a plain JSON file naming the relay path, so an `ansible.builtin.copy` with `remote_src` from `Chrome/NativeMessagingHosts/com.openai.codexextension.json` to the same path under `Chrome-CDP` gives the clone the current relay, converges by content, and follows whatever `lcu browser install` or `lcu update` writes to the default one on the next run. It runs only when both the default manifest and the clone exist. All seven Macs carry the launcher and the clone.
+**Decided-by:** human (the ask); agent (the shape)
+**Justification:** INSTALLATION.md: "a custom `--user-data-dir` profile must have access to the installed host manifest". `lcu update`'s refresh finds manifests through the relay marker, which a plain copy does not carry, so the nightly copy is what keeps the clone current.
+**Outcome:** applied — mac-mini-m6: the clone's manifest is byte-identical to the default one, the next run reports `changed=0`. The extension in the clone profile and a live tab listing are not verified by the role.
+**Ref:** (this commit); Q233

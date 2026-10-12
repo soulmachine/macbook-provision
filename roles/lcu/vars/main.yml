@@ -3,6 +3,12 @@ lcu_home: "{{ lookup('env', 'HOME') }}"
 lcu_prefix: "{{ lcu_home }}/.local/share/lcu"
 lcu_bin: "{{ lcu_prefix }}/current/bin/lcu"
 lcu_app: /Applications/ChatGPT.app
+# Chrome's default profile, and the clone that "Google Chrome CDP.app" (the chrome-cdp-setup
+# skill) runs with `--user-data-dir`. Chrome looks for native-messaging-host manifests under
+# its own user data dir, so each needs the LCU one.
+lcu_chrome_dir: "{{ lcu_home }}/Library/Application Support/Google/Chrome"
+lcu_chrome_cdp_dir: "{{ lcu_home }}/Library/Application Support/Google/Chrome-CDP"
+lcu_manifest: NativeMessagingHosts/com.openai.codexextension.json
 # Every harness LCU has an adapter for (`lcu setup --list-agents`), except Codex, which has
 # computer use built in (DECISIONS Q228). Kimi, OpenCode, Copilot, Crush, Gemini, Grok and
 # OpenClaw have no adapter upstream. `exe` says whether the harness is installed; `probe`

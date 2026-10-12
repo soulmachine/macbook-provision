@@ -170,3 +170,24 @@
       ansible.builtin.command: "{{ lcu_bin }} browser install"
       when: "'Chrome connector: missing or outdated' in lcu_browser.stdout"
       changed_when: true
+
+    # The CDP clone needs the same manifest, a plain JSON file naming LCU's relay. `lcu browser
+    # install --directory` is the relay's own directory, not Chrome's, so the file is copied;
+    # the default one is kept current by the install above and by `lcu update` (Q234).
+    - name: Check for Chrome's LCU manifest and the Chrome CDP profile
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ lcu_chrome_dir }}/{{ lcu_manifest }}"
+        - "{{ lcu_chrome_cdp_dir }}"
+      loop_control:
+        label: "{{ item | regex_replace('^.*/Google/', '') }}"
+      register: lcu_cdp_paths
+
+    - name: Give the Chrome CDP profile the same LCU manifest
+      ansible.builtin.copy:
+        src: "{{ lcu_chrome_dir }}/{{ lcu_manifest }}"
+        dest: "{{ lcu_chrome_cdp_dir }}/{{ lcu_manifest }}"
+        remote_src: true
+        mode: "0644"
+      when: lcu_cdp_paths.results | map(attribute='stat.exists') | list == [true, true]
