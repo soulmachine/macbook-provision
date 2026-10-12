@@ -1,0 +1,5 @@
+---
+macos_connectors_taps:
+  - steipete/tap
+  - antoniorodr/memo
+  - danielhopkins/formulae

@@ -2453,3 +2453,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** (this commit); Q229
 **Supersedes:** Q229 — models are now deleted
+
+## Q236 — interactive/macos-connectors — gate-resolution
+
+**Question:** The picture names `apple-calendar`, `apple-contacts`, `apple-mail`, `apple-maps` and `apple-phone` without saying where they come from. Which project installs them?
+**Options considered:** danielhopkins/apple-tools (one brew formula that ships all five binaries under these exact names) / separate ClawHub skills of the same names (AppleScript wrappers, not CLIs) / one project per app (accli, Contactbook, fruitmail-cli, mapctl; different binary names, and no Phone tool)
+**Chosen:** `danielhopkins/formulae/apple-tools`. Photos and Find My get nothing, because the picture names no CLI for them ("Spotlight / Photos tools", "Mac GUI only").
+**Decided-by:** agent
+**Justification:** The apple-tools README and Formula/apple-tools.rb install `apple-calendar`, `apple-contacts`, `apple-mail`, `apple-maps` and `apple-phone` to bin. No other project found on GitHub, brew or npm ships those names. The formula also ships `reminders`, `apple-notes`, `apple-messages` and `apple-index`, which overlap remindctl, memo and imsg; they are harmless extras. The formula's bundled Claude skills are not linked, since the user did not ask for them.
+**Outcome:** applied
+**Ref:** (pending)

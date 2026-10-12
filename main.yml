@@ -62,6 +62,7 @@
     - multica-cli
     - purelymail
     - email
+    - macos-connectors
     - tailscale
     - apple-container
     - removemacai
