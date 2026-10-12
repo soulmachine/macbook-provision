@@ -2319,3 +2319,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Frank asked for both on 2026-10-11. A gate inside the role holds for a single-role run too, which a `when:` in main.yml does not. The directory is the fact the rule names, so no host list has to stay in step with fleet-ssh.md. On mac-mini-m2, two gated runs changed nothing, and a run with `onepassword_home=/nonexistent` took the skip path.
 **Outcome:** applied
 **Ref:** Q220; ~/.agents/docs/fleet-ssh.md
+
+## Q223 — interactive/email-role — gate-resolution
+
+**Question:** How do the Himalaya CLI (github.com/pimalaya/himalaya), its OAuth helper ortie (github.com/pimalaya/ortie) and Proton Mail Bridge (proton.me/mail/bridge) reach every fleet host, and on which hosts?
+**Options considered:** three roles / one `email` role; himalaya in the homebrew role's base list / its own role; a gate on `~/personal-agent` as the 1password role has (Q222) / no gate; ortie from a tap or cargo / from its GitHub release
+**Chosen:** One `email` role on every host, no gate. himalaya is the Homebrew core formula, Proton Mail Bridge the `proton-mail-bridge` cask (it auto-updates, so `brew upgrade` skips it by design), and ortie, which has no formula, comes from its GitHub release tarball through `tasks/pimalaya.yml`, a parametrised copy of the purelymail role (Q217). The same file installs himalaya on Ubuntu, where nothing packages it. The role installs binaries only; accounts, tokens and the Bridge login are set up by hand.
+**Decided-by:** human
+**Justification:** Frank asked for one role named `email` and for the three tools on macOS, Omarchy and Ubuntu alike, and chose no gate for the company host dev-server-frank (2026-10-12): nothing logs in until an account is configured, so an idle binary there costs nothing. Packaging checked 2026-10-12: himalaya 2.2.1 formula, ortie v2.3.0 release only, Bridge cask 3.27.1.
+**Outcome:** applied
+**Ref:** ubuntu-provision Q28, omarchy-provision Q16

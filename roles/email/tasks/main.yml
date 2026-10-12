@@ -1,0 +1,22 @@
+---
+# email: the terminal mail stack. Himalaya (github.com/pimalaya/himalaya) from its Homebrew
+# formula, ortie (github.com/pimalaya/ortie, Himalaya's OAuth helper) from its GitHub release
+# because no formula exists, and Proton Mail Bridge from its cask. Accounts are configured by
+# hand (`~/.config/himalaya/config.toml`, `ortie configure`, the Bridge app's login); this role
+# installs the binaries only.
+
+- name: Install himalaya
+  community.general.homebrew:
+    name: himalaya
+    state: latest
+
+- name: Install ortie
+  ansible.builtin.include_tasks: pimalaya.yml
+  vars:
+    pimalaya_tool: ortie
+
+# The cask auto-updates, so `brew upgrade` leaves it alone by design.
+- name: Install Proton Mail Bridge
+  community.general.homebrew_cask:
+    name: proton-mail-bridge
+    state: present

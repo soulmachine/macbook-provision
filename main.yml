@@ -60,6 +60,7 @@
     - cloudflare
     - multica-cli
     - purelymail
+    - email
     - tailscale
     - apple-container
     - role: moshi
