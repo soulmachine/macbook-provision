@@ -162,6 +162,11 @@ skills_sources_foreign:
   # about the skill changed, only which role refreshes it.
   - source: typesafe-ai/skills
     skills: [typesafe-ai]
+  # roles/ego-browser/tasks/main.yml installs this one, `creates:`-gated rather than refreshed:
+  # the skill's install.sh is what installs the app, and the app's onboarding then takes the
+  # store entry over with a symlink into its own bundle (DECISIONS Q239).
+  - source: citrolabs/ego-lite
+    skills: [ego-browser]
   # roles/browseros-neo/tasks/main.yml installs this one beside the app and its MCP entry.
   - source: browseros-ai/browseros
     skills: [browseros-neo]

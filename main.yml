@@ -47,6 +47,7 @@
     - playwright
     - playwright-cli
     - cua
+    - ego-browser
     - intellij-idea
     - claude-mem
     - cc-switch
@@ -138,6 +139,11 @@
       ansible.builtin.fail:
         msg: "{{ cua_permissions_missing }}"
       when: cua_permissions_missing is defined
+
+    - name: Fail when Ego Lite onboarding is pending
+      ansible.builtin.fail:
+        msg: "{{ ego_browser_onboarding_pending }}"
+      when: ego_browser_onboarding_pending is defined
 
     - name: Fail when the RemoveMacAI profile awaits approval
       ansible.builtin.fail:

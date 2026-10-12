@@ -2484,3 +2484,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** (this commit)
 **Supersedes:** Q50 — closed as moot by Q115; Q143 — premise corrected by Q146, removal done by Q148
+
+## Q239 — interactive/ego-browser — deviation
+
+**Question:** How does the new `ego-browser` role install the `ego-browser` skill and the Ego Lite app, report onboarding, and keep the app current?
+**Options considered:** re-run `npx skills add citrolabs/ego-lite` every play like the skills role / `creates:`-gate it on `~/.agents/skills/ego-browser` ; onboarding pending as a `debug` only / as a deferred `fail` in post_tasks like cua ; no upgrade step (the skill text says to upgrade only with approval) / `ego-browser upgrade` on every play with the verdict from `ego-browser --version` before and after
+**Chosen:** `creates:`-gated skill install; `scripts/install.sh` only when `ego lite.app` is absent; onboarding pending is a deferred `fail`; `ego-browser upgrade` unattended on every play.
+**Decided-by:** user (the unattended upgrade; the rest agent)
+**Justification:** Measured on mac-mini-m6 2026-10-12: Ego Lite's first-run onboarding replaces `~/.agents/skills/ego-browser` and the Claude and Hermes farm links with symlinks to `~/.local/share/ego/ego-skills`, a version-matched copy inside the app bundle, so a repeated `skills add` would write through into the bundle, and the app keeps the skill current anyway; `install.sh` ends with `exec open` even when the app exists, so unguarded it would pop the browser nightly; a current install prints "ego lite is already up to date." and exits 0 in under a second. Frank chose the unattended upgrade at plan review, which supersedes the "only with Frank's approval" rule in coding-agent docs/ego-lite.md; the browser restarts after a real upgrade, so a task in flight at 02:00 is lost.
+**Outcome:** applied
+**Ref:** (pending)
