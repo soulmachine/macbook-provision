@@ -2299,3 +2299,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Frank named the role. A self-contained role keeps install and removal in one place. The cask runs `op` to generate completions, so the first install has the same hang risk Q198 found. Tested on mac-mini-m6 with two runs: run 1 added the marketplace and installed the plugin, and run 2 changed nothing. The app and CLI casks were already present, so this run did not exercise the adopt path or the pre-approve step. `ansible-lint` exits 0 and the README order check passes with 53 roles. AGENTS.md's lookup count goes to 111 places across 31 roles.
 **Outcome:** applied
 **Ref:** (this commit); https://github.com/1Password/1password-claude-plugin
+
+## Q221 — interactive/1password-role — correction
+
+**Question:** Q220 says the `1password` role was tested on mac-mini-m6. Which host was it?
+**Options considered:** edit Q220 / append a correction
+**Chosen:** Append this correction, because the journal is append-only. The two test runs in Q220 ran on mac-mini-m2, not mac-mini-m6. Everything else in Q220 stands.
+**Decided-by:** agent
+**Justification:** `hostname` on the test host prints `Franks-Mac-mini-M2`.
+**Outcome:** applied
+**Ref:** Q220
