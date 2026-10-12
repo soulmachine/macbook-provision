@@ -2442,3 +2442,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** INSTALLATION.md: "a custom `--user-data-dir` profile must have access to the installed host manifest". `lcu update`'s refresh finds manifests through the relay marker, which a plain copy does not carry, so the nightly copy is what keeps the clone current.
 **Outcome:** applied — mac-mini-m6: the clone's manifest is byte-identical to the default one, the next run reports `changed=0`. The extension in the clone profile and a live tab listing are not verified by the role.
 **Ref:** (this commit); Q233
+
+## Q235 — interactive/removemacai — deviation
+
+**Question:** Q229 left the Apple Intelligence models that were already downloaded on the other Macs (about 40 GB) because `removemacai off` might write its own profile. Should the role delete them?
+**Options considered:** leave them / run `removemacai off --yes` once this role's profile is current
+**Chosen:** The role runs `off --yes` when the profile is current and `removemacai status` reports a model total other than 0 MB. It uses `failed_when: false` and prints the warning lines when `off` exits non-zero.
+**Decided-by:** human (do it: Frank, 2026-10-12); agent (the gate)
+**Justification:** On mac-mini-m6, `off --dry-run` named a profile identical to the installed one (`profile_state.py` reported `current`), and the real run said "The profile is already installed" and left it current. The same run exited 1, because two model sets were locked by another process, yet `status` then reported 0 MB. So the exit code is not the measure; the next run's `status` is. Before the profile is current, `off` would install its own, so the step waits for it.
+**Outcome:** applied
+**Ref:** (this commit); Q229
+**Supersedes:** Q229 — models are now deleted

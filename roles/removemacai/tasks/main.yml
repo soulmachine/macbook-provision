@@ -74,6 +74,32 @@
       changed_when: false
       check_mode: false
 
+    # The profile blocks new model downloads but leaves the models already on disk. `off`
+    # deletes them. Once this role's profile is current, `off` sees it and installs nothing.
+    # On a Mac without it, `off` would write a profile of its own, so it waits until then.
+    - name: Read the size of the Apple Intelligence models on disk
+      ansible.builtin.command: removemacai status
+      register: _removemacai_status
+      changed_when: false
+      check_mode: false
+      when: _removemacai_profile.stdout == 'current'
+
+    - name: Delete the Apple Intelligence models
+      ansible.builtin.command: removemacai off --yes
+      register: _removemacai_off
+      when:
+        - _removemacai_profile.stdout == 'current'
+        - _removemacai_status.stdout is not search('Total\s+0 MB')
+      changed_when: true
+      # A model set that another process locks makes `off` exit 1, even when its files are
+      # gone (mac-mini-m6, 2026-10-12). The next run's status decides whether it runs again.
+      failed_when: false
+
+    - name: Report a model deletion that did not finish
+      ansible.builtin.debug:
+        msg: "{{ _removemacai_off.stdout_lines | select('search', '!|Incomplete') | list }}"
+      when: _removemacai_off.rc | default(0) != 0
+
     # `open` puts the profile under Downloaded in System Settings. It needs a logged-in GUI
     # session as the same user, so a failure is only reported, in the message below.
     - name: Stage the RemoveMacAI profile for approval
