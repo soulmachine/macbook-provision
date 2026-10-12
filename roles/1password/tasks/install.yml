@@ -1,9 +1,10 @@
 ---
 # 1Password for agents: the desktop app, the `op` CLI and 1Password's official Claude Code
 # plugin (a skill, an MCP server and a PreToolUse hook for Developer Environments). Both the
-# CLI and the plugin talk to the app. Two switches stay manual, in the app: Settings →
-# Developer → "Integrate with 1Password CLI" for `op`, and the Labs "MCP Server" experiment,
-# which provides the `1password-mcp` the plugin launches. Signing in is manual too.
+# CLI and the plugin talk to the app. Two switches stay manual, in the app under Settings →
+# Developer: "Integrate with 1Password CLI" for `op`, and "Integrate with MCP clients", which
+# links /usr/local/bin/1password-mcp, the server the plugin launches. (The plugin's README
+# still names a Labs "MCP Server" experiment; app 8.x moved it.) Signing in is manual too.
 
 # --adopt takes over a 1Password.app installed by hand instead of failing on "already an App";
 # the cask sets auto_updates, so brew adopts it without comparing versions (as roles/codex does).
