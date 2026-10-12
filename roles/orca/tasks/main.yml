@@ -1,0 +1,105 @@
+---
+# Orca (https://onorca.dev), split on the `host-facts` always-on gate like paseo, with one
+# difference: Orca has no separate server package. The `orca` CLI and `orca serve` ship inside
+# Orca.app, and the cask links that CLI onto PATH. So every Mac gets the cask, and an always-on
+# Mac also runs the server (DECISIONS Q243).
+- name: Tap stablyai/orca
+  community.general.homebrew_tap:
+    name: stablyai/orca
+    state: present
+
+# Homebrew refuses to load casks from untrusted third-party taps
+# (HOMEBREW_REQUIRE_TAP_TRUST). Gated on the trust ledger, not on the command's
+# wording — see roles/cc-switch/tasks/main.yml for the full reasoning.
+- name: Read the trusted Homebrew entries
+  ansible.builtin.command: brew trust --json v1
+  register: _orca_trusted
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Trust stablyai/orca
+  ansible.builtin.command:
+    cmd: brew trust --tap stablyai/orca
+  when: >-
+    'stablyai/orca' not in
+    ((_orca_trusted.stdout | default('{}', true) | from_json).taps | default([]))
+  changed_when: true
+
+# `present`, not `latest`: the cask is `auto_updates true` and Orca updates itself.
+# --adopt takes over an Orca.app installed from the DMG, as roles/browseros-neo does.
+- name: Install Orca
+  community.general.homebrew_cask:
+    name: stablyai/orca/orca
+    state: present
+    install_options: adopt
+
+# The server, on always-on Macs only. Upstream's `orca serve service install` writes and loads
+# its own LaunchAgent, which runs `orca serve --supervise --no-pairing`: it restarts the server
+# with backoff, and waits while an update replaces the app or the desktop app serves instead.
+# It runs only when the service is not live, because a reinstall restarts the server and kills
+# its sessions. Port 6768 is fixed so paired clients keep their address across restarts. A login
+# shell, because the unit pins the PATH it is installed with, and the agent CLIs the server
+# spawns live on mise's shims. Pairing stays manual (see README).
+- name: Run the Orca server
+  when: mac_is_always_on | bool
+  block:
+    # `default('{}', true)`: under `--check` a skipped read leaves an empty stdout.
+    - name: Read the Orca server service
+      ansible.builtin.command: zsh -lc 'orca serve service status --json'
+      register: orca_service
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Parse the Orca server service status
+      ansible.builtin.set_fact:
+        orca_status: "{{ orca_service.stdout | default('{}', true) | from_json }}"
+
+    # Orca 1.4.224 (2026-10-10) predates `serve service` (DECISIONS Q243): it answers
+    # `invalid_argument`. Skip until the app updates itself to a release that has it.
+    - name: Report that this Orca cannot install its server yet
+      ansible.builtin.debug:
+        msg: >-
+          Skipping the Orca server: this Orca has no `orca serve service` command yet
+          ({{ orca_status.error.message | default('') }}). A later play installs it once Orca
+          updates to a release that ships it.
+      when: orca_status.error.code | default('') == 'invalid_argument'
+
+    - name: Install and check the Orca server service
+      when: orca_status.error.code | default('') != 'invalid_argument'
+      block:
+        - name: Install the Orca server service
+          ansible.builtin.command: zsh -lc 'orca serve service install --port 6768 --json'
+          changed_when: true
+          when: orca_status.result.verdict | default('') != 'live'
+
+        # A loaded agent is not a running server, as paseo's README explains. Allow 60s for
+        # the install above to come up. `failed_when: false` holds when the retries run out,
+        # so a down server is recorded, and main.yml's post_tasks fail the play on it after
+        # the other roles have run.
+        - name: Read whether the Orca server is live
+          ansible.builtin.command: zsh -lc 'orca serve service status --json'
+          register: orca_service_after
+          changed_when: false
+          failed_when: false
+          check_mode: false
+          retries: 12
+          delay: 5
+          until: (orca_service_after.stdout | default('{}', true) | from_json).result.verdict | default('') == 'live'
+
+        # A host fact, not a role var, so main.yml's post_tasks can read it.
+        - name: Record an Orca server that is not live
+          ansible.builtin.set_fact:
+            orca_serve_down: >-
+              The Orca server is not live after 60s of waiting
+              ({{ (orca_service_after.stdout | default('{}', true) | from_json).result | default('no status') }}).
+              `orca serve service status` says why, and ~/Library/Logs/Orca/ holds its log.
+              `orca serve service install --port 6768` clears a supervisor that gave up.
+          when: (orca_service_after.stdout | default('{}', true) | from_json).result.verdict | default('') != 'live'
+
+        # post_tasks only run in a full play; a single-role run reports it here.
+        - name: Report an Orca server that is not live
+          ansible.builtin.debug:
+            msg: "{{ orca_serve_down }}"
+          when: orca_serve_down is defined

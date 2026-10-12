@@ -2525,3 +2525,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Homebrew carries all three, so the role needs no new layer. m2 already runs `bw` from `bitwarden-cli` for the weekly Vaultwarden export (coding-agent docs/vaultwarden.md), so the formula keeps that `bw` in place. Every Mac has a GUI, so the app needs no gate. Vaultwarden answers only on the tailnet, and the company hosts may not be on it, so a server URL written on every host could be wrong. `rbw`'s formula depends on `pinentry`, which works in a terminal over ssh.
 **Outcome:** applied
 **Ref:** (this commit)
+
+## Q243 — interactive/orca — gate-resolution
+
+**Question:** Frank asked for an `orca` role (onorca.dev): the desktop app on MacBooks and the Orca server on always-on hosts, split like paseo. Orca has no separate server package, and the released 1.4.224 lacks the service installer that landed upstream on 2026-10-12. Where does the server come from, and what does the role do until a release ships the installer?
+**Options considered:** the cask on every Mac, plus upstream's `orca serve service install` / the cask plus a role-owned LaunchAgent running plain `orca serve`, as paseo does; while the installer is missing: skip the server with a message / ship role-owned units now and switch later
+**Chosen:** Cask `stablyai/orca/orca` (`present`, `--adopt`) on every Mac, because it is the only source of the `orca` CLI. On always-on Macs, `zsh -lc 'orca serve service install --port 6768'` runs when `orca serve service status --json` is not `live`. When the CLI answers `invalid_argument`, the role skips the server with a message, and the nightly sweep installs it once Orca updates itself.
+**Decided-by:** human (waiting for the upstream installer: Frank, 2026-10-12); agent (the cask on always-on Macs, port 6768, the not-live gate)
+**Justification:** Upstream's unit runs `orca serve --supervise --no-pairing`, which waits while the desktop app serves the same profile. Plain `orca serve` exits 3 in that case, so a role-owned unit with KeepAlive would crash-loop on a Mac with the app open. Upstream's installer leaves nothing to migrate later. Gating on `live` rather than on the unit's content avoids restarting the server, and killing its sessions, when only the pinned PATH differs.
+**Outcome:** applied
+**Ref:** (this commit)

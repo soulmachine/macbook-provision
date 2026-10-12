@@ -1,0 +1,7 @@
+---
+dependencies:
+  # Sets `mac_is_always_on`, the fact this role gates the server on (docs/host-facts.md).
+  - host-facts
+  # The server's sessions run these two agents.
+  - claude-code
+  - codex
