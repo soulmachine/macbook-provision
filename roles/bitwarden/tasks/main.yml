@@ -1,0 +1,21 @@
+---
+# Bitwarden clients for Frank's Vaultwarden (~/coding-agent/docs/vaultwarden.md): the official
+# Electron desktop app, the official `bw` CLI and `rbw`, the unofficial Rust CLI with a
+# background agent. Install only: the server URL, email and login are set by hand
+# (`bw config server`, `rbw config set base_url` / `email`), DECISIONS Q242.
+
+# --adopt takes over a Bitwarden.app installed by hand; the cask sets auto_updates, so `present`
+# and the app updates itself (as roles/1password does).
+- name: Install the Bitwarden app
+  community.general.homebrew_cask:
+    name: bitwarden
+    state: present
+    install_options: adopt
+
+# rbw's formula pulls in `pinentry`, the terminal one, so `rbw unlock` works over ssh too.
+- name: Install the Bitwarden CLI and rbw
+  community.general.homebrew:
+    name:
+      - bitwarden-cli
+      - rbw
+    state: latest

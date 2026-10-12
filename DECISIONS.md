@@ -2515,3 +2515,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The sentinel is this role's own string, not a phrase of upstream's output, so the match cannot report a phantom. Measured on m6: onboarded hosts answer `1` on stderr under Ansible's `command` module and on stdout in a terminal; the six fresh hosts answer the onboarding message on both runs. The probe also reopens the setup window when onboarding is pending, which the deferred failure asks the person to click through anyway.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q242 — interactive/bitwarden — gate-resolution
+
+**Question:** Frank asked for a `bitwarden` role on every host: the official Electron app, `bw` and `rbw`. Where does each come from on macOS, which Macs get it, and does the role configure the clients?
+**Options considered:** cask `bitwarden` / the Mac App Store build; formula `bitwarden-cli` / npm `@bitwarden/cli`; gate on `~/personal-agent` like 1password / no gate; install only / also point `bw` and `rbw` at `vaultwarden.soulmachine.me`
+**Chosen:** Cask `bitwarden` (`present`, `--adopt`, the app updates itself), formulae `bitwarden-cli` and `rbw` (`latest`). No gate. Install only: the role sets no server URL, email or login.
+**Decided-by:** human (install only, and the headless rule for the Linux ports: Frank, 2026-10-12); agent (the sources)
+**Justification:** Homebrew carries all three, so the role needs no new layer. m2 already runs `bw` from `bitwarden-cli` for the weekly Vaultwarden export (coding-agent docs/vaultwarden.md), so the formula keeps that `bw` in place. Every Mac has a GUI, so the app needs no gate. Vaultwarden answers only on the tailnet, and the company hosts may not be on it, so a server URL written on every host could be wrong. `rbw`'s formula depends on `pinentry`, which works in a terminal over ssh.
+**Outcome:** applied
+**Ref:** (this commit)
