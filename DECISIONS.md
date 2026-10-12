@@ -2463,3 +2463,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The apple-tools README and Formula/apple-tools.rb install `apple-calendar`, `apple-contacts`, `apple-mail`, `apple-maps` and `apple-phone` to bin. No other project found on GitHub, brew or npm ships those names. The formula also ships `reminders`, `apple-notes`, `apple-messages` and `apple-index`, which overlap remindctl, memo and imsg; they are harmless extras. The formula's bundled Claude skills are not linked, since the user did not ask for them.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q237 — interactive/browseros-neo — gate-resolution
+
+**Question:** Frank asked for BrowserOS neo on every Mac, connected to Claude Code. How does the role connect it, and does it also start neo or install upstream's skill?
+**Options considered:** `claude mcp add` an http entry / leave it to neo's one-click "Connect" button; start neo at login / do not; install the `browseros-neo` skill / do not
+**Chosen:** The role installs the cask (`present`, because neo updates itself). It runs `claude mcp add --scope user --transport http browseros-neo http://127.0.0.1:9200/mcp` only when `claude mcp get browseros-neo` fails. It installs only the `browseros-neo` skill from `browseros-ai/browseros`, in the role itself, and lists that source under `skills_sources_foreign`. Nothing starts neo at login.
+**Decided-by:** human (no autostart, yes skill: Frank, 2026-10-12); agent (the MCP shape)
+**Justification:** neo's own Connect button writes `mcpServers["browseros-neo"] = {type: "http", url: …}` to `~/.claude.json` (upstream `crates/harness-integrations/src/catalog.rs` and `mcp/emitter.rs`). The CLI command writes the same entry under the same name, so neo shows the tool as connected and never adds a second entry. Port 9200 is the claw-server default (`apps/claw-server/src/config.rs`). The endpoint answers only while neo is open. The skill follows the typesafe role's shape (Q165).
+**Outcome:** applied. On mac-mini-m2 the role converges in 2 runs (`changed=0` on the second). A fresh install shows macOS's first-launch "downloaded from the Internet" dialog. The process waits at `_dyld_start` until a person clicks Open, which looks like the Gatekeeper wedge but is not one.
+**Ref:** (this commit)

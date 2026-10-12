@@ -1,0 +1,97 @@
+---
+# BrowserOS neo (https://browseros.com) — a Chromium browser that agents drive over MCP, with
+# the user's own logins. Three parts: the app, its MCP endpoint registered in Claude Code, and
+# upstream's browseros-neo skill. Claude Code reaches the endpoint only while neo is open;
+# nothing starts it at login (DECISIONS Q237).
+
+# --- the app -----------------------------------------------------------------
+- name: Tap browseros-ai/tap
+  community.general.homebrew_tap:
+    name: browseros-ai/tap
+    state: present
+
+# Homebrew refuses to load casks from untrusted third-party taps
+# (HOMEBREW_REQUIRE_TAP_TRUST). Gated on the trust ledger, not on the command's
+# wording — see roles/cc-switch/tasks/main.yml for the full reasoning.
+- name: Read the trusted Homebrew entries
+  ansible.builtin.command: brew trust --json v1
+  register: _browseros_neo_trusted
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Trust browseros-ai/tap
+  ansible.builtin.command:
+    cmd: brew trust --tap browseros-ai/tap
+  when: >-
+    'browseros-ai/tap' not in
+    ((_browseros_neo_trusted.stdout | default('{}', true) | from_json).taps | default([]))
+  changed_when: true
+
+# `present`, not `latest`: the cask is `auto_updates true` and neo updates itself (Sparkle).
+- name: Install BrowserOS neo
+  community.general.homebrew_cask:
+    name: browseros-ai/tap/browseros-neo
+    state: present
+
+# --- the Claude Code MCP entry -------------------------------------------------
+# Writes the same `~/.claude.json` entry neo's "Connect" button writes (type http, same name),
+# so neo shows Claude Code as connected. An existing entry is left alone, whoever wrote it.
+- name: Check whether Claude Code has the browseros-neo MCP server
+  ansible.builtin.command: claude mcp get {{ browseros_neo_mcp_name }}
+  register: _browseros_neo_mcp
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Register the browseros-neo MCP server in Claude Code
+  ansible.builtin.command: >-
+    claude mcp add --scope user --transport http
+    {{ browseros_neo_mcp_name }} {{ browseros_neo_mcp_url }}
+  when: _browseros_neo_mcp.rc != 0
+  changed_when: true
+
+# --- the browseros-neo skill ---------------------------------------------------
+# The typesafe role's skill steps, for this skill: re-run the installer every play (the only
+# thing that pulls upstream edits) and decide `changed` from a checksum taken around it.
+- name: Fingerprint the browseros-neo skill before installing
+  ansible.builtin.find:
+    paths: "{{ browseros_neo_skill_dir }}"
+    recurse: true
+    file_type: file
+    get_checksum: true
+  register: _browseros_neo_skill_before
+  changed_when: false
+
+# The flag is repeated per agent rather than comma-joined: `--agent a,b` is parsed as the
+# single name `a,b`, measured 2026-09-18 in the skills role.
+- name: Install the browseros-neo skill for every agent
+  ansible.builtin.command: >-
+    npx skills@latest add {{ browseros_neo_skill_source }} -g -y
+    {% for a in browseros_neo_skill_agents %}--agent {{ a }} {% endfor %}
+    --skill {{ browseros_neo_skill }}
+  register: _browseros_neo_skill_install
+  changed_when: false
+  # A renamed or withdrawn skill makes the CLI exit 1. Report it rather than stop every role
+  # after this one.
+  failed_when: false
+
+- name: Report that the browseros-neo skill could not be installed
+  ansible.builtin.debug:
+    msg: >-
+      `npx skills add {{ browseros_neo_skill_source }} --skill {{ browseros_neo_skill }}` exited
+      {{ _browseros_neo_skill_install.rc }}. Check what the source still ships with
+      `npx skills@latest add {{ browseros_neo_skill_source }} -l`, then correct the name in
+      roles/browseros-neo/vars/main.yml.
+  when: _browseros_neo_skill_install.rc | default(0) != 0
+
+- name: Check whether the browseros-neo skill was updated
+  ansible.builtin.find:
+    paths: "{{ browseros_neo_skill_dir }}"
+    recurse: true
+    file_type: file
+    get_checksum: true
+  register: _browseros_neo_skill_after
+  changed_when: >-
+    (_browseros_neo_skill_after.files | map(attribute='checksum') | sort)
+    != (_browseros_neo_skill_before.files | map(attribute='checksum') | sort)

@@ -52,6 +52,7 @@
     - cc-switch
     - hermes
     - lcu
+    - browseros-neo
     - ponytail
     - role: paseo
       tags: [agent-multiplexer]
