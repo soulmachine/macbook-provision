@@ -2473,3 +2473,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** neo's own Connect button writes `mcpServers["browseros-neo"] = {type: "http", url: …}` to `~/.claude.json` (upstream `crates/harness-integrations/src/catalog.rs` and `mcp/emitter.rs`). The CLI command writes the same entry under the same name, so neo shows the tool as connected and never adds a second entry. Port 9200 is the claw-server default (`apps/claw-server/src/config.rs`). The endpoint answers only while neo is open. The skill follows the typesafe role's shape (Q165).
 **Outcome:** applied. On mac-mini-m2 the role converges in 2 runs (`changed=0` on the second). A fresh install shows macOS's first-launch "downloaded from the Internet" dialog. The process waits at `_dyld_start` until a person clicks Open, which looks like the Gatekeeper wedge but is not one.
 **Ref:** (this commit)
+
+## Q238 — interactive/whats-next-audit — gate-resolution
+
+**Question:** Q50 (escalated) and Q143 (raised) still show as open to an audit, although Q115 closed Q50 as moot and Q146 corrected Q143's premise, with Q148 doing the removal. Add the missing `Supersedes` lines?
+**Options considered:** append one entry that supersedes both / edit the two entries in place / leave them
+**Chosen:** This entry supersedes both, so the journal's audit of open escalations is clean without editing history.
+**Decided-by:** human (2026-10-12)
+**Justification:** Both were resolved on the record; only the cross-reference the audit script keys on was missing.
+**Outcome:** applied
+**Ref:** (this commit)
+**Supersedes:** Q50 — closed as moot by Q115; Q143 — premise corrected by Q146, removal done by Q148
