@@ -1,98 +1,17 @@
 ---
-# 1Password for agents: the desktop app, the `op` CLI and 1Password's official Claude Code
-# plugin (a skill, an MCP server and a PreToolUse hook for Developer Environments). Both the
-# CLI and the plugin talk to the app. Two switches stay manual, in the app: Settings →
-# Developer → "Integrate with 1Password CLI" for `op`, and the Labs "MCP Server" experiment,
-# which provides the `1password-mcp` the plugin launches. Signing in is manual too.
+# Only the hosts that hold ~/personal-agent (m6, m2, macbook-air; ~/.agents/docs/fleet-ssh.md)
+# get 1Password. The gate lives here, not as a `when:` in main.yml, so it holds for a
+# single-role run too, the same shape as the hermes role.
+- name: Check for ~/personal-agent
+  ansible.builtin.stat:
+    path: "{{ onepassword_home }}/personal-agent"
+  register: onepassword_personal_agent
 
-# --adopt takes over a 1Password.app installed by hand instead of failing on "already an App";
-# the cask sets auto_updates, so brew adopts it without comparing versions (as roles/codex does).
-- name: Install the 1Password app
-  community.general.homebrew_cask:
-    name: 1password
-    state: present
-    install_options: adopt
+- name: Install 1Password
+  ansible.builtin.include_tasks: install.yml
+  when: onepassword_personal_agent.stat.exists
 
-# The cask runs `op` while installing (generate_completions_from_executable), and on a host
-# that never approved it Gatekeeper answers that first launch with a prompt nobody is there
-# to click, so the unattended run hangs (DECISIONS Q198). The homebrew role pre-approves
-# upgrades; this covers the first install the same way: mark the cached download
-# user-approved before Homebrew extracts it. See roles/homebrew/tasks/preapprove-casks.yml.
-- name: Check whether the 1Password CLI cask is installed
-  ansible.builtin.command: brew list --cask {{ onepassword_cli_cask }}
-  register: onepassword_cli_listed
-  changed_when: false
-  failed_when: false
-  check_mode: false
-
-- name: Pre-approve the 1Password CLI download
-  ansible.builtin.shell: |
-    set -eu
-    brew fetch --cask {{ onepassword_cli_cask }}
-    xattr -w com.apple.quarantine "$(printf '00c1;%x;Homebrew Cask;' "$(date +%s)")" \
-      "$(brew --cache --cask {{ onepassword_cli_cask }})"
-  when: onepassword_cli_listed.rc != 0
-  changed_when: true
-
-# `present`, not `latest`: the homebrew role's `brew upgrade` keeps it current.
-- name: Install the 1Password CLI
-  community.general.homebrew_cask:
-    name: "{{ onepassword_cli_cask }}"
-    state: present
-
-# Claude Code plugin: the same marketplace, install and ledger-diffed update steps as the
-# ponytail role (roles/ponytail/tasks/claude-code.yml explains each gate).
-- name: Read the known Claude Code marketplaces
-  ansible.builtin.slurp:
-    src: "{{ onepassword_home }}/.claude/plugins/known_marketplaces.json"
-  register: onepassword_mp_raw
-  failed_when: false
-
-- name: Add the 1Password Claude Code marketplace
-  ansible.builtin.command: claude plugin marketplace add {{ onepassword_plugin_repo }}
-  when: >-
-    onepassword_claude_plugin.split('@')[1] not in
-    (onepassword_mp_raw.content | default('e30=') | b64decode | from_json)
-  changed_when: true
-
-- name: Read the Claude Code plugin ledger before installing
-  ansible.builtin.slurp:
-    src: "{{ onepassword_home }}/.claude/plugins/installed_plugins.json"
-  register: onepassword_before
-  failed_when: false
-
-- name: Install the 1Password Claude Code plugin
-  ansible.builtin.command: claude plugin install {{ onepassword_claude_plugin }}
-  when: >-
-    onepassword_claude_plugin not in
-    ((onepassword_before.content | default('e30=') | b64decode | from_json).plugins | default({}))
-  changed_when: true
-
-- name: Update the 1Password Claude Code plugin
-  ansible.builtin.command: claude plugin update {{ onepassword_claude_plugin }}
-  changed_when: false
-
-- name: Read the Claude Code plugin ledger after updating
-  ansible.builtin.slurp:
-    src: "{{ onepassword_home }}/.claude/plugins/installed_plugins.json"
-  register: onepassword_after
-  failed_when: false
-
-# The install above already reports its own change, so this diff only has to catch an
-# update. On the install run both sides differ too, which double-counts one change; harmless.
-- name: Check whether the 1Password Claude Code plugin was updated
+- name: Report that 1Password was skipped
   ansible.builtin.debug:
-    msg: >-
-      1Password Claude Code plugin
-      {{ 'updated' if onepassword_updated else 'already up to date' }}
-  vars:
-    onepassword_sha_before: >-
-      {{ ((onepassword_before.content | default('e30=') | b64decode | from_json).plugins
-          | default({}))[onepassword_claude_plugin] | default([])
-         | map(attribute='gitCommitSha', default='') | list }}
-    onepassword_sha_after: >-
-      {{ ((onepassword_after.content | default('e30=') | b64decode | from_json).plugins
-          | default({}))[onepassword_claude_plugin] | default([])
-         | map(attribute='gitCommitSha', default='') | list }}
-    onepassword_updated: "{{ onepassword_sha_before != onepassword_sha_after }}"
-  changed_when: onepassword_updated
+    msg: Skipping 1Password, because this host has no ~/personal-agent.
+  when: not onepassword_personal_agent.stat.exists

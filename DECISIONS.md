@@ -2309,3 +2309,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** `hostname` on the test host prints `Franks-Mac-mini-M2`.
 **Outcome:** applied
 **Ref:** Q220
+
+## Q222 — interactive/1password-role — deviation
+
+**Question:** Frank said the `1password` role is for macOS only, so it is not ported to ubuntu-provision or omarchy-provision, and that it applies only to hosts with `~/personal-agent`. How should the role gate on that?
+**Options considered:** a `when:` on the role in main.yml / a gate inside the role / a host list
+**Chosen:** The role stats `~/personal-agent` and includes `tasks/install.yml` (the former `tasks/main.yml`) only when it exists, otherwise it prints a skip message. That is the hermes role's shape. The claude-code dependency still runs everywhere, as it already does in the full play. ubuntu-provision and omarchy-provision list `1password` among the upstream roles they leave out.
+**Decided-by:** human
+**Justification:** Frank asked for both on 2026-10-11. A gate inside the role holds for a single-role run too, which a `when:` in main.yml does not. The directory is the fact the rule names, so no host list has to stay in step with fleet-ssh.md. On mac-mini-m2, two gated runs changed nothing, and a run with `onepassword_home=/nonexistent` took the skip path.
+**Outcome:** applied
+**Ref:** Q220; ~/.agents/docs/fleet-ssh.md
