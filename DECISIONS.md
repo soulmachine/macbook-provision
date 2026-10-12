@@ -2422,3 +2422,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** (this commit)
 **Supersedes:** Q231 — only its `agent-sync status` exit-code claim; the fix stands
+
+## Q233 — interactive/lcu-role — deviation
+
+**Question:** Frank asked the `lcu` role to enable Chrome control, per INSTALLATION.md "Desktop and browser". Q228 registered with Chrome off. What does the role do, and what stays manual?
+**Options considered:** `--chrome` on setup only / also run `lcu browser install` for the native-host relay / leave the relay to `lcu update`'s refresh
+**Chosen:** The register task passes `--audio --chrome --yes`, and its one-time re-registration gate now reads both saved opt-ins in `~/.local/state/lcu/setup.json` (`lcu_optins_on`). After it, `lcu browser status` is read and `lcu browser install` runs when its output carries "Chrome connector: missing or outdated", which points the account's `com.openai.codexextension.json` native-host manifest at LCU's relay. Enabling the official ChatGPT extension in each host's Chrome profile, restarting Chrome, and the per-site approvals stay manual: the guide says LCU never installs or enables the Web Store extension.
+**Decided-by:** human (Chrome on: Frank, 2026-10-12); agent (the shape)
+**Justification:** The guide's Chrome section: opt in at registration, then refresh the native host with `lcu browser install` and check with `lcu browser status`. `status` exits 1 for any gap, including an extension nobody has enabled, so its exit code cannot gate the install; the connector line is a positive sentinel, the agent-reach exception in writing-roles.md.
+**Outcome:** applied — mac-mini-m6: one run re-registered claude-code, pi, omp and hermes with Chrome, `setup.json` reads `chrome: true`, `browser status` says "configured for this LCU installation", the next run reports `changed=0`. m6 has no Chrome profile yet, so the extension check there says "could not check" until Chrome is opened once.
+**Ref:** (this commit); Q230
