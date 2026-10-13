@@ -2546,3 +2546,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** (this commit)
 **Supersedes:** Q242 — only its "install only" part
+
+## Q245 — interactive/1password-everywhere — deviation
+
+**Question:** Frank asked for the `1password` role on every host and in all three provisioning repos, desktop app and `op` CLI both. Q222 limited it to macOS hosts with `~/personal-agent`. What changes here?
+**Options considered:** drop the gate on every Mac / keep it on macOS and port ungated to Linux
+**Chosen:** Drop the gate. `tasks/install.yml` moves back to `tasks/main.yml`, so every Mac, the company Macs included, gets the app, the CLI and the Claude Code plugin. ubuntu-provision and omarchy-provision port the role, plugin included, and skip only the desktop app on a host with no X11 or Wayland session.
+**Decided-by:** human (every host, plugin on Linux too, skip the app when headless: Frank, 2026-10-13); agent (the edits)
+**Justification:** Frank chose "every host" when asked how the new request squares with Q222. The role installs software and signs nothing in, so the company Macs get no credential.
+**Outcome:** applied
+**Ref:** (this commit)
+**Supersedes:** Q222 — the ~/personal-agent gate and "not ported to the Linux repos"
