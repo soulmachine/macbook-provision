@@ -5,6 +5,8 @@
 # Developer: "Integrate with 1Password CLI" for `op`, and "Integrate with MCP clients", which
 # links /usr/local/bin/1password-mcp, the server the plugin launches. (The plugin's README
 # still names a Labs "MCP Server" experiment; app 8.12.40 has the switch under Developer.) Signing in is manual too.
+# Headless `op` comes from OP_SERVICE_ACCOUNT_TOKEN in .env (dotenv role), read-only on the
+# Automation vault; see ~/.agents/docs/1password.md.
 
 # --adopt takes over a 1Password.app installed by hand instead of failing on "already an App";
 # the cask sets auto_updates, so brew adopts it without comparing versions (as roles/codex does).
