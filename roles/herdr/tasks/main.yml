@@ -95,6 +95,38 @@
       `pkill -f 'herdr server'` and relaunch.
   when: herdr_updated is changed
 
+# Herdr UI (https://herdrui.dev), a native GUI client for the local herdr daemon. It installs no
+# daemon of its own.
+- name: Tap penso/tap
+  community.general.homebrew_tap:
+    name: penso/tap
+    state: present
+
+# Homebrew refuses to load casks from untrusted third-party taps
+# (HOMEBREW_REQUIRE_TAP_TRUST). Gated on the trust ledger, not on the command's
+# wording — see roles/cc-switch/tasks/main.yml for the full reasoning.
+- name: Read the trusted Homebrew entries
+  ansible.builtin.command: brew trust --json v1
+  register: _herdr_trusted
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Trust penso/tap
+  ansible.builtin.command:
+    cmd: brew trust --tap penso/tap
+  when: >-
+    'penso/tap' not in
+    ((_herdr_trusted.stdout | default('{}', true) | from_json).taps | default([]))
+  changed_when: true
+
+# `present`: the homebrew role's `brew upgrade` keeps casks current.
+- name: Install Herdr UI
+  community.general.homebrew_cask:
+    name: penso/tap/herdr-gpui
+    state: present
+    install_options: adopt
+
 # Multi-line, so blockinfile rather than the lineinfile used for one-line aliases
 # elsewhere. The named marker keeps this block from colliding with any other
 # role's managed block in the same .zshrc.
