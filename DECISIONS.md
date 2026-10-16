@@ -2557,3 +2557,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** (this commit)
 **Supersedes:** Q222 — the ~/personal-agent gate and "not ported to the Linux repos"
+
+## Q246 — interactive/ego-default-browser — tradeoff
+
+**Question:** Frank asked for Ego Lite (`com.citrolabs.ego.lite`) as the default browser on all macOS hosts. Which hosts count, and does the `ego-browser` role enforce it?
+**Options considered:** every Mac with Ego Lite, company Macs included / Frank's own Macs only ; one-off change by hand / a task in the `ego-browser` role
+**Chosen:** All seven Macs (m6, m2, macbook-air, mac-studio-m3, archs-mac-mini, macbook-pro-nickel, dev-server-frank-lume), changed by hand on 2026-10-15. No role task.
+**Decided-by:** agent
+**Justification:** "All macOS hosts" names no exception, and every Mac runs this playbook, so every one has Ego Lite. macOS asks for consent in a dialog on each change (`LSSetDefaultHandlerForURLScheme`), so a play cannot do it unattended; the change was made with the chrome-cdp-setup skill's JXA call, and lcu over ssh clicked "Use ego lite". The play never resets the default, so one change holds. A new Mac needs the same step by hand, and rerunning chrome-cdp-setup's `set_default_browser.sh` switches it back to Google Chrome CDP.
+**Outcome:** assumed
+**Ref:** (this commit)
