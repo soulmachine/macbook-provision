@@ -93,7 +93,10 @@ wrappers = {
                  '# Plugin hooks call bare `node`, which non-interactive shells may lack (macbook-air).\n'
                  '# Appended, so a host\'s own node and tools still come first.\n'
                  'command -v node >/dev/null 2>&1 || export PATH="$PATH:$HOME/.local/share/mise/shims"\n'
-                 'exec env ANTHROPIC_BASE_URL="$CLIPROXY_BASE_URL" ANTHROPIC_AUTH_TOKEN="$CLIPROXY_API_KEY" claude --dangerously-skip-permissions --effort high "$@"\n',
+                 '# Marks each session as a gateway one. Herdr saves only the session id and restores with a bare\n'
+                 '# `claude --resume <id>`; the herdr role\'s `claude` shell function sends marked ids back here.\n'
+                 'gw_hook=\'{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"mkdir -p ~/.local/state/claude-gw && touch ~/.local/state/claude-gw/$CLAUDE_CODE_SESSION_ID"}]}]}}\'\n'
+                 'exec env ANTHROPIC_BASE_URL="$CLIPROXY_BASE_URL" ANTHROPIC_AUTH_TOKEN="$CLIPROXY_API_KEY" claude --dangerously-skip-permissions --effort high --settings "$gw_hook" "$@"\n',
     "codex-gw": hdr + ': "${CLIPROXY_API_KEY:?}"\n'
                 '# codex may live only in mise shims (dev-server-frank), which non-interactive shells lack.\n'
                 'command -v codex >/dev/null 2>&1 || export PATH="$HOME/.local/share/mise/shims:$PATH"\n'
