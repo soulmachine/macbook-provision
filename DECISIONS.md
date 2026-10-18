@@ -2567,3 +2567,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** "All macOS hosts" names no exception, and every Mac runs this playbook, so every one has Ego Lite. macOS asks for consent in a dialog on each change (`LSSetDefaultHandlerForURLScheme`), so a play cannot do it unattended; the change was made with the chrome-cdp-setup skill's JXA call, and lcu over ssh clicked "Use ego lite". The play never resets the default, so one change holds. A new Mac needs the same step by hand, and rerunning chrome-cdp-setup's `set_default_browser.sh` switches it back to Google Chrome CDP.
 **Outcome:** assumed
 **Ref:** (this commit)
+
+## Q247 — interactive/open-pstack-removal — deviation
+
+**Question:** The user asked to remove open-pstack (ericlitman/open-pstack) from every host. It has been on every host since Q195, and deleting the list entries only stops new installs. How do the hosts get cleaned?
+**Options considered:** a one-shot ssh sweep from m6 to each host / marker-gated retire tasks in the claude-code and codex roles, so the nightly sweep cleans each host
+**Chosen:** Retire tasks. claude-code: `claude_code_retired_plugins` and `claude_code_retired_marketplaces`, uninstalled and removed when the plugin ledger and the marketplace ledger still name them. codex: `codex plugin remove`, `codex plugin marketplace remove`, and a `replace` that drops the `[hooks.state."pstack@open-pstack:…"]` trust entry, which `codex plugin remove` leaves behind, each gated on its section in config.toml. The install steps of Q193 are gone. The skills role's `cursor/plugins/pstack` pin of `unslop` (Q185) stays: it is Cursor's repo, not open-pstack.
+**Decided-by:** human (remove everywhere, retire tasks); agent (gates, the hook-trust step, keeping the unslop pin)
+**Justification:** A sleeping macbook-air or an offline host misses a one-shot sweep, and the nightly run reaches it with no extra work. `claude plugin marketplace remove` without `--scope` also drops the `extraKnownMarketplaces` entry in settings.json, so the settings write below it does not keep the entry. Delete the retire tasks once every host is clean.
+**Outcome:** applied — on mac-mini-m6 both roles removed every pstack record (plugin and marketplace ledgers, `enabledPlugins`, `extraKnownMarketplaces`, all three config.toml sections). config.toml stays 0600.
+**Ref:** (this commit)
+**Supersedes:** Q195 — the user now wants open-pstack removed
