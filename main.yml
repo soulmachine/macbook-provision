@@ -69,6 +69,7 @@
     - email
     - macos-connectors
     - tailscale
+    - control-plane-hardening
     - apple-container
     - removemacai
     - role: moshi

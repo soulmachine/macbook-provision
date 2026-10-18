@@ -1,0 +1,12 @@
+---
+# Only Frank may reach the control plane (coding-agent Q551, Q553). Every other Mac skips this
+# role: archs-mac-mini is shared with ArchAuto's engineers, who may log in with a password.
+- name: Read this Mac's LocalHostName
+  ansible.builtin.command: scutil --get LocalHostName
+  register: control_plane_hostname
+  changed_when: false
+  check_mode: false
+
+- name: Harden a control-plane Mac
+  ansible.builtin.include_tasks: harden.yml
+  when: control_plane_hostname.stdout in control_plane_hosts

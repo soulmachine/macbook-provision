@@ -1,0 +1,38 @@
+---
+# macOS starts sshd per connection, so the drop-in applies to the next login without a restart.
+- name: Allow only key logins over ssh
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/200-hardening.conf
+    owner: root
+    group: wheel
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+    content: |
+      # Key-only ssh on the control plane (coding-agent Q551): no password or keyboard-interactive login.
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+
+# A laptop joins untrusted networks. Signed apps such as sshd still accept connections, so
+# Tailscale and ssh keep working; stealth mode stops answering probes of closed ports.
+- name: Turn on the application firewall in stealth mode on a laptop
+  when: not (mac_is_always_on | bool)
+  block:
+    - name: Read the firewall state
+      ansible.builtin.shell: |
+        /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
+        /usr/libexec/ApplicationFirewall/socketfilterfw --getstealthmode
+      register: control_plane_firewall
+      changed_when: false
+      check_mode: false
+
+    - name: Turn on the firewall
+      become: true
+      ansible.builtin.command: /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
+      when: "'enabled' not in control_plane_firewall.stdout_lines[0]"
+
+    - name: Turn on stealth mode
+      become: true
+      ansible.builtin.command: /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on
+      when: "' on' not in control_plane_firewall.stdout_lines[1]"

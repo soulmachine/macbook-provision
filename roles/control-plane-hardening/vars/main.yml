@@ -1,0 +1,6 @@
+---
+# `scutil --get LocalHostName` of the three control-plane Macs (coding-agent Q551).
+control_plane_hosts:
+  - mac-mini-m6
+  - Franks-Mac-mini-M2
+  - Franks-MacBook-Air
