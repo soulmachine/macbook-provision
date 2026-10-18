@@ -2578,3 +2578,43 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied — on mac-mini-m6 both roles removed every pstack record (plugin and marketplace ledgers, `enabledPlugins`, `extraKnownMarketplaces`, all three config.toml sections). config.toml stays 0600.
 **Ref:** (this commit)
 **Supersedes:** Q195 — the user now wants open-pstack removed
+
+## Q248 — interactive/context-mode — gate-resolution
+
+**Question:** Should the new context-mode role cover Hermes, Crush and Grok, which upstream has no adapter for?
+**Options considered:** skip them / register context-mode as a plain MCP server in each (tools, but no hooks or routing)
+**Chosen:** Skip them. The role installs into the nine agents upstream supports, and its README records why the other three are left out.
+**Decided-by:** human
+**Justification:** The user picked "skip" when asked. An MCP-only entry gives tools with no routing, and upstream does not test it.
+**Outcome:** applied
+**Ref:** (this commit)
+
+## Q249 — interactive/context-mode — tradeoff
+
+**Question:** How should the role install context-mode into OpenClaw?
+**Options considered:** upstream's `npm run install:openclaw` script from a clone / OpenClaw's own `openclaw plugins install context-mode --force`
+**Chosen:** `openclaw plugins install context-mode --force`, gated on `openclaw plugins list --json`, with a version diff around `openclaw plugins update`.
+**Decided-by:** agent
+**Justification:** The user asked for each agent's own installer. The npm package declares `openclaw.extensions`, and the plugin loads with all 11 tools (measured on mac-mini-m6, OpenClaw 2026.10.4). The upstream script edits runtime.json and signals the gateway itself. `--force` only confirms an npm source outside ClawHub review, which the user's request covers. It would also overwrite an installed plugin, so the list gate keeps it to the first install.
+**Outcome:** applied
+**Ref:** (this commit)
+
+## Q250 — interactive/context-mode — tradeoff
+
+**Question:** kimi-code and Gemini CLI have no plugin installer. How should the role register context-mode in config files that other writers (cliproxy-tier, jev-register-agents, herdr) also edit?
+**Options considered:** rewrite the files whole / merge only context-mode's entries
+**Chosen:** Merge only. Gemini: one `combine(recursive, list_merge='append_rp')` into `~/.gemini/settings.json`, which appends to the existing hook lists. kimi: add a key to `~/.kimi-code/mcp.json`, plus a marked `blockinfile` block of six `[[hooks]]` tables at the end of `~/.kimi-code/config.toml`. Every write is 0600 and no_log.
+**Decided-by:** agent
+**Justification:** The other writers read-modify-write the same files and keep keys they do not own (gateway/cliproxy-tier-host.py; jev-register-agents). A trailing array-of-tables block stays valid TOML whatever comes before it. Measured: after the role ran, both files kept their existing hooks and MCP servers, and a `kimi -p` and a `gemini-gw -p` prompt both ran cleanly.
+**Outcome:** applied
+**Ref:** (this commit)
+
+## Q251 — interactive/context-mode — tradeoff
+
+**Question:** npm 11 skips context-mode's `postinstall` and `better-sqlite3`'s install script under its install-scripts policy. Should the role allow them?
+**Options considered:** allow them (`--allow-scripts`, or a user-level npm config) / leave npm's policy alone
+**Chosen:** Leave the policy alone.
+**Decided-by:** agent
+**Justification:** `better-sqlite3` ships a prebuilt binary, and `context-mode doctor` reports "FTS5 / SQLite: PASS" without the scripts (mac-mini-m6, Node 24.22.0). On Linux, Node >= 22.5 uses `node:sqlite` instead. Allowing install scripts would loosen a security default for no gain. If doctor ever fails, revisit this.
+**Outcome:** applied
+**Ref:** (this commit)

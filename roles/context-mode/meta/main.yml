@@ -1,0 +1,18 @@
+---
+dependencies:
+  # Sets `mac_is_always_on`, the fact the OpenClaw half of this role gates on, so a standalone
+  # `include_role` run classifies the machine itself (docs/host-facts.md).
+  - host-facts
+  # The global `context-mode` CLI, which every hook runs, is an npm global.
+  - nodejs
+  # context-mode is installed *into* each of these, through that agent's own installer, so the
+  # agent must be provisioned first. `openclaw` self-gates on `mac_is_always_on`.
+  - claude-code
+  - codex
+  - opencode
+  - pi
+  - omp
+  - gemini
+  - copilot
+  - kimi-code
+  - openclaw
