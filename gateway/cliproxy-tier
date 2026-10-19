@@ -3,7 +3,7 @@
 # Usage: cliproxy-tier [host ...]   (default: every host). Re-running is the key-rotation tool.
 set -uo pipefail
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-ALL="mac-mini-m2 macbook-air mac-mini-2018-omarchy macbook-pro-nickel mac-studio-m3 archs-mac-mini dev-server-frank dev-server-frank-lume supermicro mac-mini-m6"
+ALL="mac-mini-m2 macbook-air mac-mini-2018-omarchy macbook-pro-nickel mac-studio-m3 archs-mac-mini dev-server-frank dev-server-frank-lume supermicro grok-bot mac-mini-m6"
 LOG="$HOME/Library/Logs/cliproxy-tier.log"; mkdir -p "$(dirname "$LOG")"
 # Keep the key-routing sidecar's keys in step with host-keys.txt before touching any host.
 sync=$(cliproxy-routing-sync 2>&1); printf '%s\n' "$sync"; printf '%s routing-sync\n%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$sync" >>"$LOG"

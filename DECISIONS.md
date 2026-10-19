@@ -2658,3 +2658,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Codex writes the provider in its `session_meta` line, so `codex-gw` needs no hook. The board starts codex with `--dangerously-bypass-approvals-and-sandbox`, and `codex-gw` adds `--yolo`, which is the same flag. Codex 0.163 refuses the flag twice ("cannot be used multiple times"). Tested in zsh and bash with stubs: a cliproxy resume goes to the gateway, an openai or unknown id stays native, a Coordinator launch goes to the gateway without the duplicate flag, and nothing changes outside herdr. A real `codex-gw` run with the board's flags printed its version. The `find` walks every session folder on each herdr codex resume. That is fine at today's count and can be slow with many thousands of sessions.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q256 — interactive/grok-bot-cliproxy-tier — deviation
+
+**Question:** coding-agent Q492 made grok-bot a full fleet host but left it out of `cliproxy-tier`'s host list. Should `cliproxy-tier` cover it?
+**Options considered:** keep it out / add it to `ALL`
+**Chosen:** Add `grok-bot` to `ALL` in `gateway/cliproxy-tier`, before `mac-mini-m6`.
+**Decided-by:** human
+**Justification:** Frank asked for it, 2026-10-18. grok-bot is not yet set up for the gateway: m2 has no inbound key for it in `host-keys.txt` or the config's `api-keys`, no routing-sidecar row, and no `com.cliproxy.tunnel.grok-bot` LaunchAgent, and its `~/.bashrc` has no `CLIPROXY_*`. Until that is done, each run prints `[grok-bot] FAILED` (ssh 255 while it is down) and goes on to the next host, so the other hosts are unaffected.
+**Outcome:** applied (list only); gateway onboarding pending
+**Ref:** (pending)
+**Supersedes:** coding-agent Q492 — only its "Not added: cliproxy-tier" part
