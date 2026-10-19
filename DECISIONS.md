@@ -2618,3 +2618,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** `better-sqlite3` ships a prebuilt binary, and `context-mode doctor` reports "FTS5 / SQLite: PASS" without the scripts (mac-mini-m6, Node 24.22.0). On Linux, Node >= 22.5 uses `node:sqlite` instead. Allowing install scripts would loosen a security default for no gain. If doctor ever fails, revisit this.
 **Outcome:** applied
 **Ref:** (this commit)
+
+## Q252 — interactive/context-mode — tradeoff
+
+**Question:** OpenClaw 2026.10.5 refuses to install context-mode without `--accept-capabilities`, because the plugin declares full filesystem and system access. Should the role give that consent, on install and on update?
+**Options considered:** pass it on install and update / pass it on install only, and tolerate a consent refusal on update / pass it nowhere
+**Chosen:** Install only. When an update refuses because a release widens the capabilities, the role tolerates the failure, reports the review command, and keeps the installed version.
+**Decided-by:** agent
+**Justification:** The user asked for context-mode in OpenClaw, which is consent to the capabilities it declares today. Auto-accepting a later widening would approve something nobody has seen, the same line the ponytail role draws for Hermes's scanner. Measured: without the flag the install failed on dev-server-frank (2026.10.5); with it, the plugin loads.
+**Outcome:** applied
+**Ref:** (this commit)
