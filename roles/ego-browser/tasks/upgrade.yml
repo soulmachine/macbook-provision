@@ -5,6 +5,8 @@
 
 # Full path: ~/.local/bin may be off Ansible's PATH. Three lines (ego-browser, chromium, node
 # versions), read through the active_version_dir symlink, so they follow a completed upgrade.
+# They arrive on STDERR when stdout is not a terminal (measured on m6 2026-10-19: stdout ""), so
+# every read below joins both streams.
 - name: Read the installed Ego Lite version
   ansible.builtin.command: "{{ ego_browser_bin }} --version"
   register: ego_browser_before
@@ -27,12 +29,12 @@
 - name: Check whether Ego Lite changed
   ansible.builtin.command: "{{ ego_browser_bin }} --version"
   register: ego_browser_after
-  changed_when: ego_browser_after.stdout != ego_browser_before.stdout
+  changed_when: ego_browser_after.stdout + ego_browser_after.stderr != ego_browser_before.stdout + ego_browser_before.stderr
   check_mode: false
 
 - name: Warn that Ego Lite could not update cleanly
   ansible.builtin.debug:
     msg:
-      - "`ego-browser upgrade` exited {{ ego_browser_upgrade.rc }}; {{ ego_browser_after.stdout_lines | first }} is installed."
+      - "`ego-browser upgrade` exited {{ ego_browser_upgrade.rc }}; {{ (ego_browser_after.stdout_lines + ego_browser_after.stderr_lines) | first }} is installed."
       - "Its last output: {{ ((ego_browser_upgrade.stdout_lines | default([])) + (ego_browser_upgrade.stderr_lines | default([])))[-3:] }}"
   when: ego_browser_upgrade is not skipped and ego_browser_upgrade.rc != 0
