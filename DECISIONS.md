@@ -2628,3 +2628,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The user asked for context-mode in OpenClaw, which is consent to the capabilities it declares today. Auto-accepting a later widening would approve something nobody has seen, the same line the ponytail role draws for Hermes's scanner. Measured: without the flag the install failed on dev-server-frank (2026.10.5); with it, the plugin loads.
 **Outcome:** applied
 **Ref:** (this commit)
+
+## Q253 — interactive/context-mode — irreversible-action
+
+**Question:** The user asked to trust context-mode's six Codex hooks on every host. Eight hosts do not have the plugin until tonight's sweep. Wait for it, or trust them now?
+**Options considered:** trust only where the plugin is installed and finish tomorrow / also write the reviewed hashes now on the hosts it has not reached yet
+**Chosen:** Both. After reviewing the hook scripts, read each hook's `currentHash` from `hooks/list` over `codex app-server` and wrote it back through `config/batchWrite` on mac-mini-m6, dev-server-frank and mac-mini-2018-omarchy. Wrote the same six hashes ahead of time on macbook-air, mac-mini-m2, mac-studio-m3, archs-mac-mini, macbook-pro-nickel, supermicro and dev-server-frank-lume. grok-bot did not answer ssh and was skipped. The role still only prints a reminder.
+**Decided-by:** agent
+**Justification:** Review: the hooks read stdin, keep a local session DB and print routing text. Their one network call (`hooks/platform-bridge.mjs`) runs only with a `ctxm_` key in `~/.context-mode/platform.json`, which nothing on the fleet creates (absent on mac-mini-m6). The hashes were identical on macOS, Ubuntu and Omarchy, so the hashes written ahead match 1.0.169 wherever it lands. A changed hook in a later release reads `modified` and does not run, so writing early trusts nothing unreviewed. Reversible: each host keeps `~/.codex/config.toml.bak-context-mode-hooks-<timestamp>`, and deleting the six `[hooks.state."context-mode@context-mode:…"]` tables reverts it. Not moved into the role, for Q55's reason: pinned hashes go stale on every release.
+**Outcome:** applied
+**Ref:** (this commit)
