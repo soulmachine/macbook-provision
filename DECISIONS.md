@@ -2638,3 +2638,23 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Review: the hooks read stdin, keep a local session DB and print routing text. Their one network call (`hooks/platform-bridge.mjs`) runs only with a `ctxm_` key in `~/.context-mode/platform.json`, which nothing on the fleet creates (absent on mac-mini-m6). The hashes were identical on macOS, Ubuntu and Omarchy, so the hashes written ahead match 1.0.169 wherever it lands. A changed hook in a later release reads `modified` and does not run, so writing early trusts nothing unreviewed. Reversible: each host keeps `~/.codex/config.toml.bak-context-mode-hooks-<timestamp>`, and deleting the six `[hooks.state."context-mode@context-mode:…"]` tables reverts it. Not moved into the role, for Q55's reason: pinned hashes go stale on every release.
 **Outcome:** applied
 **Ref:** (this commit)
+
+## Q254 — interactive/herdr-coordinator-gateway — tradeoff
+
+**Question:** The user wants the herdr-projects Coordinator always started through `claude-gw`. The board starts it with `herdr agent start --kind claude`, which types a bare `claude …` into the pane's shell. `coordinator.agent` accepts only herdr's known kinds, so it cannot name `claude-gw`. Where should the redirect live?
+**Options considered:** a new branch in the herdr role's `claude()` shell wrapper, keyed on the Coordinator's chat folder / route every herdr `claude` launch through `claude-gw` / a `claude` shim earlier on `PATH`
+**Chosen:** A second condition in the existing `claude()` wrapper: with `HERDR_ENV` set and `$PWD` under `~/.herdr-projects/data/coordinator/`, it runs `claude-gw "$@"`. This covers the default, machine and project Coordinators. Task agents and reviewers keep the native login. The same change went into ubuntu-provision and omarchy-provision.
+**Decided-by:** human
+**Justification:** The user asked for the Coordinator only. The wrapper already handles herdr's resume path the same way. The herdr-projects doc `checked-on-herdr.md` says `agent start` types its command into the shell. The board's `--effort` comes after `claude-gw`'s `--effort high`, so the board's setting wins. Verified on mac-mini-m6: `coordinator new` started `claude --dangerously-skip-permissions --effort high … --model opus --effort medium` in the chat folder, with `ANTHROPIC_BASE_URL` set to the gateway. Limit: `claude-gw` always skips permission prompts, so `coordinator.access ask` has no effect while this is in place.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q255 — interactive/herdr-codex-gateway — tradeoff
+
+**Question:** A `codex()` wrapper in the herdr role's shell block should do what `claude()` does: resume gateway sessions and start Coordinators through `codex-gw`. How does it tell a gateway session apart, and how does it handle the board's own bypass flag?
+**Options considered:** marker files written by a hook, as `claude-gw` does / read the provider codex already writes in each session file
+**Chosen:** Read the provider. With `HERDR_ENV` set, `codex resume <id>` goes to `codex-gw` when the first line of `~/.codex/sessions/**/rollout-*-<id>.jsonl` has `"model_provider":"cliproxy"`. Any `codex` in `~/.herdr-projects/data/coordinator/*` goes there too. The wrapper drops `--dangerously-bypass-approvals-and-sandbox` before it calls `codex-gw`. The same block is in ubuntu-provision and omarchy-provision.
+**Decided-by:** agent
+**Justification:** Codex writes the provider in its `session_meta` line, so `codex-gw` needs no hook. The board starts codex with `--dangerously-bypass-approvals-and-sandbox`, and `codex-gw` adds `--yolo`, which is the same flag. Codex 0.163 refuses the flag twice ("cannot be used multiple times"). Tested in zsh and bash with stubs: a cliproxy resume goes to the gateway, an openai or unknown id stays native, a Coordinator launch goes to the gateway without the duplicate flag, and nothing changes outside herdr. A real `codex-gw` run with the board's flags printed its version. The `find` walks every session folder on each herdr codex resume. That is fine at today's count and can be slow with many thousands of sessions.
+**Outcome:** applied
+**Ref:** (pending)
