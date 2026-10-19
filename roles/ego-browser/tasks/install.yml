@@ -1,0 +1,90 @@
+---
+# Ego Lite (Citro Labs, https://lite.ego.app/, repo citrolabs/ego-lite): the Chromium browser agents
+# drive through the `ego-browser` CLI. Two installs in a fixed order — the `ego-browser` skill first,
+# because its `scripts/install.sh` is what installs the app — then an unattended upgrade on every
+# play. macOS only, which is every host of this playbook.
+#
+# The skill is `creates:`-gated, the OPPOSITE of the skills role's re-run-every-play rule, and on
+# purpose. The app's first-run onboarding replaces the store entry ~/.agents/skills/ego-browser and
+# the Claude and Hermes farm links with symlinks to ~/.local/share/ego/ego-skills, a version-matched
+# copy inside the app bundle (measured on mac-mini-m6, 2026-10-12, DECISIONS Q239). From then on the
+# app keeps the skill current, and a second `skills add` would write through that symlink into the
+# bundle. So `skills add` runs once, to get install.sh before the app exists, and never again.
+# `agent-sync status` reads the store symlink as `foreign — left alone`; that is correct.
+
+- name: Install the ego-browser skill
+  ansible.builtin.command:
+    cmd: npx skills add citrolabs/ego-lite --skill ego-browser -g -y
+    creates: "{{ lookup('env', 'HOME') }}/.agents/skills/ego-browser"
+
+- name: Check for the Ego Lite app
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - /Applications/ego lite.app
+    - "{{ lookup('env', 'HOME') }}/Applications/ego lite.app" # install.sh's fallback when /Applications refuses
+  register: ego_browser_app
+
+# The skill's own installer: downloads the DMG for this CPU from cdn.ego.app (no checksum is
+# published; accepted, it is the upstream install path), copies the app to /Applications, strips
+# quarantine, and ends with `exec open` of the app so the user can onboard. That final `open` runs
+# even when the app is already installed, which is why this is gated on the app's absence rather
+# than left to the script's own skip: unguarded, every nightly play would pop the browser.
+- name: Install Ego Lite
+  ansible.builtin.command: sh "{{ lookup('env', 'HOME') }}/.agents/skills/ego-browser/scripts/install.sh"
+  when: not (ego_browser_app.results | map(attribute='stat.exists') | select | list | length > 0)
+  changed_when: true
+
+# Onboarding is a GUI step a person does once per host, and the only verdict is the CLI's own
+# answer. The first launch already writes ~/.local/bin/ego-browser and ~/.local/share/ego/* (measured
+# on mac-mini-m2 2026-10-12: 15 s after install.sh opened the app, setup window still open), so the
+# symlink proves nothing. Before onboarding every subcommand prints "Please complete the onboarding
+# process first" and exits 0, so rc proves nothing either: the probe asks the embedded runtime to
+# print a sentinel and reads it back. The sentinel arrives on STDERR when stdout is not a terminal
+# (measured on m6: `command` saw stdout "" and stderr "1"), so both streams are read. The probe opens
+# the setup window when onboarding is pending, which is what the message below asks for anyway.
+- name: Check whether Ego Lite onboarding is complete
+  ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.local/bin/ego-browser nodejs -e 'console.log(1)'"
+  register: ego_browser_probe
+  changed_when: false
+  failed_when: false # absent CLI (app never launched) reads as not onboarded
+  check_mode: false # read-only probe; run in --check so the verdict below sees real state
+
+- name: Decide whether Ego Lite is onboarded
+  ansible.builtin.set_fact:
+    ego_browser_onboarded: >-
+      {{ ego_browser_probe.rc == 0
+         and '1' in (ego_browser_probe.stdout_lines | default([]) + ego_browser_probe.stderr_lines | default([])) }}
+
+# Reported the way the cua role reports its missing permissions: a fact here, a `fail` in main.yml's
+# post_tasks, so the play stays red until someone onboards without stopping the roles after this one.
+- name: Record that Ego Lite onboarding is pending
+  ansible.builtin.set_fact:
+    ego_browser_onboarding_pending: |
+
+      ================================================================
+      Manual step required: finish Ego Lite onboarding
+      ================================================================
+
+      ego lite.app is installed, but `ego-browser nodejs` still answers "Please
+      complete the onboarding process first", so nobody has clicked through its
+      setup window on this host yet.
+
+      The setup window is open on the host's screen (install.sh launched the app,
+      and the probe above reopens the window). Finish the onboarding there.
+      When it asks whether to migrate your Chrome data, say yes: agents then
+      inherit your logins, cookies, extensions and bookmarks.
+
+      Then re-run:
+
+        ansible localhost -m include_role -a name=ego-browser
+
+      Onboarding registers the ego-browser CLI and takes over the ego-browser
+      skill; this role does not upgrade the app until that has happened.
+  when: not ego_browser_onboarded
+
+# For the standalone `include_role` form, which never runs post_tasks.
+- name: Report that Ego Lite onboarding is pending
+  ansible.builtin.debug:
+    msg: "{{ ego_browser_onboarding_pending }}"
+  when: ego_browser_onboarding_pending is defined

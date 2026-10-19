@@ -1,0 +1,38 @@
+---
+# Unattended, by Frank's decision (DECISIONS Q239): the skill's own text asks for approval before an
+# upgrade. The updater is the browser's, so Ego restarts after a real upgrade and any browser task
+# in flight at that moment is lost; the nightly play runs at 02:00 for that reason.
+
+# Full path: ~/.local/bin may be off Ansible's PATH. Three lines (ego-browser, chromium, node
+# versions), read through the active_version_dir symlink, so they follow a completed upgrade.
+- name: Read the installed Ego Lite version
+  ansible.builtin.command: "{{ ego_browser_bin }} --version"
+  register: ego_browser_before
+  changed_when: false
+  check_mode: false # read-only probe; run in --check so the verdict below sees real state
+
+# Exit status is not the verdict: measured 2026-10-12 on m6, a current install prints
+# "ego lite is already up to date." and exits 0 in under a second; an updater the CLI cannot
+# reach (browser not running, no network) is a check that did not happen, not a broken host.
+# The version diff below decides.
+- name: Run the Ego Lite self-update
+  ansible.builtin.command: "{{ ego_browser_bin }} upgrade"
+  register: ego_browser_upgrade
+  changed_when: false
+  failed_when: false
+
+# shortcut: the updater is browser-side and may still be installing when this runs, so a release
+# can report as `changed` on the next play instead of this one; upgrade to a polling loop if
+# that lag ever matters.
+- name: Check whether Ego Lite changed
+  ansible.builtin.command: "{{ ego_browser_bin }} --version"
+  register: ego_browser_after
+  changed_when: ego_browser_after.stdout != ego_browser_before.stdout
+  check_mode: false
+
+- name: Warn that Ego Lite could not update cleanly
+  ansible.builtin.debug:
+    msg:
+      - "`ego-browser upgrade` exited {{ ego_browser_upgrade.rc }}; {{ ego_browser_after.stdout_lines | first }} is installed."
+      - "Its last output: {{ ((ego_browser_upgrade.stdout_lines | default([])) + (ego_browser_upgrade.stderr_lines | default([])))[-3:] }}"
+  when: ego_browser_upgrade is not skipped and ego_browser_upgrade.rc != 0
