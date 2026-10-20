@@ -196,7 +196,11 @@ if p.exists():
     try:
         cdx = which("codex") or str(H / ".local/share/mise/shims/codex")
         cat = json.loads(subprocess.run([cdx, "debug", "models"], capture_output=True, text=True, timeout=60).stdout)
-        base = next(m for m in cat["models"] if m["slug"] == "gpt-5.5")
+        # A native login's catalog has no gpt-5.5; terra is in both. Pin terra's newer modes to gpt-5.5's,
+        # the shape tested through the gateway.
+        base = {**next(m for s in ("gpt-5.5", "gpt-5.6-terra") for m in cat["models"] if m["slug"] == s),
+                "tool_mode": None, "use_responses_lite": False, "multi_agent_version": None,
+                "include_skills_usage_instructions": True, "max_context_window": 272000}
     except Exception as e:  # keep the last good catalog; codex-gw skips the flag when there is none
         print(f"  codex catalog: skipped ({type(e).__name__})")
     else:
