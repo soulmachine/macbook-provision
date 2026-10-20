@@ -2729,3 +2729,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** dev-server-frank runs no playbook, and supermicro's `models.json` dated from 2026-10-11, so waiting would leave them behind. The job writes only pi's `cliproxy` provider and `defaultModel`, which both hosts already used. Applied 2026-10-20; both now list all 10 models.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q263 — interactive/grokbot-box-gateway — deviation
+
+**Question:** grok-bot was replaced by grokbot-box (coding-agent df3c00c), but `cliproxy-tier` still listed grok-bot, which was never on the gateway (Q256), so every run failed with ssh 255. Frank asked to fix grokbot-box.
+**Options considered:** drop the host from `ALL` / onboard grokbot-box onto the gateway as an 11th host
+**Chosen:** Onboard it like supermicro, the other bash host: new key in `host-keys.txt`, the gateway config's `api-keys` and a `host-routing.yaml` row (default account order); loopback `127.0.0.11` in `host-loopback.txt` and `/usr/local/bin/cliproxy-loopback-aliases`; LaunchAgent `com.cliproxy.tunnel.grokbot-box` (`-R 127.0.0.1:8317:127.0.0.11:8317`); the `CLIPROXY_*` block at the top of the box's `~/.bashrc`; `ClientAliveInterval 30` in `/etc/ssh/sshd_config.d/cliproxy-keepalive.conf` on the box (applied with HUP: the VM has no systemd). `ALL` lists grokbot-box in grok-bot's place.
+**Decided-by:** agent
+**Justification:** Checked 2026-10-20: from the box, `/v1/models` lists 36 ids and a claude-haiku-5-5 message answers, attributed to 127.0.0.11 in main.log; `cliproxy-routing-sync` reports 11 rows for 11 hosts; `cliproxy-tier grokbot-box` runs clean. The box has no agent CLIs yet (Debian 13, ansible + mise + python3), so it only gets the always-written wrappers until provisioning installs some; the next tier run then configures them.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q256 — its "gateway onboarding pending" part
