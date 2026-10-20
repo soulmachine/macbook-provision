@@ -95,8 +95,12 @@ wrappers = {
                  'command -v node >/dev/null 2>&1 || export PATH="$PATH:$HOME/.local/share/mise/shims"\n'
                  '# Marks each session as a gateway one. Herdr saves only the session id and restores with a bare\n'
                  '# `claude --resume <id>`; the herdr role\'s `claude` shell function sends marked ids back here.\n'
-                 'gw_hook=\'{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"mkdir -p ~/.local/state/claude-gw && touch ~/.local/state/claude-gw/$CLAUDE_CODE_SESSION_ID"}]}]}}\'\n'
-                 'exec env ANTHROPIC_BASE_URL="$CLIPROXY_BASE_URL" ANTHROPIC_AUTH_TOKEN="$CLIPROXY_API_KEY" claude --dangerously-skip-permissions --effort medium --settings "$gw_hook" "$@"\n',
+                 '# modelPicker adds the Codex account\'s GPT models to /model, which lists only Claude models.\n'
+                 'gw_settings=\'{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"mkdir -p ~/.local/state/claude-gw && touch ~/.local/state/claude-gw/$CLAUDE_CODE_SESSION_ID"}]}]},'
+                 '"modelPicker":{"options":[' + ','.join(
+                     f'{{"model":"{m}","label":"{l}","description":"OpenAI, through the gateway"}}'
+                     for m, l in [("gpt-6-astra", "GPT-6 Astra"), ("gpt-6.1-sol", "GPT-6.1 Sol"), ("gpt-6-luna", "GPT-6 Luna")]) + ']}}\'\n'
+                 'exec env ANTHROPIC_BASE_URL="$CLIPROXY_BASE_URL" ANTHROPIC_AUTH_TOKEN="$CLIPROXY_API_KEY" claude --dangerously-skip-permissions --effort medium --settings "$gw_settings" "$@"\n',
     "codex-gw": hdr + ': "${CLIPROXY_API_KEY:?}"\n'
                 '# codex may live only in mise shims (dev-server-frank), which non-interactive shells lack.\n'
                 'command -v codex >/dev/null 2>&1 || export PATH="$HOME/.local/share/mise/shims:$PATH"\n'

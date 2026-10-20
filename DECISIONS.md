@@ -2669,3 +2669,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied (list only); gateway onboarding pending
 **Ref:** (pending)
 **Supersedes:** coding-agent Q492 — only its "Not added: cliproxy-tier" part
+
+## Q257 — interactive/claude-gw-gpt-picker — tradeoff
+
+**Question:** Claude Code's `/model` menu in a `claude-gw` session lists only Claude models. Frank asked for gpt-6-astra, gpt-6.1-sol and gpt-6-luna there. Which mechanism?
+**Options considered:** `ANTHROPIC_CUSTOM_MODEL_OPTION` (one row only) / `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY` (adds all 33 gateway ids, old Claude ones included) / a `modelPicker` setting in the wrapper's `--settings` JSON
+**Chosen:** `modelPicker` with the three rows, after the built-in lineup (`replaceBuiltInOptions` unset), no `behavesAs`.
+**Decided-by:** agent
+**Justification:** Only `modelPicker` shows exactly the asked-for models, and only in gateway sessions; plain `claude` is untouched. Claude Code 2.1.304 rendered the rows without `behavesAs`, and `claude-gw -p --model gpt-6-astra` got a reply, both checked 2026-10-20 on m2. `modelPicker` from `--settings` wins over user settings outright, so a user-level `modelPicker` would be ignored in `claude-gw`.
+**Outcome:** applied
+**Ref:** (pending)
