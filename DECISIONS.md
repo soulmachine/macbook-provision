@@ -2740,3 +2740,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** (pending)
 **Supersedes:** Q256 — its "gateway onboarding pending" part
+
+## Q264 — interactive/grokbot-box — scope-change
+
+**Question:** grokbot-box now has pi (ubuntu-provision play, 2026-10-20). Should `cliproxy-assert-pi` cover it?
+**Options considered:** add it to HOSTS / leave it to the nightly play
+**Chosen:** Add it to HOSTS, like supermicro and dev-server-frank in Q262.
+**Decided-by:** agent
+**Justification:** The hourly assert is what keeps pi's gateway provider and model list in step on every gateway host; leaving a host out is the gap Q262 fixed.
+**Outcome:** applied
+**Ref:** (this commit)
