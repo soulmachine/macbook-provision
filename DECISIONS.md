@@ -2781,3 +2781,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** (pending)
 **Supersedes:** Q265 — that entry left these scripts unchanged and accepted the conflict.
+
+## Q268 — interactive/gateway-policy — deviation
+
+**Question:** How should each coding CLI use CLIProxyAPI, and at which model and effort?
+**Options considered:** the old two tiers (optional: Claude Code, Codex, kimi; mandatory: pi, omp, hermes, opencode, with gemini, grok and others forced onto the gateway) / class 1 (own vendor login: native untouched plus a `-gw` wrapper) and class 2 (no login: gateway by default)
+**Chosen:** `docs/gateway-policy.md`. Class 1 is claude, codex, gemini, grok, kimi and copilot. Class 2 is pi, omp, hermes, crush, openclaw and opencode. Every gateway route defaults to `deepseek-v4.1-flash` (`claude-gw` stays on `claude-opus-5-5`, `codex-gw` on `gpt-6-astra`), at effort high. There is no per-host logic, so the GATEWAY_ONLY rule for mac-mini-2018-omarchy is gone. Cursor CLI is out of scope. `GW_MODELS` marks deepseek as reasoning. kimi-gw, gemini-gw and grok-gw each get their own home, because kimi needs `default_model` even with `-m`, gemini reads system settings only from a root-owned folder, and grok's config overlay accepts no model keys.
+**Decided-by:** human (the policy and the opencode class), agent (the separate homes, keeping user-picked gateway models, the effort keys per CLI)
+**Justification:** Frank set the classes and defaults in this session. A peer session relayed opencode's class and the Cursor scope, and Frank confirmed both here. Every CLI on mac-mini-m6 answered a test prompt through its route. This reverses coding-agent Q352 (GATEWAY_ONLY), and Q374/Q401 for grok and gemini, so coding-agent's own records need the same note. Known gaps are listed in the doc: the oh-my-openagent plugin keeps opencode's agents on Claude (Frank will fix that later), the `-gw` homes lack the native homes' MCP servers and hooks, and gemini-gw repeats deepseek's answer.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q267 — cliproxy-tier-host.py now also sets every other CLI's default, including deepseek's reasoning flag in GW_MODELS, which Q267 left alone.

@@ -31,6 +31,26 @@ pi, omp, hermes, crush, openclaw, opencode.
 - A default is only a starting point. When the script finds the old default, it replaces it. When
   the user picked a different gateway model, the script keeps that model.
 
+## How the script keeps class 1 native
+
+`claude-gw`, `codex-gw` and `copilot-gw` pass the gateway on the command line. kimi, gemini and grok
+need a gateway default in a config file, so each `-gw` wrapper gets its own home: `KIMI_CODE_HOME=~/.kimi-code-gw`,
+`GEMINI_CLI_HOME=~/.gemini-gw` and `GROK_HOME=~/.grok-gw`. On its first run after the change, the script
+removes the gateway settings it used to write into the native `~/.kimi-code`, `~/.gemini` and `~/.grok`.
+
+## Known gaps
+
+- **opencode's oh-my-openagent plugin** pins its own agents (Sisyphus and the rest) to
+  `anthropic/claude-*` models, and its Sisyphus agent wins even over `--agent build`. Those models
+  go through the gateway, but they are not `deepseek-v4.1-flash`. Frank will fix the plugin's
+  model pins later.
+- **The `-gw` homes are separate.** MCP servers, hooks and extensions that roles install into
+  `~/.kimi-code`, `~/.gemini` or `~/.grok` (context-mode, for example) are not in `kimi-gw`,
+  `gemini-gw` or `grok-gw`.
+- **gemini-gw on Nickel models** (deepseek, qwen, glm) prints `Model stream ended without a finish
+  reason`, and deepseek repeats its answer. Claude models are fine. The cause is the gateway's
+  Gemini-format translation, not the thinking setting.
+
 ## Out of scope: Cursor CLI
 
 `cursor-agent` has no option for a custom endpoint. Its `--endpoint` flag and `CURSOR_API_ENDPOINT`
