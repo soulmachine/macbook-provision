@@ -368,11 +368,12 @@ if (H / ".omp/agent/agent.db").exists() and omp.exists() and (OMP[0] != str(bun)
             write(rc, cand)
 
 # ---------- hermes: key via $HERMES_HOME/.env (daemon-safe) ----------
-if (H / ".hermes/config.yaml").exists():
+hermes = which("hermes") or str(H / ".local/bin/hermes")
+# Every step below goes through `hermes config`, so a config left behind by an uninstalled hermes is skipped.
+if (H / ".hermes/config.yaml").exists() and Path(hermes).exists():
     upsert_env(H / ".hermes/.env", {"CLIPROXY_API_KEY": KEY})
     p = H / ".hermes/config.yaml"; text = p.read_text()
     on_gw = lambda t: re.search(r'^  provider: "?custom:cliproxy"?$', t, flags=re.M)
-    hermes = which("hermes") or str(H / ".local/bin/hermes")
     if on_gw(text):
         # Only the old defaults are replaced, so a model picked later survives (Q268). `hermes config set`
         # keeps the file's comments, which sit between `model:` and `default:` in the example config.
