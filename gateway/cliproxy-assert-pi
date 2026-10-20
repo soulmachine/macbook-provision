@@ -53,6 +53,10 @@ if md.setdefault("providers", {}).get("cliproxy") != want_provider:
 want_settings = {"defaultProvider": "cliproxy", "defaultModel": "deepseek-v4.1-flash", "defaultThinkingLevel": "high"}
 s = d/"settings.json"
 sd = json.loads(s.read_text()) if s.exists() else {}
+# A gateway model picked in pi stays; only a missing or old default is replaced. Effort stays high (Q268).
+m = sd.get("defaultModel") or ""
+if sd.get("defaultProvider") == "cliproxy" and m and "/" not in m and m != "claude-opus-5-5":
+    want_settings["defaultModel"] = m
 if any(sd.get(k) != v for k, v in want_settings.items()):
     sd.update(want_settings)
     s.write_text(json.dumps(sd, indent=2) + "\n")

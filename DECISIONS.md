@@ -2802,3 +2802,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** One place covers the roles, the hand-added servers (google-workspace in gemini, browseros-neo in grok) and the hosts that run no playbook (dev-server-frank), and no role has to know the `-gw` paths. The cost: a change to a native home reaches its `-gw` home only at the next `cliproxy-tier` run. On mac-mini-m6, kimi-gw listed the context-mode `ctx_*` tools, gemini-gw loaded context-mode and google-workspace, and grok-gw listed browseros-neo.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q270 — interactive/gw-wrappers — deviation
+
+**Question:** pi, crush and kimi-gw replaced a gateway model the user picked on every run, against `docs/gateway-policy.md`. How should each keep the pick?
+**Options considered:** for crush, keep `model large` in `crushrc` / move the defaults into crush's data-dir state; for pi, stop copying `settings.json` / write it as the payload plus the pick
+**Chosen:** crush: the managed `crushrc` block no longer sets `model large` or `model small`. The script writes them into `~/.local/share/crush/crush.json` only when missing or still the old default, and always sets `think` and `reasoning_effort: high` on the large model. pi: `settings.json` moved from `roles/pi/files/agent/` to `roles/pi/files/`, and a separate task writes the payload with the old `defaultModel` kept, when it is a bare cliproxy model id other than claude-opus-5-5. `cliproxy-assert-pi` keeps the same pick. kimi-gw: a `default_model` from the gateway model list survives the regenerated config.
+**Decided-by:** human (keep the picks), agent (how)
+**Justification:** crush loads the global `crushrc` above its data-dir state, so any `model large` line there would override a pick on every start, not only when the script runs. A test with the line removed and the default in the data-dir file answered from `deepseek-v4.1-flash`, per crush's session DB. On mac-mini-m6, the pi role kept `glm-5.3-flash`, replaced `claude-opus-5-5`, and its next run changed nothing. A test copy of the `cliproxy-assert-pi` merge did the same, and also set thinking back to high. kimi-gw and crush kept `glm-5.3-flash` through a run. The same pi role change went to ubuntu-provision and omarchy-provision.
+**Outcome:** applied
+**Ref:** (pending)

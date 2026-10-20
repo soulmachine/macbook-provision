@@ -9,7 +9,7 @@ re-asserts pi. Frank set it on 2026-10-20 (Q268 in `DECISIONS.md`).
 claude, codex, gemini, grok (Grok Build), kimi, copilot.
 
 - The plain command stays as the vendor ships it: its own login, model and effort. The policy does
-  not touch it.
+  not change how it behaves. The script still edits two native files, see below.
 - A separate `<cli>-gw` wrapper in `~/.local/bin` sends the CLI through CLIProxyAPI.
 - Each `-gw` wrapper starts on `deepseek-v4.1-flash`, with two exceptions:
   - `claude-gw` starts on `claude-opus-5-5`.
@@ -29,14 +29,25 @@ pi, omp, hermes, crush, openclaw, opencode.
   and `codex-gw`.
 - **No per-host logic.** Every host gets the same model and effort.
 - A default is only a starting point. When the script finds the old default, it replaces it. When
-  the user picked a different gateway model, the script keeps that model.
+  the user picked a different gateway model, the script keeps that model. Effort is set back to high
+  either way. For crush, the models live in its data-dir state, `~/.local/share/crush/crush.json`,
+  where crush saves a pick. A `model large` line in `crushrc` would outrank that pick on every start.
+  For pi, both the `pi` role and `gateway/cliproxy-assert-pi` keep a pick.
 
 ## How the script keeps class 1 native
 
-`claude-gw`, `codex-gw` and `copilot-gw` pass the gateway on the command line. kimi, gemini and grok
-need a gateway default in a config file, so each `-gw` wrapper gets its own home: `KIMI_CODE_HOME=~/.kimi-code-gw`,
-`GEMINI_CLI_HOME=~/.gemini-gw` and `GROK_HOME=~/.grok-gw`. On its first run after the change, the script
-removes the gateway settings it used to write into the native `~/.kimi-code`, `~/.gemini` and `~/.grok`.
+`claude-gw` and `copilot-gw` pass the gateway on the command line and in environment variables.
+`codex-gw` does too, but it also needs files in the native `~/.codex`: a `[model_providers.cliproxy]`
+table in `config.toml`, the `cliproxy.config.toml` profile it selects with `-p cliproxy`, and
+`cliproxy-models.json`, its model catalog. Plain `codex` ignores all three. The script also removes
+gateway keys from the native files, so that the plain commands stay native: `ANTHROPIC_AUTH_TOKEN`
+and `ANTHROPIC_BASE_URL` from `~/.claude/settings.json`, and a top-level
+`model_provider = "cliproxy"` from `~/.codex/config.toml`.
+
+kimi, gemini and grok need a gateway default in a config file, so each `-gw` wrapper gets its own
+home: `KIMI_CODE_HOME=~/.kimi-code-gw`, `GEMINI_CLI_HOME=~/.gemini-gw` and `GROK_HOME=~/.grok-gw`. On
+its first run after the change, the script removed the gateway settings it used to write into the
+native `~/.kimi-code`, `~/.gemini` and `~/.grok`.
 
 Each run also mirrors the native home's tools into the `-gw` home, and only reads the native home:
 - kimi: the `[[hooks]]` tables and `mcp.json`, and a `hooks` link.

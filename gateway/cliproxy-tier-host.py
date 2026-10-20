@@ -20,7 +20,6 @@ BASE = os.environ.get("CLIPROXY_BASE_URL", "http://127.0.0.1:8317")
 if not KEY:
     sys.exit("CLIPROXY_API_KEY not in environment; refusing to run")
 status, changed, backups = {}, [], []
-HOST = os.uname().nodename.split(".")[0]
 GW_DEFAULT = "deepseek-v4.1-flash"  # every gateway default except claude-gw and codex-gw (Q268)
 # The gateway models every CLI below lists (macbook-provision Q261): (id, name, context, max output,
 # reasoning, images). They must be listed: the gateway's /v1/models disguises the non-Claude ids for
@@ -299,6 +298,13 @@ if kimi_bin:
     ntext = native.read_text() if native.exists() else ""
     body += "".join("\n" + b for b in re.findall(r"^\[\[hooks\]\]\n(?:(?!\[)[^\n]*\S[^\n]*\n)*", ntext, flags=re.M))
     gp = KIMI_GW_HOME / "config.toml"
+    # A gateway model picked in kimi-gw stays as the default (Q268).
+    try:
+        picked = tomllib.loads(gp.read_text()).get("default_model") if gp.exists() else None
+    except tomllib.TOMLDecodeError:
+        picked = None
+    if picked and picked in tomllib.loads(body)["models"]:
+        body = body.replace(f'default_model = "cliproxy/{GW_DEFAULT}"', f'default_model = "{picked}"', 1)
     if not gp.exists() or gp.read_text() != body:
         doc = tomllib.loads(body)
         assert doc["default_model"] in doc["models"], "kimi-gw candidate invalid"
@@ -680,15 +686,31 @@ if installed("crush"):
              + "".join(f'model add cliproxy/{m} --name "{name}" --context-window {c} --default-max-tokens {o}'
                        + " --can-reason true" * (r and m != "claude-haiku-5-5") + " --supports-images true" * img + "\n"
                        for m, name, c, o, r, img in GW_MODELS) +
-             f"model large cliproxy/{GW_DEFAULT} --think --reasoning-effort high\n"
-             "model small cliproxy/claude-haiku-5-5\n# --- end cliproxyapi ---\n")
+             "# --- end cliproxyapi ---\n")
 
     def crush_ok(cand):
         tmp = p.with_name("crushrc.cand"); tmp.parent.mkdir(parents=True, exist_ok=True); tmp.write_text(cand)
         ok = run("bash", "-n", str(tmp)).returncode == 0; tmp.unlink()
         assert ok, "crushrc candidate fails bash -n"
     managed_block(p, block, crush_ok)
-    status["crush"] = "gw"
+    # The models go in crush's data-dir state, where a model picked in crush is saved: a `model large` line
+    # in crushrc would outrank that pick on every start. Only a missing or old default is replaced (Q268),
+    # and effort stays high whatever the model.
+    sp = H / ".local/share/crush/crush.json"
+    try:
+        sd = json.loads(sp.read_text()) if sp.exists() else {}
+    except ValueError:
+        sd = None
+    if sd is not None:
+        new = json.loads(json.dumps(sd)); ms = new.setdefault("models", {})
+        if ms.get("large", {}).get("model") in (None, "claude-opus-5-5"):
+            ms["large"] = {"provider": "cliproxy", "model": GW_DEFAULT}
+        ms["large"].update(think=True, reasoning_effort="high")
+        ms.setdefault("small", {"provider": "cliproxy", "model": "claude-haiku-5-5"})
+        if new != sd:
+            sp.parent.mkdir(parents=True, exist_ok=True)
+            write(sp, json.dumps(new, indent=2) + "\n")
+    status["crush"] = "gw" if sd is not None else "gw(state-unparsed)"
 
 # openclaw: its gateway daemon (launchd or a systemd user unit) makes the model calls and never sees
 # the session environment, so the key sits in ~/.openclaw/.env, read at daemon start. A host where

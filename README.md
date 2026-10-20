@@ -127,7 +127,7 @@ pre-commit run --all-files
 | kimi-code | Kimi Code CLI（通过官方 code.kimi.com 脚本安装） |
 | omp | oh-my-pi：bun 全局 `@oh-my-pi/pi-coding-agent`（依赖 bun） |
 | pi | pi coding agent：bun 全局 `@earendil-works/pi-coding-agent`，并下发 `~/.pi/agent/settings.json`（依赖 bun） |
-| copilot | GitHub Copilot CLI（npm `@github/copilot`）；只经 CLIProxyAPI 使用：`copilot-gw` 由 mac-mini-m2 上的 `cliproxy-tier` 写入（依赖 nodejs） |
+| copilot | GitHub Copilot CLI（npm `@github/copilot`）；`copilot` 本身保持原生，经 CLIProxyAPI 用的 `copilot-gw` 由 mac-mini-m2 上的 `cliproxy-tier` 写入（依赖 nodejs） |
 | crush | Crush（Charm，npm `@charmland/crush`）；`~/.config/crush/crushrc` 里的网关 provider 由 `cliproxy-tier` 写入（依赖 nodejs） |
 | gemini | Gemini CLI（npm `@google/gemini-cli`）；`gemini-gw` 及其网关配置（`~/.gemini-gw`）由 `cliproxy-tier` 写入，`gemini` 本身保持原生（依赖 nodejs） |
 | grok | Grok CLI（xAI，npm `@xai-official/grok`，首次运行时下载原生二进制到 `~/.grok/bin`）；`grok-gw` 及其网关配置（`~/.grok-gw`）由 `cliproxy-tier` 写入，`grok` 本身保持原生（依赖 nodejs） |
@@ -222,13 +222,13 @@ ioreg `BatteryInstalled` 的保守规则：那条规则要求硬件明确报告"
 | codex | **ChatGPT.app 自带**（`chatgpt` cask，由 codex role 安装，Apple Silicon 与 Intel 都装） | `~/.local/bin/codex` → `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`，随 ChatGPT.app 自更新 |
 | lcu | GitHub release tarball 里的 `scripts/install.sh`，之后由 `lcu update` 自更新 | `~/.local/share/lcu/current/bin/lcu`，**刻意不在 PATH** |
 | opencode | npm 全局 `opencode-ai` | 命令 `opencode` |
-| kimi-code | 官方 `install.sh`（curl \| bash） | `~/.kimi-code/bin/kimi`，命令是 **`kimi`** 而不是 `kimi-code` |
+| kimi-code | 官方 `install.sh`（curl \| bash） | `~/.kimi-code/bin/kimi`，命令是 **`kimi`** 而不是 `kimi-code`；经网关用 `kimi-gw` |
 | omp | bun 全局 `@oh-my-pi/pi-coding-agent` | `~/.bun/bin/omp`，命令是 **`omp`** |
 | pi | bun 全局 `@earendil-works/pi-coding-agent` | `~/.bun/bin/pi` |
 | copilot | npm 全局 `@github/copilot` | 命令 `copilot`；经网关用 `copilot-gw` |
 | crush | npm 全局 `@charmland/crush` | 命令 `crush` |
 | gemini | npm 全局 `@google/gemini-cli` | 命令 `gemini`；经网关用 `gemini-gw` |
-| grok | npm 全局 `@xai-official/grok` | 命令 `grok`；原生二进制在 `~/.grok/bin` |
+| grok | npm 全局 `@xai-official/grok` | 命令 `grok`；原生二进制在 `~/.grok/bin`；经网关用 `grok-gw` |
 | openclaw | npm 全局 `openclaw` | 命令 `openclaw`；常驻 daemon 由 `cliproxy-tier` 的 onboarding 安装 |
 | claude-mem | `npx -y claude-mem install` | 不是独立命令，而是 Claude Code 插件，同时接线 codex-cli 和 opencode |
 | cc-switch | tap `farion1231/ccswitch` + **cask** | GUI 应用 |
