@@ -23,6 +23,21 @@ status, changed, backups = {}, [], []
 HOST = os.uname().nodename.split(".")[0]
 # No native vendor login by design (coding-agent Q352): every agent there goes through the gateway.
 GATEWAY_ONLY = HOST in {"mac-mini-2018-omarchy"}
+# The gateway models every CLI below lists (macbook-provision Q261): (id, name, context, max output,
+# reasoning, images). They must be listed: the gateway's /v1/models disguises the non-Claude ids for
+# Anthropic-format clients. Nickel limits are vLLM's max_model_len; the rest match what the CLIs used.
+GW_MODELS = [
+    ("claude-opus-5-5", "Claude Opus 5.5", 200000, 32000, True, True),
+    ("claude-sonnet-5-5", "Claude Sonnet 5.5", 200000, 32000, True, True),
+    ("claude-haiku-5-5", "Claude Haiku 5.5", 200000, 16000, True, True),
+    ("claude-fable-5-1", "Claude Fable 5.1", 200000, 32000, True, True),
+    ("gpt-6-astra", "GPT-6 Astra", 272000, 32000, True, True),
+    ("gpt-6.1-sol", "GPT-6.1 Sol", 272000, 32000, True, True),
+    ("gpt-6-luna", "GPT-6 Luna", 272000, 32000, True, True),
+    ("glm-5.3-flash", "GLM-5.3 Flash", 1048576, 32000, False, False),
+    ("qwen3.8-flash-next", "Qwen3.8 Flash Next", 262144, 32000, False, False),
+    ("deepseek-v4.1-flash", "DeepSeek V4.1 Flash", 1048576, 32000, False, False),
+]
 
 
 def backup(p: Path):
@@ -126,12 +141,31 @@ if kimi_bin:
 if installed("copilot"):
     # BYOK through env vars only. Copilot refuses a classic PAT in GITHUB_TOKEN even in BYOK mode,
     # and its catalog spells models with dots (limits, prompting); the wire model is the gateway's name.
+    # BYOK serves one model per session, so `--model <gateway id>` picks it at launch. Copilot knows the
+    # Claude limits; the others get theirs from GW_MODELS.
+    arms = "".join(f'    {m}) wire={m} id={re.sub(r"^(claude-[a-z]+-[0-9]+)-([0-9]+)$", r"\1.\2", m)} '
+                   + ("ctx= out=" if m.startswith("claude-") else f"ctx={c - o} out={o}") + ";;\n"
+                   for m, _, c, o, _, _ in GW_MODELS)
     wrappers["copilot-gw"] = hdr + (
         ': "${CLIPROXY_API_KEY:?}" "${CLIPROXY_BASE_URL:?}"\n'
         'command -v copilot >/dev/null 2>&1 || export PATH="$HOME/.local/share/mise/shims:$PATH"\n'
+        'wire=claude-opus-5-5 id=claude-opus-5.5 ctx= out=\n'
+        'set -- "$@" --gw-end  # rotate the arguments once, taking out a --model naming a gateway model\n'
+        'while [ "$1" != --gw-end ]; do\n'
+        '  a=$1; shift\n'
+        '  case "$a" in\n'
+        '    --model=*) m=${a#--model=} ;;\n'
+        '    --model) [ "$1" = --gw-end ] && { set -- "$@" "$a"; continue; }; m=$1; shift ;;\n'
+        '    *) set -- "$@" "$a"; continue ;;\n'
+        '  esac\n'
+        '  case "$m" in\n' + arms +
+        '    *) set -- "$@" --model "$m" ;;\n'
+        '  esac\n'
+        'done\nshift\n'
         'exec env -u GITHUB_TOKEN -u GH_TOKEN -u COPILOT_GITHUB_TOKEN COPILOT_PROVIDER_TYPE=anthropic \\\n'
         '  COPILOT_PROVIDER_BASE_URL="$CLIPROXY_BASE_URL" COPILOT_PROVIDER_API_KEY="$CLIPROXY_API_KEY" \\\n'
-        '  COPILOT_PROVIDER_MODEL_ID=claude-opus-5.5 COPILOT_PROVIDER_WIRE_MODEL=claude-opus-5-5 copilot --allow-all "$@"\n')
+        '  COPILOT_PROVIDER_MODEL_ID="$id" COPILOT_PROVIDER_WIRE_MODEL="$wire" \\\n'
+        '  ${ctx:+"COPILOT_PROVIDER_MAX_PROMPT_TOKENS=$ctx"} ${out:+"COPILOT_PROVIDER_MAX_OUTPUT_TOKENS=$out"} copilot --allow-all "$@"\n')
 GEMINI_SETTINGS = H / ".gemini/settings.json"
 
 
@@ -229,6 +263,9 @@ if p.exists():
     text = p.read_text()
     # gateway model entries for `kimi -m cliproxy/<alias>`; inserted above the managed provider block
     KIMI_GW = {"opus5.5": "claude-opus-5-5", "sonnet5.5": "claude-sonnet-5-5", "fable5.1": "claude-fable-5-1"}
+    # The rest of GW_MODELS: alias "haiku5.5" for Claude, the gateway id for the others.
+    KIMI_NEW = {re.sub(r"^claude-([a-z]+)-([0-9]+)-([0-9]+)$", r"\1\2.\3", row[0]): row
+                for row in GW_MODELS if row[0] not in KIMI_GW.values()}
     # Where kimi supports api_key_env (2.1.1 does) the key stays in the environment, so a rotation leaves
     # no stale copy. Older builds (0.29-0.38 seen) ignore it and fail with "provider cliproxy has no
     # credential configured", so they keep a literal key, rewritten to the current one every run.
@@ -258,12 +295,16 @@ if p.exists():
             cand = cand.replace(blk(a, m), blk(a, m, "max_output_size = 128000\n"))
         blocks = "".join(blk(a, m, "max_output_size = 128000\n") + "\n"
                          for a, m in KIMI_GW.items() if f'[models."cliproxy/{a}"]' not in cand)
+        blocks += "".join(f'[models."cliproxy/{a}"]\nprovider = "cliproxy"\nmodel = "{m}"\nmax_context_size = {c}\n'
+                          f'max_output_size = {o}\ncapabilities = {json.dumps(["tool_use"] + ["thinking"] * r + ["image_in"] * i)}\n\n'
+                          for a, (m, _, c, o, r, i) in KIMI_NEW.items() if f'[models."cliproxy/{a}"]' not in cand)
         if blocks:
             mark = "# --- cliproxyapi (managed) ---"
             cand = cand.replace(mark, blocks + mark, 1) if mark in cand else cand.rstrip("\n") + "\n\n" + blocks
         if cand != text:
             models = tomllib.loads(cand)["models"]
             assert all(models[f"cliproxy/{a}"].get("max_output_size") == 128000 for a in KIMI_GW), "kimi candidate invalid"
+            assert all(models[f"cliproxy/{a}"]["model"] == row[0] for a, row in KIMI_NEW.items()), "kimi candidate invalid"
             write(p, cand); text = cand
     if '[models."kimi-code/k3"]' in text:
         cand = re.sub(r'^default_model\s*=\s*"[^"]*"', 'default_model = "kimi-code/k3"', text, count=1, flags=re.M)
@@ -314,6 +355,19 @@ if (H / ".omp/agent/agent.db").exists() and omp.exists() and (OMP[0] != str(bun)
     if roles.get("default") != "anthropic/claude-opus-5-5":
         roles["default"] = "anthropic/claude-opus-5-5"
         r = run(*OMP, "config", "set", "modelRoles", json.dumps(roles)); outs.append(f"role:{r.returncode}")
+    # GW_MODELS as a `cliproxy` provider: omp's anthropic catalog has only the Claude ids. The key is the
+    # .env variable's name. A file omp cannot validate disables every custom provider, so it lists them back.
+    p = H / ".omp/agent/models.yml"
+    y = ("providers:\n  cliproxy:\n    baseUrl: " + BASE + "\n    apiKey: ANTHROPIC_API_KEY\n    api: anthropic-messages\n    models:\n"
+         + "".join(f"      - {{id: {json.dumps(m)}, name: {json.dumps(n)}, reasoning: {str(r).lower()}, "
+                   f"input: {json.dumps(['text'] + ['image'] * i)}, contextWindow: {c}, maxTokens: {o}}}\n"
+                   for m, n, c, o, r, i in GW_MODELS))
+    if not p.exists() or p.read_text() != y:
+        old = p.read_text() if p.exists() else None
+        write(p, y, 0o600)
+        if f"cliproxy ({len(GW_MODELS)})" not in run(*OMP, "models", "cliproxy").stdout:
+            p.write_text(old) if old is not None else p.unlink()
+            changed.remove(str(p)); outs.append("models.yml:REVERTED")
     status["omp"] = "gw " + " ".join(outs)
     # drop the interactive-only omp() shell wrapper; the dotenv replaces it
     rc = H / ".zshrc"
@@ -347,6 +401,23 @@ if (H / ".hermes/config.yaml").exists():
             run(hermes, "config", "set", k, v)
         run(hermes, "config", "unset", "model.base_url")  # the example's OpenRouter URL would win over the provider's
         changed.append(str(p)); text = p.read_text()
+    # The /model picker lists providers.cliproxy.models; without discover_models: false it probes
+    # /v1/models instead. `hermes config set` takes no maps, so a text edit that hermes then reads back.
+    m = re.search(r"^providers:\n(?:[ \t].*\n)*?  cliproxy:\n((?:    .*\n)*)", text, flags=re.M)
+    if m and on_gw(text):
+        body = re.sub(r"^    discover_models:.*\n", "", m.group(1), flags=re.M)
+        body = re.sub(r"^    models:\n(?:      .*\n)*", "", body, flags=re.M)
+        body += "    discover_models: false\n    models:\n" + "".join(
+            f'      "{i}":\n        context_length: {c}\n' for i, _, c, *_ in GW_MODELS)
+        cand = text[:m.start(1)] + body + text[m.end(1):]
+        if cand != text:
+            write(p, cand)
+            r = run(which("hermes") or str(H / ".local/bin/hermes"), "config", "get", "providers.cliproxy.discover_models")
+            if r.returncode or r.stdout.strip().lower() != "false":
+                p.write_text(text); changed.remove(str(p))
+                print(f"  hermes models: reverted, hermes read back {r.stdout.strip()[:80]!r}")
+            else:
+                text = cand
     pool = {}
     a = H / ".hermes/auth.json"
     if a.exists():
@@ -365,6 +436,11 @@ if p.exists():
         del a["models"]["claude-haiku-4-5"]
         if not a["models"]:
             del a["models"]
+    # opencode's catalog has the Claude ids; the gateway's other models go on the same provider.
+    for i, name, c, o, r, img in GW_MODELS:
+        if not i.startswith("claude-"):
+            a.setdefault("models", {})[i] = {"name": name, "reasoning": r, "tool_call": True, "attachment": img,
+                                             "limit": {"context": c, "output": o}}
     enabled = ["anthropic"] + (["google"] if "google" in prov else [])
     new = dict(d, enabled_providers=enabled, model="anthropic/claude-opus-5-5",
                small_model="anthropic/claude-haiku-5-5")
@@ -433,6 +509,12 @@ if installed("gemini") and not gemini_native():
     new.setdefault("modelConfigs", {})["customOverrides"] = (
         [{"match": {"model": m}, "modelConfig": {"model": "claude-haiku-5-5"}} for m in flash] +
         [{"match": {"model": m}, "modelConfig": {"model": "claude-sonnet-5-5"}} for m in pro])
+    # /model lists modelDefinitions (under Manual) only with this experimental flag on.
+    new.setdefault("experimental", {})["dynamicModelConfiguration"] = True
+    new["modelConfigs"].setdefault("modelDefinitions", {}).update(
+        {i: {"tier": "custom", "isPreview": False, "isVisible": True, "displayName": name,
+             "dialogDescription": "Through the gateway", "features": {"thinking": r, "multimodalToolUse": False}}
+         for i, name, _, _, r, _ in GW_MODELS})
     if new != d:
         p.parent.mkdir(parents=True, exist_ok=True)
         write(p, json.dumps(new, indent=2) + "\n")
@@ -443,14 +525,16 @@ if installed("gemini") and not gemini_native():
 # user picked as default survive a rerun.
 p = H / ".grok/config.toml"
 if installed("grok"):
-    gw_models = {"claude-opus-5-5": "messages", "claude-sonnet-5-5": "messages",
-                 "claude-haiku-5-5": "messages", "gpt-6.1-sol": "responses"}
+    # Non-Claude models on chat_completions: through the gateway, grok's responses parser trips on a
+    # `response.metadata` event and its messages parser on Nickel's unsigned thinking blocks.
+    gw_models = {m: ("messages" if m.startswith("claude-") else "chat_completions", c, img) for m, _, c, _, _, img in GW_MODELS}
     roles = ("session_summary", "image_description", "prompt_suggestion")
 
     def grok_on_gw(doc):
         models, defs, feats = doc.get("models", {}), doc.get("model", {}), doc.get("features", {})
-        return (all(subset(defs.get(m), {"model": m, "base_url": f"{BASE}/v1", "api_backend": api, "env_key": "CLIPROXY_API_KEY"})
-                    for m, api in gw_models.items())
+        return (all(subset(defs.get(m), {"model": m, "base_url": f"{BASE}/v1", "api_backend": api, "env_key": "CLIPROXY_API_KEY",
+                                         "context_window": c, "vision": img})
+                    for m, (api, c, img) in gw_models.items())
                 and all(models.get(k) in gw_models for k in ("default",) + roles)
                 and all(feats.get(k) is False for k in ("telemetry", "feedback", "remote_fetch")))
     text = p.read_text() if p.exists() else ""
@@ -463,14 +547,16 @@ if installed("grok"):
                  '[models]\ndefault = "claude-opus-5-5"\n' +
                  "".join(f'{k} = "claude-haiku-5-5"\n' for k in roles) +
                  "".join(f'\n[model."{m}"]\nmodel = "{m}"\nbase_url = "{BASE}/v1"\napi_backend = "{api}"\nenv_key = "CLIPROXY_API_KEY"\n'
-                         for m, api in gw_models.items()) +
+                         f'context_window = {c}\nvision = {str(img).lower()}\n'
+                         for m, (api, c, img) in gw_models.items()) +
                  "\n[features]\ntelemetry = false\nfeedback = false\nremote_fetch = false\n")
         # Drop the managed tables (and an earlier block's comment lines) from the rest, keep the others.
-        managed = {"[models]", "[features]"} | {f'[model."{m}"]' for m in gw_models}
+        # Compared without quotes: grok rewrites [model."x"] as [model.x].
+        managed = {"[models]", "[features]"} | {f"[model.{m}]" for m in gw_models}
         keep, skip = [], False
         for ln in text.splitlines(keepends=True):
             if re.match(r"^\s*\[", ln):
-                skip = ln.strip() in managed
+                skip = ln.strip().replace('"', "") in managed
             if not skip and not re.match(r"^# (cliproxyapi|--- (end )?cliproxyapi)", ln):
                 keep.append(ln)
         rest = "".join(keep).strip("\n")
@@ -494,9 +580,9 @@ if installed("crush"):
              "option default-providers false\noption metrics false\n"
              f'provider add cliproxy --name CLIProxyAPI --type anthropic \\\n  --base-url "{BASE}" \\\n'
              '  --api-key "${CLIPROXY_API_KEY:?set CLIPROXY_API_KEY}"\n'
-             'model add cliproxy/claude-opus-5-5 --name "Claude Opus 5.5" --context-window 200000 --default-max-tokens 32000 --can-reason true --supports-images true\n'
-             'model add cliproxy/claude-sonnet-5-5 --name "Claude Sonnet 5.5" --context-window 200000 --default-max-tokens 32000 --can-reason true --supports-images true\n'
-             'model add cliproxy/claude-haiku-5-5 --name "Claude Haiku 5.5" --context-window 200000 --default-max-tokens 16000 --supports-images true\n'
+             + "".join(f'model add cliproxy/{m} --name "{name}" --context-window {c} --default-max-tokens {o}'
+                       + " --can-reason true" * (r and m != "claude-haiku-5-5") + " --supports-images true" * img + "\n"
+                       for m, name, c, o, r, img in GW_MODELS) +
              "model large cliproxy/claude-opus-5-5\nmodel small cliproxy/claude-haiku-5-5\n# --- end cliproxyapi ---\n")
 
     def crush_ok(cand):
@@ -538,11 +624,10 @@ if which("openclaw"):
         want = {"models": {"providers": {"cliproxy": {
                     "baseUrl": BASE, "api": "anthropic-messages",
                     "apiKey": {"source": "env", "provider": "default", "id": "CLIPROXY_API_KEY"},
-                    "models": [dict(id=f"claude-{m}-5-5", name=f"Claude {m.title()} 5.5", contextWindow=200000,
-                                    maxTokens=16000 if m == "haiku" else 32000, input=["text", "image"],
-                                    reasoning=m != "haiku", cost=free) for m in ("opus", "sonnet", "haiku")]}}},
-                "agents": {"defaults": {
-                    "models": {f"cliproxy/claude-{m}-5-5": {} for m in ("opus", "sonnet", "haiku")}}}}
+                    "models": [dict(id=m, name=name, contextWindow=c, maxTokens=o, input=["text"] + ["image"] * img,
+                                    reasoning=r and m != "claude-haiku-5-5", cost=free)
+                               for m, name, c, o, r, img in GW_MODELS]}}},
+                "agents": {"defaults": {"models": {f"cliproxy/{m}": {} for m, *_ in GW_MODELS}}}}
         try:
             d = json.loads(p.read_text())
         except ValueError:  # hand-edited JSON5: leave it to `openclaw config`

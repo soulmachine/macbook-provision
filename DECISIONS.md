@@ -2709,3 +2709,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** On m2, 2026-10-20, all three answered through `codex-gw` without per-model overrides; glm-5.3-flash ran a shell command; DeepSeek's medium effort is already mapped to high by the gateway rule from Q259. The rows render as 13–15 after the Claude rows.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q261 — interactive/gateway-models-every-cli — tradeoff
+
+**Question:** Frank asked for the same 10 gateway models (claude-fable-5-1, claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5, gpt-6-astra, gpt-6.1-sol, gpt-6-luna, glm-5.3-flash, qwen3.8-flash-next, deepseek-v4.1-flash) in every gateway CLI other than claude-gw and codex-gw. How?
+**Options considered:** per-CLI model discovery from the gateway's /v1/models / an explicit list in each CLI's config; for copilot, skip it / pick the model at launch; for pi, change cliproxy-tier-host.py only / change the Ansible models.json and cliproxy-assert-pi together; for gemini, skip it / turn on its experimental model list
+**Chosen:** One `GW_MODELS` table at the top of `gateway/cliproxy-tier-host.py` (id, name, context, max output, reasoning, images), from which kimi, omp (new `~/.omp/agent/models.yml`, provider `cliproxy`), hermes (`providers.cliproxy.models` + `discover_models: false`), opencode (non-Claude ids on the `anthropic` provider), grok, crush, openclaw and gemini (`experimental.dynamicModelConfiguration` + `modelConfigs.modelDefinitions`) are built. `copilot-gw --model <id>` picks one of the 10 at launch (BYOK serves one model per session). pi's 10 full entries go into `roles/pi/files/agent/models.json` in all three provisioning repos and `cliproxy-assert-pi` at once; the old id-only entries stay. Every CLI keeps its Anthropic-format provider and its default model.
+**Decided-by:** human (copilot, pi, gemini choices) and agent (table, per-CLI shapes)
+**Justification:** Discovery cannot work: the gateway's /v1/models gives Anthropic-format clients disguised non-Claude ids (`claude-fable-5-dd-artsa-6-tpg`). Nickel limits are vLLM's `max_model_len` (glm and deepseek 1048576, qwen 262144, read 2026-10-20); the Claude rows keep the 200K/32K the CLIs already used, GPT 272K/32K. grok rewrites `[model."x"]` as `[model.x]`, so its managed-table check now compares names without quotes. grok's non-Claude models use `chat_completions`: through the gateway its `responses` parser fails on a `response.metadata` event (this had broken gpt-6.1-sol in grok already) and its `messages` parser on Nickel's unsigned thinking blocks. omp and hermes changes are read back by the CLI and reverted if it rejects them.
+**Outcome:** applied
+**Ref:** (pending)
