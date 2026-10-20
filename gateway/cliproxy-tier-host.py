@@ -138,6 +138,8 @@ if kimi_bin:
         '# already runs unattended, so drop --yolo only then.\n'
         'yolo=--yolo\nfor a in "$@"; do case "$a" in -p|--prompt|-p=*|--prompt=*) yolo=;; esac; done\n'
         f'exec "{kimi_bin}" -m cliproxy/opus5.5 ${{yolo:+"$yolo"}} "$@"\n')
+elif (bindir / "kimi-gw").exists():  # kimi was uninstalled: drop the wrapper that still points at it
+    backup(bindir / "kimi-gw"); (bindir / "kimi-gw").unlink(); changed.append(str(bindir / "kimi-gw"))
 if installed("copilot"):
     # BYOK through env vars only. Copilot refuses a classic PAT in GITHUB_TOKEN even in BYOK mode,
     # and its catalog spells models with dots (limits, prompting); the wire model is the gateway's name.
