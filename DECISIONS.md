@@ -2792,3 +2792,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** (pending)
 **Supersedes:** Q267 — cliproxy-tier-host.py now also sets every other CLI's default, including deepseek's reasoning flag in GW_MODELS, which Q267 left alone.
+
+## Q269 — interactive/gw-wrappers — tradeoff
+
+**Question:** kimi-gw, gemini-gw and grok-gw run in their own homes (Q268), so they miss the MCP servers, hooks and skills that roles and hand edits put into the native homes. Where should those get into the `-gw` homes?
+**Options considered:** every role that writes a native home (context-mode, browseros-neo) also writes the `-gw` home / `cliproxy-tier-host.py` mirrors the native home into the `-gw` home on every run
+**Chosen:** The mirror. kimi: `[[hooks]]` and `mcp.json`, plus a `hooks` link. gemini: `mcpServers`, `hooks`, `hooksConfig` and `context`, links for `extensions`, `commands`, `skills` and `GEMINI.md`, and `.agents` linked to `~/.agents`. grok: `[mcp_servers.*]`, plus `skills` and `hooks` links. The native homes are only read.
+**Decided-by:** agent
+**Justification:** One place covers the roles, the hand-added servers (google-workspace in gemini, browseros-neo in grok) and the hosts that run no playbook (dev-server-frank), and no role has to know the `-gw` paths. The cost: a change to a native home reaches its `-gw` home only at the next `cliproxy-tier` run. On mac-mini-m6, kimi-gw listed the context-mode `ctx_*` tools, gemini-gw loaded context-mode and google-workspace, and grok-gw listed browseros-neo.
+**Outcome:** applied
+**Ref:** (pending)

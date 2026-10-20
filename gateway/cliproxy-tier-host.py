@@ -80,6 +80,16 @@ def run(*cmd):
     return subprocess.run(cmd, capture_output=True, text=True, errors="replace")
 
 
+def link(dst: Path, src: Path):
+    """dst -> src, so a -gw home shares a native folder; a real file or folder at dst is left alone."""
+    if not src.exists() or (dst.exists() and not dst.is_symlink()) or (dst.is_symlink() and dst.resolve() == src.resolve()):
+        return
+    if dst.is_symlink():
+        dst.unlink()
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.symlink_to(src); changed.append(str(dst))
+
+
 ZSH = shutil.which("zsh")
 # The wrapper header follows the LOGIN shell, not the presence of a zsh binary: dev-server-frank
 # keeps zsh installed but logs in to bash since 2026-10-11, and its keys live in ~/.bashrc.
@@ -283,12 +293,24 @@ if kimi_bin:
                     + f'capabilities = {json.dumps(["tool_use"] + ["thinking"] * r + ["image_in"] * i)}\n'
                     + ('support_efforts = ["low", "medium", "high"]\ndefault_effort = "high"\n' if r else "")
                     for m, _, c, o, r, i in GW_MODELS))
+    # Mirror the native hooks and MCP servers (context-mode, browseros-neo, herdr ...), so kimi-gw runs
+    # with the same tools. The native home is only read.
+    native = H / ".kimi-code/config.toml"
+    ntext = native.read_text() if native.exists() else ""
+    body += "".join("\n" + b for b in re.findall(r"^\[\[hooks\]\]\n(?:(?!\[)[^\n]*\S[^\n]*\n)*", ntext, flags=re.M))
     gp = KIMI_GW_HOME / "config.toml"
     if not gp.exists() or gp.read_text() != body:
         doc = tomllib.loads(body)
         assert doc["default_model"] in doc["models"], "kimi-gw candidate invalid"
+        assert len(doc.get("hooks", [])) == len(tomllib.loads(ntext).get("hooks", [])) if ntext else True, "kimi-gw hooks invalid"
         gp.parent.mkdir(parents=True, exist_ok=True)
         write(gp, body, 0o600)
+    nm, gm = H / ".kimi-code/mcp.json", KIMI_GW_HOME / "mcp.json"
+    if nm.exists() and (not gm.exists() or gm.read_text() != nm.read_text()):
+        write(gm, nm.read_text(), 0o600)
+    elif not nm.exists() and gm.exists():
+        backup(gm); gm.unlink(); changed.append(str(gm))
+    link(KIMI_GW_HOME / "hooks", H / ".kimi-code/hooks")
 p = H / ".kimi-code/config.toml"
 if p.exists():
     # Undo what this script used to write into the native config: the gateway default_model, the managed
@@ -517,9 +539,23 @@ if installed("gemini"):
         new[k] = {**new.get(k, {}), **v} if k != "modelConfigs" else v
     if d.get("model", {}).get("name") in GW_IDS - {"claude-opus-5-5"}:
         new["model"]["name"] = d["model"]["name"]
+    # Mirror the native MCP servers, hooks and context files (context-mode, browseros-neo, orca ...); the
+    # native home is only read. context.fileName paths are relative to the home, hence the .agents link.
+    try:
+        nd = json.loads(GEMINI_SETTINGS.read_text()) if GEMINI_SETTINGS.exists() else {}
+    except ValueError:
+        nd = {}
+    for k in ("mcpServers", "hooks", "hooksConfig", "context"):
+        if k in nd:
+            new[k] = nd[k]
+        else:
+            new.pop(k, None)
     if new != d:
         GEMINI_GW_SETTINGS.parent.mkdir(parents=True, exist_ok=True)
         write(GEMINI_GW_SETTINGS, json.dumps(new, indent=2) + "\n")
+    link(GEMINI_GW_HOME / ".agents", H / ".agents")
+    for sub in ("extensions", "commands", "skills", "GEMINI.md"):
+        link(GEMINI_GW_SETTINGS.parent / sub, H / ".gemini" / sub)
     # Undo what this script used to write into the native settings.json, recognised by its gateway model
     # definitions. The privacy and auto-update settings stay.
     p = GEMINI_SETTINGS
@@ -617,6 +653,20 @@ if installed("grok"):
             on_gw = True
     if not on_gw:
         status["grok"] = "NOT-gw(conflict)"
+    # Mirror the native MCP servers (browseros-neo ...) and share skills and hooks; the native home is only read.
+    MCP_TBL = re.compile(r"^\[mcp_servers\.[^\n]*\]\n(?:(?!\[)[^\n]*\n)*", flags=re.M)
+    ntext = native.read_text() if native.exists() else ""
+    gtext = p.read_text() if p.exists() else ""
+    try:
+        want_mcp = tomllib.loads(ntext).get("mcp_servers", {})
+        if on_gw and tomllib.loads(gtext).get("mcp_servers", {}) != want_mcp:
+            cand = MCP_TBL.sub("", gtext).rstrip("\n") + "\n" + "".join("\n" + b.rstrip("\n") + "\n" for b in MCP_TBL.findall(ntext))
+            assert tomllib.loads(cand).get("mcp_servers", {}) == want_mcp, "grok-gw mcp candidate invalid"
+            write(p, cand)
+    except (tomllib.TOMLDecodeError, AssertionError) as e:  # e.g. MCP servers set as an inline table: left as they are
+        status["grok"] = f"native+gw(mcp-not-mirrored: {e})"[:120]
+    for sub in ("skills", "hooks"):
+        link(p.parent / sub, H / ".grok" / sub)
 
 # crush: a provider id outside the Catwalk catalog (crush #3504, #2649); no /v1 on an anthropic URL.
 p = H / ".config/crush/crushrc"

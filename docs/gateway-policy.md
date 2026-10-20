@@ -38,15 +38,22 @@ need a gateway default in a config file, so each `-gw` wrapper gets its own home
 `GEMINI_CLI_HOME=~/.gemini-gw` and `GROK_HOME=~/.grok-gw`. On its first run after the change, the script
 removes the gateway settings it used to write into the native `~/.kimi-code`, `~/.gemini` and `~/.grok`.
 
+Each run also mirrors the native home's tools into the `-gw` home, and only reads the native home:
+- kimi: the `[[hooks]]` tables and `mcp.json`, and a `hooks` link.
+- gemini: `mcpServers`, `hooks`, `hooksConfig` and `context`, links for `extensions`, `commands`, `skills`
+  and `GEMINI.md`, and `~/.gemini-gw/.agents` linked to `~/.agents` (`context.fileName` paths are
+  relative to the home).
+- grok: the `[mcp_servers.*]` tables, and `skills` and `hooks` links.
+
+So a role or a hand edit that adds an MCP server or hook to the native home reaches the `-gw` wrapper at
+the next `cliproxy-tier` run.
+
 ## Known gaps
 
 - **opencode's oh-my-openagent plugin** pins its own agents (Sisyphus and the rest) to
   `anthropic/claude-*` models, and its Sisyphus agent wins even over `--agent build`. Those models
   go through the gateway, but they are not `deepseek-v4.1-flash`. Frank will fix the plugin's
   model pins later.
-- **The `-gw` homes are separate.** MCP servers, hooks and extensions that roles install into
-  `~/.kimi-code`, `~/.gemini` or `~/.grok` (context-mode, for example) are not in `kimi-gw`,
-  `gemini-gw` or `grok-gw`.
 - **gemini-gw on Nickel models** (deepseek, qwen, glm) prints `Model stream ended without a finish
   reason`, and deepseek repeats its answer. Claude models are fine. The cause is the gateway's
   Gemini-format translation, not the thinking setting.
