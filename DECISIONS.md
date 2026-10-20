@@ -2689,3 +2689,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** A per-run rebuild keeps new OpenAI models in the menu. Codex 0.163 validates catalog entries strictly, so cloning a real entry is the shortest valid shape. Checked on m2, 2026-10-20: the four rows render; `codex-gw` answers on gpt-6-astra by default and on claude-haiku-5-5 with `-m`; claude-sonnet-5-5 completed an apply_patch edit and a shell call through the gateway. Leaving any non-default `model` alone keeps a choice saved from `/model`.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q259 — interactive/claude-gw-nickel-rows-and-default — tradeoff
+
+**Question:** Frank asked for the gateway's nickel-3ed models (glm-5.3-flash, qwen3.8-flash-next, deepseek-v4.1-flash) next to the GPT rows in `claude-gw`'s `/model`, and for `claude-gw` to default to claude-opus-5-5. Claude models already show on their own. How?
+**Options considered:** default via `--model` in the wrapper / via `"model"` in the `--settings` JSON; for DeepSeek's 400 on `reasoning_effort: "medium"`: drop `--effort medium` from the wrapper / a gateway `payload.override` rule
+**Chosen:** Three more `modelPicker` rows, and `"model":"claude-opus-5-5"` in `gw_settings`. On the m2 gateway (`/opt/homebrew/etc/cliproxyapi.conf`, hand-kept, backed up first), a `payload.override` rule maps `reasoning_effort` "medium" to "high" for deepseek-v4.1-flash on the openai protocol only.
+**Decided-by:** agent
+**Justification:** The settings key outranks a `/model` default saved in user settings but still yields to an explicit `--model`, and a duplicate `--model` flag could clash. DeepSeek V4.1 accepts only low/high/xhigh/max; the gateway rule fixes it for every client without changing other models' effort. Checked on m2, 2026-10-20: the default session ran on claude-opus-5-5; all three Nickel models answered through `claude-gw`; glm-5.3-flash completed a Bash tool call; the rule hot-reloaded ("payload.override: 0 -> 1 rules").
+**Outcome:** applied
+**Ref:** (pending)

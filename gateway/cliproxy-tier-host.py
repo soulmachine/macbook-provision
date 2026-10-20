@@ -95,11 +95,15 @@ wrappers = {
                  'command -v node >/dev/null 2>&1 || export PATH="$PATH:$HOME/.local/share/mise/shims"\n'
                  '# Marks each session as a gateway one. Herdr saves only the session id and restores with a bare\n'
                  '# `claude --resume <id>`; the herdr role\'s `claude` shell function sends marked ids back here.\n'
-                 '# modelPicker adds the Codex account\'s GPT models to /model, which lists only Claude models.\n'
-                 'gw_settings=\'{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"mkdir -p ~/.local/state/claude-gw && touch ~/.local/state/claude-gw/$CLAUDE_CODE_SESSION_ID"}]}]},'
+                 '# modelPicker adds the gateway\'s GPT (Codex account) and nickel-3ed models to /model, which\n'
+                 '# lists only Claude models; "model" starts every session on Opus 5.5 unless --model says otherwise.\n'
+                 'gw_settings=\'{"model":"claude-opus-5-5","hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"mkdir -p ~/.local/state/claude-gw && touch ~/.local/state/claude-gw/$CLAUDE_CODE_SESSION_ID"}]}]},'
                  '"modelPicker":{"options":[' + ','.join(
-                     f'{{"model":"{m}","label":"{l}","description":"OpenAI, through the gateway"}}'
-                     for m, l in [("gpt-6-astra", "GPT-6 Astra"), ("gpt-6.1-sol", "GPT-6.1 Sol"), ("gpt-6-luna", "GPT-6 Luna")]) + ']}}\'\n'
+                     f'{{"model":"{m}","label":"{l}","description":"{d}, through the gateway"}}'
+                     for m, l, d in [("gpt-6-astra", "GPT-6 Astra", "OpenAI"), ("gpt-6.1-sol", "GPT-6.1 Sol", "OpenAI"),
+                                     ("gpt-6-luna", "GPT-6 Luna", "OpenAI"), ("glm-5.3-flash", "GLM-5.3 Flash", "Nickel 3ed vLLM"),
+                                     ("qwen3.8-flash-next", "Qwen3.8 Flash Next", "Nickel 3ed vLLM"),
+                                     ("deepseek-v4.1-flash", "DeepSeek V4.1 Flash", "Nickel 3ed vLLM")]) + ']}}\'\n'
                  'exec env ANTHROPIC_BASE_URL="$CLIPROXY_BASE_URL" ANTHROPIC_AUTH_TOKEN="$CLIPROXY_API_KEY" claude --dangerously-skip-permissions --effort medium --settings "$gw_settings" "$@"\n',
     "codex-gw": hdr + ': "${CLIPROXY_API_KEY:?}"\n'
                 '# codex may live only in mise shims (dev-server-frank), which non-interactive shells lack.\n'
