@@ -36,4 +36,5 @@ ssh -o BatchMode=yes -o ConnectTimeout=15 <host> \
 | add a role, or write or change any role's tasks | [docs/writing-roles.md](docs/writing-roles.md) |
 | gate a role on `mac_is_always_on`, or touch `host-facts` | [docs/host-facts.md](docs/host-facts.md) |
 | touch `.env`, a secret, `GITHUB_TOKEN`, or the `dotenv` or `bun` role | [docs/secrets.md](docs/secrets.md) |
+| change which provider, model, effort or `-gw` wrapper a coding CLI gets in `gateway/` | [docs/gateway-policy.md](docs/gateway-policy.md) |
 | change agent-reach, context-mode, paseo, ponytail, tailscale or typesafe | that role's `roles/<name>/README.md` |
