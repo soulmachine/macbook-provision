@@ -2750,3 +2750,23 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The hourly assert is what keeps pi's gateway provider and model list in step on every gateway host; leaving a host out is the gap Q262 fixed.
 **Outcome:** applied
 **Ref:** (this commit)
+
+## Q265 — interactive/pi-default-deepseek — deviation
+
+**Question:** Pi's new default is deepseek-v4.1-flash at thinking level high, but the gateway catalog marks that model non-reasoning, so Pi would ignore "high". Which side should change, and how far should the change reach?
+**Options considered:** flip the model to reasoning in Pi's payload / keep it non-reasoning, so "high" applies only to reasoning models; change the three provision repos only / also change the m2 gateway scripts
+**Chosen:** In `roles/pi/files/agent`, `defaultModel: cliproxy/deepseek-v4.1-flash` and `defaultThinkingLevel: high`, and the deepseek-v4.1-flash entry gets `reasoning: true`. Only the three provision repos change.
+**Decided-by:** human
+**Justification:** Frank chose both. A test request through the gateway (Anthropic messages API, thinking enabled) returned a thinking block from deepseek-v4.1-flash, so the flag was wrong. Known conflict: macbook-provision `gateway/cliproxy-assert-pi` still re-asserts `cliproxy/claude-opus-5-5` and `reasoning: false` every hour, and `cliproxy-tier-host.py` reports pi as `DEFAULT=…`. Until those scripts change, the playbook and the hourly job undo each other's change on each host.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q266 — interactive/pi-default-deepseek — deviation
+
+**Question:** Pi 1.3.0 ignored `defaultModel: "cliproxy/<id>"` and fell back to the first provider with a key (`anthropic/claude-opus-4-8`). How should the payload name the default?
+**Options considered:** keep the combined `provider/id` string / split it into `defaultProvider` + `defaultModel`
+**Chosen:** `"defaultProvider": "cliproxy"` and `"defaultModel": "deepseek-v4.1-flash"`.
+**Decided-by:** agent
+**Justification:** Pi's `dist/core/model-resolver.js` (step 2, "saved default") uses the saved default only when both `defaultProvider` and `defaultModel` are set, and it looks the model up by bare id. A `pi -p --mode json` run afterwards answered from `cliproxy`/`deepseek-v4.1-flash`, with a thinking block. So the earlier `cliproxy/claude-opus-5-5` value probably never took effect either. `cliproxy-assert-pi` and `cliproxy-tier-host.py` still write and check the combined form, so the hourly re-assert would set an id Pi cannot resolve.
+**Outcome:** applied
+**Ref:** (pending)
