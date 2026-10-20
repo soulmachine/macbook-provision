@@ -196,7 +196,7 @@ if p.exists():
         assert tomllib.loads(cand)["model_provider"] == "cliproxy", "codex profile candidate invalid"
         write(prof, cand)
     # Codex's /model lists only its OpenAI catalog. codex-gw passes this copy, which adds the gateway's
-    # Claude models cloned from gpt-5.5. Rebuilt each run so new OpenAI models still show up.
+    # Claude and nickel-3ed models cloned from gpt-5.5. Rebuilt each run so new OpenAI models still show up.
     try:
         cdx = which("codex") or str(H / ".local/share/mise/shims/codex")
         cat = json.loads(subprocess.run([cdx, "debug", "models"], capture_output=True, text=True, timeout=60).stdout)
@@ -208,10 +208,15 @@ if p.exists():
     except Exception as e:  # keep the last good catalog; codex-gw skips the flag when there is none
         print(f"  codex catalog: skipped ({type(e).__name__})")
     else:
-        for i, (slug, name) in enumerate([("claude-fable-5-1", "Fable 5.1"), ("claude-opus-5-5", "Opus 5.5"),
-                                           ("claude-sonnet-5-5", "Sonnet 5.5"), ("claude-haiku-5-5", "Haiku 5.5")]):
-            cat["models"].append({**base, "slug": slug, "display_name": f"Claude {name}", "priority": 20 + i,
-                                  "description": f"Anthropic {name}, through the gateway",
+        nickel = "Nickel 3ed vLLM, through the gateway"
+        for i, (slug, name, desc) in enumerate([
+                ("claude-fable-5-1", "Claude Fable 5.1", "Anthropic Fable 5.1, through the gateway"),
+                ("claude-opus-5-5", "Claude Opus 5.5", "Anthropic Opus 5.5, through the gateway"),
+                ("claude-sonnet-5-5", "Claude Sonnet 5.5", "Anthropic Sonnet 5.5, through the gateway"),
+                ("claude-haiku-5-5", "Claude Haiku 5.5", "Anthropic Haiku 5.5, through the gateway"),
+                ("glm-5.3-flash", "GLM-5.3 Flash", nickel), ("qwen3.8-flash-next", "Qwen3.8 Flash Next", nickel),
+                ("deepseek-v4.1-flash", "DeepSeek V4.1 Flash", nickel)]):
+            cat["models"].append({**base, "slug": slug, "display_name": name, "priority": 20 + i, "description": desc,
                                   "service_tiers": [], "additional_speed_tiers": [], "availability_nux": None, "upgrade": None})
         cp, body = H / ".codex/cliproxy-models.json", json.dumps(cat, indent=1) + "\n"
         if not cp.exists() or cp.read_text() != body:  # generated, so no .bak copy

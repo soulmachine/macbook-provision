@@ -2699,3 +2699,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The settings key outranks a `/model` default saved in user settings but still yields to an explicit `--model`, and a duplicate `--model` flag could clash. DeepSeek V4.1 accepts only low/high/xhigh/max; the gateway rule fixes it for every client without changing other models' effort. Checked on m2, 2026-10-20: the default session ran on claude-opus-5-5; all three Nickel models answered through `claude-gw`; glm-5.3-flash completed a Bash tool call; the rule hot-reloaded ("payload.override: 0 -> 1 rules").
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q260 — interactive/codex-gw-nickel-rows — tradeoff
+
+**Question:** Frank asked for the gateway's nickel-3ed models (glm-5.3-flash, qwen3.8-flash-next, deepseek-v4.1-flash) in `codex-gw`'s `/model`, next to the Claude rows from Q258. He confirmed it is `codex-gw`, which keeps gpt-6-astra as its default.
+**Options considered:** separate template or overrides for the vLLM models / clone the same pinned base as the Claude rows
+**Chosen:** Three more entries in the per-host catalog `cliproxy-tier-host.py` writes, cloned from the same pinned base, priorities 24–26.
+**Decided-by:** agent
+**Justification:** On m2, 2026-10-20, all three answered through `codex-gw` without per-model overrides; glm-5.3-flash ran a shell command; DeepSeek's medium effort is already mapped to high by the gateway rule from Q259. The rows render as 13–15 after the Claude rows.
+**Outcome:** applied
+**Ref:** (pending)
