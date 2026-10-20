@@ -2770,3 +2770,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Pi's `dist/core/model-resolver.js` (step 2, "saved default") uses the saved default only when both `defaultProvider` and `defaultModel` are set, and it looks the model up by bare id. A `pi -p --mode json` run afterwards answered from `cliproxy`/`deepseek-v4.1-flash`, with a thinking block. So the earlier `cliproxy/claude-opus-5-5` value probably never took effect either. `cliproxy-assert-pi` and `cliproxy-tier-host.py` still write and check the combined form, so the hourly re-assert would set an id Pi cannot resolve.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q267 — interactive/pi-default-deepseek — scope-change
+
+**Question:** Should the m2 gateway scripts also enforce Pi's new default, and should deepseek-v4.1-flash become a reasoning model for the other gateway clients too?
+**Options considered:** change only the Pi parts of `cliproxy-assert-pi` and `cliproxy-tier-host.py` / also flip deepseek's reasoning flag in `GW_MODELS` (omp, opencode, kimi, crush, openclaw, gemini, copilot)
+**Chosen:** `cliproxy-assert-pi` now enforces `defaultProvider: cliproxy`, `defaultModel: deepseek-v4.1-flash`, `defaultThinkingLevel: high`, and the same provider block as the payload (deepseek `reasoning: true`). `cliproxy-tier-host.py` checks that pair for its `pi=gw` status. `GW_MODELS` stays as it is.
+**Decided-by:** human (scope), agent (keeping GW_MODELS)
+**Justification:** Frank asked for both scripts after the 14:15 run on m2 had set mac-mini-m6 back to opus. Only Pi was tested with deepseek thinking. The grok section of `cliproxy-tier-host.py` notes that some parsers trip on Nickel's thinking blocks, so other clients need their own test before the flag changes.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q265 — that entry left these scripts unchanged and accepted the conflict.

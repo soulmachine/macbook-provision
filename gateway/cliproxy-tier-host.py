@@ -653,10 +653,11 @@ if which("openclaw"):
 # ---------- pi: converged by Ansible + cliproxy-assert-pi; just assert here ----------
 p = H / ".pi/agent/settings.json"
 if p.exists():
-    dm = json.loads(p.read_text()).get("defaultModel")
+    sd = json.loads(p.read_text())
+    dm = f"{sd.get('defaultProvider')}/{sd.get('defaultModel')}"
     auth = H / ".pi/agent/auth.json"
     au = json.loads(auth.read_text()) if auth.exists() else {}
-    status["pi"] = ("gw" if dm == "cliproxy/claude-opus-5-5" else f"DEFAULT={dm}") + (f" AUTH={list(au)}" if au else "")
+    status["pi"] = ("gw" if dm == "cliproxy/deepseek-v4.1-flash" else f"DEFAULT={dm}") + (f" AUTH={list(au)}" if au else "")
 
 print(f"{os.uname().nodename.split('.')[0]}: " + " ".join(f"{k}={v}" for k, v in status.items()))
 print("  changed: " + (", ".join(changed) or "nothing"))

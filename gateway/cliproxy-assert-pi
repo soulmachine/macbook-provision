@@ -35,7 +35,7 @@ want_provider = {
                {"id": "gpt-6-luna", "name": "GPT-6 Luna", "reasoning": True, "input": ["text", "image"], "contextWindow": 272000, "maxTokens": 32000},
                {"id": "glm-5.3-flash", "name": "GLM-5.3 Flash", "reasoning": False, "input": ["text"], "contextWindow": 1048576, "maxTokens": 32000},
                {"id": "qwen3.8-flash-next", "name": "Qwen3.8 Flash Next", "reasoning": False, "input": ["text"], "contextWindow": 262144, "maxTokens": 32000},
-               {"id": "deepseek-v4.1-flash", "name": "DeepSeek V4.1 Flash", "reasoning": False, "input": ["text"], "contextWindow": 1048576, "maxTokens": 32000},
+               {"id": "deepseek-v4.1-flash", "name": "DeepSeek V4.1 Flash", "reasoning": True, "input": ["text"], "contextWindow": 1048576, "maxTokens": 32000},
                {"id": "claude-opus-5"},
                {"id": "claude-sonnet-5"},
                {"id": "claude-haiku-4-5-20251001"}],
@@ -49,10 +49,12 @@ if md.setdefault("providers", {}).get("cliproxy") != want_provider:
     m.write_text(json.dumps(md, indent=2) + "\n")
     changed.append("models.json")
 
+# pi 1.3 needs provider and model as two keys; a combined "cliproxy/<id>" never resolves (Q266)
+want_settings = {"defaultProvider": "cliproxy", "defaultModel": "deepseek-v4.1-flash", "defaultThinkingLevel": "high"}
 s = d/"settings.json"
 sd = json.loads(s.read_text()) if s.exists() else {}
-if sd.get("defaultModel") != "cliproxy/claude-opus-5-5":
-    sd["defaultModel"] = "cliproxy/claude-opus-5-5"
+if any(sd.get(k) != v for k, v in want_settings.items()):
+    sd.update(want_settings)
     s.write_text(json.dumps(sd, indent=2) + "\n")
     changed.append("settings.json")
 
