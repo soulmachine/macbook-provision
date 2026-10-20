@@ -104,6 +104,9 @@ wrappers = {
     "codex-gw": hdr + ': "${CLIPROXY_API_KEY:?}"\n'
                 '# codex may live only in mise shims (dev-server-frank), which non-interactive shells lack.\n'
                 'command -v codex >/dev/null 2>&1 || export PATH="$HOME/.local/share/mise/shims:$PATH"\n'
+                '# Adds the gateway\'s Claude models to /model; cliproxy-tier writes the catalog.\n'
+                'cat="$HOME/.codex/cliproxy-models.json"\n'
+                '[ -f "$cat" ] && set -- -c "model_catalog_json=$cat" "$@"\n'
                 '# -p before the subcommand: `codex-gw --yolo exec …` still works.\nexec codex -p cliproxy --yolo -c model_reasoning_effort=medium "$@"\n',
     # backpass cannot route its acpx Claude passes itself; the agent pins live in ~/.config/backpass/config.json.
     "backpass-gw": hdr + ': "${CLIPROXY_API_KEY:?}" "${CLIPROXY_BASE_URL:?}"\n'
@@ -180,10 +183,31 @@ if p.exists():
     cand = ptext
     if tomllib.loads(cand).get("model_provider") != "cliproxy":
         cand = 'model_provider = "cliproxy"\n' + re.sub(r'^model_provider\s*=.*\n?', "", cand, flags=re.M)
-    cand = re.sub(r'^model\s*=\s*"claude-opus-5"', 'model = "claude-opus-5-5"', cand, count=1, flags=re.M)
+    # Default model is the Codex account's gpt-6-astra. Only the old Claude defaults are replaced, so a
+    # model picked with /model and saved to this profile survives later runs.
+    cand = re.sub(r'^model\s*=\s*"claude-opus-5(-5)?"', 'model = "gpt-6-astra"', cand, count=1, flags=re.M)
+    if "model" not in tomllib.loads(cand):
+        cand = re.sub(r'^(model_provider\s*=.*\n)', r'\1model = "gpt-6-astra"\n', cand, count=1, flags=re.M)
     if cand != ptext:
         assert tomllib.loads(cand)["model_provider"] == "cliproxy", "codex profile candidate invalid"
         write(prof, cand)
+    # Codex's /model lists only its OpenAI catalog. codex-gw passes this copy, which adds the gateway's
+    # Claude models cloned from gpt-5.5. Rebuilt each run so new OpenAI models still show up.
+    try:
+        cdx = which("codex") or str(H / ".local/share/mise/shims/codex")
+        cat = json.loads(subprocess.run([cdx, "debug", "models"], capture_output=True, text=True, timeout=60).stdout)
+        base = next(m for m in cat["models"] if m["slug"] == "gpt-5.5")
+    except Exception as e:  # keep the last good catalog; codex-gw skips the flag when there is none
+        print(f"  codex catalog: skipped ({type(e).__name__})")
+    else:
+        for i, (slug, name) in enumerate([("claude-fable-5-1", "Fable 5.1"), ("claude-opus-5-5", "Opus 5.5"),
+                                           ("claude-sonnet-5-5", "Sonnet 5.5"), ("claude-haiku-5-5", "Haiku 5.5")]):
+            cat["models"].append({**base, "slug": slug, "display_name": f"Claude {name}", "priority": 20 + i,
+                                  "description": f"Anthropic {name}, through the gateway",
+                                  "service_tiers": [], "additional_speed_tiers": [], "availability_nux": None, "upgrade": None})
+        cp, body = H / ".codex/cliproxy-models.json", json.dumps(cat, indent=1) + "\n"
+        if not cp.exists() or cp.read_text() != body:  # generated, so no .bak copy
+            cp.with_name(cp.name + ".tmp").write_text(body); os.replace(cp.with_name(cp.name + ".tmp"), cp); changed.append(str(cp))
     status["codex"] = "native" if (H / ".codex/auth.json").exists() else "gw-only(no-login)"
 
 # ---------- kimi: native default only where a login exists ----------

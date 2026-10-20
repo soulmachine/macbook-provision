@@ -2679,3 +2679,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Only `modelPicker` shows exactly the asked-for models, and only in gateway sessions; plain `claude` is untouched. Claude Code 2.1.304 rendered the rows without `behavesAs`, and `claude-gw -p --model gpt-6-astra` got a reply, both checked 2026-10-20 on m2. `modelPicker` from `--settings` wins over user settings outright, so a user-level `modelPicker` would be ignored in `claude-gw`.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q258 — interactive/codex-gw-claude-picker — tradeoff
+
+**Question:** Frank asked for claude-fable-5-1, claude-opus-5-5, claude-sonnet-5-5 and claude-haiku-5-5 in `codex-gw`'s `/model` menu, and for gpt-6-astra as `codex-gw`'s default. How?
+**Options considered:** a hand-kept catalog file / regenerate a catalog per host on each `cliproxy-tier` run; for the default, force `model` every run / replace only the old Claude default
+**Chosen:** `cliproxy-tier-host.py` writes `~/.codex/cliproxy-models.json` each run: `codex debug models` plus the four Claude entries cloned from the gpt-5.5 entry (no speed tiers). `codex-gw` passes `-c model_catalog_json=` only when that file exists. The cliproxy profile's `model = "claude-opus-5(-5)"` becomes `gpt-6-astra`, and a missing `model` is added; any other model is left alone.
+**Decided-by:** agent
+**Justification:** A per-run rebuild keeps new OpenAI models in the menu. Codex 0.163 validates catalog entries strictly, so cloning a real entry is the shortest valid shape. Checked on m2, 2026-10-20: the four rows render; `codex-gw` answers on gpt-6-astra by default and on claude-haiku-5-5 with `-m`; claude-sonnet-5-5 completed an apply_patch edit and a shell call through the gateway. Leaving any non-default `model` alone keeps a choice saved from `/model`.
+**Outcome:** applied
+**Ref:** (pending)
