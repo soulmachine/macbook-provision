@@ -10,8 +10,8 @@
 set -uo pipefail
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 
-# Every host that has pi. dev-server-frank is excluded: Claude Code only, no pi binary.
-read -r -a HOSTS <<<"${PI_HOSTS:-mac-mini-m2 macbook-air mac-mini-2018-omarchy macbook-pro-nickel mac-studio-m3 archs-mac-mini dev-server-frank-lume mac-mini-m6}"
+# Every host that has pi. dev-server-frank (which now has pi) and supermicro joined 2026-10-20 (Q262).
+read -r -a HOSTS <<<"${PI_HOSTS:-mac-mini-m2 macbook-air mac-mini-2018-omarchy macbook-pro-nickel mac-studio-m3 archs-mac-mini dev-server-frank dev-server-frank-lume supermicro mac-mini-m6}"
 KEYMAP="$HOME/.cli-proxy-api/host-keys.txt"
 LOG="$HOME/Library/Logs/cliproxy-assert-pi.log"
 mkdir -p "$(dirname "$LOG")"

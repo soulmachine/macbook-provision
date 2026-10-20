@@ -2719,3 +2719,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Discovery cannot work: the gateway's /v1/models gives Anthropic-format clients disguised non-Claude ids (`claude-fable-5-dd-artsa-6-tpg`). Nickel limits are vLLM's `max_model_len` (glm and deepseek 1048576, qwen 262144, read 2026-10-20); the Claude rows keep the 200K/32K the CLIs already used, GPT 272K/32K. grok rewrites `[model."x"]` as `[model.x]`, so its managed-table check now compares names without quotes. grok's non-Claude models use `chat_completions`: through the gateway its `responses` parser fails on a `response.metadata` event (this had broken gpt-6.1-sol in grok already) and its `messages` parser on Nickel's unsigned thinking blocks. omp and hermes changes are read back by the CLI and reverted if it rejects them.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q262 — interactive/assert-pi-linux-hosts — deviation
+
+**Question:** The Q261 rollout check found pi on supermicro and dev-server-frank still without the 6 non-Claude gateway models: `cliproxy-assert-pi` skipped both (its comment said dev-server-frank had no pi; supermicro was never listed), and no playbook had refreshed their `models.json`. Add them?
+**Options considered:** leave them to their next ubuntu-provision play / add both to `cliproxy-assert-pi`'s host list
+**Chosen:** Add both to the default `HOSTS` list; the hourly job now covers 10 hosts.
+**Decided-by:** agent
+**Justification:** dev-server-frank runs no playbook, and supermicro's `models.json` dated from 2026-10-11, so waiting would leave them behind. The job writes only pi's `cliproxy` provider and `defaultModel`, which both hosts already used. Applied 2026-10-20; both now list all 10 models.
+**Outcome:** applied
+**Ref:** (pending)
