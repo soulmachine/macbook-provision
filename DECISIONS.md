@@ -2779,7 +2779,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (scope), agent (keeping GW_MODELS)
 **Justification:** Frank asked for both scripts after the 14:15 run on m2 had set mac-mini-m6 back to opus. Only Pi was tested with deepseek thinking. The grok section of `cliproxy-tier-host.py` notes that some parsers trip on Nickel's thinking blocks, so other clients need their own test before the flag changes.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 648c30f
 **Supersedes:** Q265 — that entry left these scripts unchanged and accepted the conflict.
 
 ## Q268 — interactive/gateway-policy — deviation
@@ -2790,7 +2790,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (the policy and the opencode class), agent (the separate homes, keeping user-picked gateway models, the effort keys per CLI)
 **Justification:** Frank set the classes and defaults in this session. A peer session relayed opencode's class and the Cursor scope, and Frank confirmed both here. Every CLI on mac-mini-m6 answered a test prompt through its route. This reverses coding-agent Q352 (GATEWAY_ONLY), and Q374/Q401 for grok and gemini, so coding-agent's own records need the same note. Known gaps are listed in the doc: the oh-my-openagent plugin keeps opencode's agents on Claude (Frank will fix that later), the `-gw` homes lack the native homes' MCP servers and hooks, and gemini-gw repeats deepseek's answer.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 84985ec, b315a69, 94d749a
 **Supersedes:** Q267 — cliproxy-tier-host.py now also sets every other CLI's default, including deepseek's reasoning flag in GW_MODELS, which Q267 left alone.
 
 ## Q269 — interactive/gw-wrappers — tradeoff
@@ -2801,7 +2801,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** One place covers the roles, the hand-added servers (google-workspace in gemini, browseros-neo in grok) and the hosts that run no playbook (dev-server-frank), and no role has to know the `-gw` paths. The cost: a change to a native home reaches its `-gw` home only at the next `cliproxy-tier` run. On mac-mini-m6, kimi-gw listed the context-mode `ctx_*` tools, gemini-gw loaded context-mode and google-workspace, and grok-gw listed browseros-neo.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** a118230
 
 ## Q270 — interactive/gw-wrappers — deviation
 
@@ -2811,7 +2811,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (keep the picks), agent (how)
 **Justification:** crush loads the global `crushrc` above its data-dir state, so any `model large` line there would override a pick on every start, not only when the script runs. A test with the line removed and the default in the data-dir file answered from `deepseek-v4.1-flash`, per crush's session DB. On mac-mini-m6, the pi role kept `glm-5.3-flash`, replaced `claude-opus-5-5`, and its next run changed nothing. A test copy of the `cliproxy-assert-pi` merge did the same, and also set thinking back to high. kimi-gw and crush kept `glm-5.3-flash` through a run. The same pi role change went to ubuntu-provision and omarchy-provision.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** ae8ab2d, 7f11561, 47b6cda
 
 ## Q271 — interactive/agent-usage-move — deviation
 
@@ -2821,7 +2821,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** Only Omarchy has the Agents bar. The probe still runs on m2, which holds the tokens, but the Omarchy host now starts it over ssh.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 7d594d1
 
 ## Q272 — interactive/remove-assert-pi — deviation
 
@@ -2831,4 +2831,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (delete), agent (the coverage check)
 **Justification:** All 11 hosts in `PI_HOSTS` have a provisioning clone with the `pi` role, and m6's nightly `update-packages` task names all 11. The m2 log showed no fix since 2026-09-13 except on days the pi policy changed. The script kept a second copy of the provider block that each pi change had to edit. Cost: a pi policy change now reaches a host at its next nightly run, not within an hour.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 15e3580, bdd796a
+
+## Q273 — interactive/pi-models-from-gw-models — deviation
+
+**Question:** pi's gateway model list lived in `roles/pi/files/agent/models.json` in all three provisioning repos, apart from `GW_MODELS`, which builds every other CLI's list. How should pi share that table?
+**Options considered:** keep the role files and add a check that they match `GW_MODELS` / generate the role files from `GW_MODELS` / let `cliproxy-tier-host.py` write pi's `cliproxy` provider, and have the role keep it
+**Chosen:** `cliproxy-tier-host.py` writes `providers.cliproxy` in `~/.pi/agent/models.json` from `GW_MODELS`. In all three repos, `models.json` moved to `roles/pi/files/` without the `cliproxy` provider, and a new task writes it with the provider already on disk kept, the same way `settings.json` keeps a picked model. The pi-only legacy ids `claude-opus-5`, `claude-sonnet-5` and `claude-haiku-4-5-20251001` are gone, as they are for the other CLIs.
+**Decided-by:** human (share the table), agent (how)
+**Justification:** A check across repos needs all three clones on one host, and a generator still leaves three copies to commit. With the script as the only writer, a model change is one edit plus `cliproxy-tier`. On mac-mini-m6: the role kept the provider, the script rewrote it from `GW_MODELS`, a second script run changed nothing, a second role run changed nothing, and `pi -p` answered. Cost: a new host has no pi gateway provider until its first `cliproxy-tier` run, which it needs for its gateway key anyway.
+**Outcome:** applied
+**Ref:** (this commit)

@@ -770,7 +770,17 @@ if which("openclaw"):
             run("openclaw", "gateway", "restart")
         status["openclaw"] = "NOT-parsed" if d is None else ("gw" if subset(d, want) else "NOT-gw")
 
-# ---------- pi: converged by Ansible; just assert here ----------
+# ---------- pi: the cliproxy provider from GW_MODELS; the pi role sets the rest and keeps it (Q273) ----------
+p = H / ".pi/agent/models.json"
+if p.parent.exists():
+    d = json.loads(p.read_text()) if p.exists() else {}
+    new = json.loads(json.dumps(d))
+    new.setdefault("providers", {})["cliproxy"] = {
+        "baseUrl": BASE, "api": "anthropic-messages", "apiKey": "$CLIPROXY_API_KEY",
+        "models": [{"id": i, "name": n, "reasoning": r, "input": ["text", "image"] if img else ["text"],
+                    "contextWindow": c, "maxTokens": o} for i, n, c, o, r, img in GW_MODELS]}
+    if new != d:
+        write(p, json.dumps(new, indent=2) + "\n")
 p = H / ".pi/agent/settings.json"
 if p.exists():
     sd = json.loads(p.read_text())
