@@ -2096,7 +2096,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** Frank asked to update the codex role after the check. Homebrew's `chatgpt` cask declares `arch arm: "arm64", intel: "x64"` with a sha256 for each, and `depends_on macos: :ventura` only; its x64 zip (26.1002.52244) returns 200, and its central directory lists `ChatGPT.app/Contents/Resources/codex-cli/bin/codex`, the path `codex_chatgpt_cli` names. mac-mini-2018 is x86_64 on macOS 15.8.1. Putting the cask in the codex role keeps the dependency where it is used, and a single-role codex run now fixes a host that lacks the app. `upgrade_all` stays off on x86_64; the cask has `auto_updates`, so the app updates itself there too.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** f652ea8, ef51c12
 **Supersedes:** Q199 — its premise that ChatGPT.app has no Intel build was wrong.
 
 ## Q201 — interactive/backpass-gw — tradeoff
@@ -2107,7 +2107,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** The wrappers already live here, and key rotation already rewrites them. backpass finds the repo root itself, so the old script's `cd` was the only repo-specific line. backpass runs only on m6, but `backpass` sits in mise's Node global `bin`, which a non-interactive ssh shell may lack (the "resolve binaries on disk" lesson), so a `which` gate could skip m6 itself. A 4-line wrapper on hosts without backpass costs nothing; there it fails with "command not found". The agent pins are not here: they live in m6's `~/.config/backpass/config.json` (personal-agent Q96).
 **Outcome:** applied on m6 only, by running this script there: it changed only `~/.local/bin/backpass-gw`. Other hosts get the wrapper at their next `cliproxy-tier` run. Verified: a `backpass-gw analyze` run reached the gateway as mac-mini-m6.
-**Ref:** (pending); personal-agent Q96, coding-agent Q277
+**Ref:** 13c10f8; personal-agent Q96, coding-agent Q277
 
 ## Q202 — interactive/test-audit-skill — tradeoff
 
@@ -2117,7 +2117,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** Research found no skill that beats openclaw's at its job. gstack, notque, AsafDafna and T0mSIlver all derive from it. openclaw's copy calls repo-only scripts (`run-vitest.mjs`, `check-changed.mjs`, `$crabbox`, `$autoreview`). T0mSIlver keeps its rules, removes that tooling, and adds superpowers' and mattpocock's authoring rules. gstack's version needs gstack itself. supertest and mutation-testing make tests stronger; they do not prune them. The skill goes through the role, not a one-off `skills add`, so every host gets it and the orphan detector stays quiet. Risk accepted: upstream has 1★, and the nightly `skills add` takes whatever it pushes.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 779e2b7
 
 ## Q203 — interactive/agents-md-split — gate-resolution
 
@@ -2127,7 +2127,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** Measured on mac-mini-m2 over non-interactive ssh: native `claude -p` printed "Not logged in · Please run /login", while `claude-gw -p` answered. `claude-gw` exists on all eight playbook hosts. It is installed by `gateway/cliproxy-tier`, not by this playbook, so a fresh host fails this task until `cliproxy-tier <host>` has run on m2. That failure is loud, and the role comment records it.
 **Outcome:** applied. `ansible localhost -m ansible.builtin.command -a 'claude-gw -p …'` over ssh on m2 returned OK. The role alone on m6 converged: `changed=0 failed=0` (install and update skipped, as expected on a current host).
-**Ref:** (pending)
+**Ref:** 3cce051
 
 ## Q204 — interactive/agents-md-split — deviation
 
@@ -2137,7 +2137,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** Frank reviewed the proposal and answered its questions without objecting to the layout. `roles/<name>/README.md` is Ansible's convention for role docs. The heading "Self-update tasks: diff state, don't grep output" stays in the root because about 20 role comments cite it there. The "in N places across M roles" sentence stays in the root because `scripts/check-home-lookup-count.sh` reads it from AGENTS.md.
 **Outcome:** applied. All pre-commit hooks pass (ansible-lint, README role table, lookup count 99/27, skills orphan self-test).
-**Ref:** (pending)
+**Ref:** 3cce051
 
 ## Q205 — interactive/agents-md-refactor — tradeoff
 
@@ -2147,7 +2147,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent (Frank chose the role over agent-sync)
 **Justification:** The role is the only place that installs hermes, so it is the one place sure to run on a new hermes host. agent-sync is a separate tool with its own release cycle. MacBooks get no hermes from this playbook, so the gate loses nothing. Verified: a scratch-HOME run covered all three cases (no shared file: skipped; regular SOUL.md: kept as a backup, then linked; second run: no change). Two include_role runs on m6 gave 1 change, then 0. The one change was `hermes update` moving the checkout at 13:21, and the existing link kept its 12:57 timestamp, so the link also survives a real update.
 **Outcome:** applied. All pre-commit hooks pass; the lookup count is now 103/27.
-**Ref:** (pending)
+**Ref:** 3fa7eb9
 
 ## Q206 — interactive/guide-review — gate-resolution
 
@@ -2198,7 +2198,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** All seven Macs carry the identical template with those three anchors (probed 2026-10-11), so the regexps match everywhere; anchoring on the template rather than `\A` keeps anything a host put above it, and lets the BOF line go in first so `replace` always has a file. Verified on m6: 137 lines → 33, every line after the template kept, second run changed nothing.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 2619275
 
 ## Q211 — interactive/omz-to-shell-omarchy — deviation
 
@@ -2208,7 +2208,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** Each was shown by a probe (`zsh -c` one-liners, `pgrep -af` vs `-lf` on macOS) rather than guessed, and the file stays a line-for-line diff against `/usr/share/omarchy/default/bash/fns` for the next refresh. `tsl 3`, `tdl` and `hsl 3` were run on m6 after the port.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 2619275
 
 ## Q212 — interactive/omz-to-shell-omarchy — tradeoff
 
@@ -2218,7 +2218,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** The plan named exactly that line (grill Q6); `uvx` is a thin alias for `uv tool run` and its completion is a second eval on every shell start for a command rarely tab-completed. The aliases were never asked for. Cheap to add later.
 **Outcome:** assumed
-**Ref:** (pending)
+**Ref:** 2619275
 
 ## Q213 — interactive/omz-to-shell-omarchy — gate-resolution
 
@@ -2228,7 +2228,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** Bisected 2026-10-11: it comes from `fzf --zsh`, whose key-binding and completion halves each save the shell's options and restore them with `setopt`, and `zle` cannot be turned on without a tty. Under a pseudo-terminal (`script -q /dev/null zsh -i -c exit`) the count is zero, so no terminal user sees it, and the playbook no longer runs any `zsh -ic` task now that the oh-my-zsh plugin enables are gone. A guard would hide fzf from exactly the shells that need no bindings and add a line to maintain for a cosmetic message.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 2619275
 
 ## Q214 — interactive/m3-codex-hang — gate-resolution
 
@@ -2238,7 +2238,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (the three measures); agent (their shape)
 **Justification:** The difference is the quarantine flag byte, not the host's session or the binary: m6's attribute was `01c1` at install time, the user-approved bit 0x0040 carried over from a previously approved ChatGPT.app, while m3's was `0181`, never approved, so every upgrade there prompts. Both Macs had a logged-in console session. A stack sample of the hung process sat at `_dyld_start` with no sockets, the point where macOS evaluates a quarantined binary. Writing the bit alone did not release it, as Q198 predicted: Gatekeeper queues launches behind the open prompt, and only killing the prompt agent cleared it. `killall` was ignored; `kill -9` worked.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 9fedffb
 
 ## Q215 — interactive/m2-java-crash — tradeoff
 
@@ -2248,7 +2248,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (fix the role for m2); agent (the exact pin and the hostname key)
 **Justification:** Every recent JDK build crashes on m2 and none does on the two Macs that run macOS 27.0.1, so the fault is the host, most likely its macOS 27.0 (26A428), which has the 27.0.1 update pending with a restart. That restart touches the gateway host and is Frank's call, so the role gets the smallest change that makes the sweep green and leaves a working `java` on m2: an exact pin `mise upgrade` cannot move. The hostname key is the first in this repo; the host-facts gates cannot express "this one Mac". Remove the entry after the macOS update if 25 runs.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 0b62f62
 
 ## Q216 — interactive/dev-server-frank-bash — bugfix
 
@@ -2462,7 +2462,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** The apple-tools README and Formula/apple-tools.rb install `apple-calendar`, `apple-contacts`, `apple-mail`, `apple-maps` and `apple-phone` to bin. No other project found on GitHub, brew or npm ships those names. The formula also ships `reminders`, `apple-notes`, `apple-messages` and `apple-index`, which overlap remindctl, memo and imsg; they are harmless extras. The formula's bundled Claude skills are not linked, since the user did not ask for them.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** cd70608
 
 ## Q237 — interactive/browseros-neo — gate-resolution
 
@@ -2493,7 +2493,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** user (the unattended upgrade; the rest agent)
 **Justification:** Measured on mac-mini-m6 2026-10-12: Ego Lite's first-run onboarding replaces `~/.agents/skills/ego-browser` and the Claude and Hermes farm links with symlinks to `~/.local/share/ego/ego-skills`, a version-matched copy inside the app bundle, so a repeated `skills add` would write through into the bundle, and the app keeps the skill current anyway; `install.sh` ends with `exec open` even when the app exists, so unguarded it would pop the browser nightly; a current install prints "ego lite is already up to date." and exits 0 in under a second. Frank chose the unattended upgrade at plan review, which supersedes the "only with Frank's approval" rule in coding-agent docs/ego-lite.md; the browser restarts after a real upgrade, so a task in flight at 02:00 is lost.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** a361bba
 
 ## Q240 — interactive/browseros-neo — deviation
 
@@ -2514,7 +2514,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** The sentinel is this role's own string, not a phrase of upstream's output, so the match cannot report a phantom. Measured on m6: onboarded hosts answer `1` on stderr under Ansible's `command` module and on stdout in a terminal; the six fresh hosts answer the onboarding message on both runs. The probe also reopens the setup window when onboarding is pending, which the deferred failure asks the person to click through anyway.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 40cfa9e
 
 ## Q242 — interactive/bitwarden — gate-resolution
 
@@ -2647,7 +2647,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** The user asked for the Coordinator only. The wrapper already handles herdr's resume path the same way. The herdr-projects doc `checked-on-herdr.md` says `agent start` types its command into the shell. The board's `--effort` comes after `claude-gw`'s `--effort high`, so the board's setting wins. Verified on mac-mini-m6: `coordinator new` started `claude --dangerously-skip-permissions --effort high … --model opus --effort medium` in the chat folder, with `ANTHROPIC_BASE_URL` set to the gateway. Limit: `claude-gw` always skips permission prompts, so `coordinator.access ask` has no effect while this is in place.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 705d71c
 
 ## Q255 — interactive/herdr-codex-gateway — tradeoff
 
@@ -2657,7 +2657,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** Codex writes the provider in its `session_meta` line, so `codex-gw` needs no hook. The board starts codex with `--dangerously-bypass-approvals-and-sandbox`, and `codex-gw` adds `--yolo`, which is the same flag. Codex 0.163 refuses the flag twice ("cannot be used multiple times"). Tested in zsh and bash with stubs: a cliproxy resume goes to the gateway, an openai or unknown id stays native, a Coordinator launch goes to the gateway without the duplicate flag, and nothing changes outside herdr. A real `codex-gw` run with the board's flags printed its version. The `find` walks every session folder on each herdr codex resume. That is fine at today's count and can be slow with many thousands of sessions.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 705d71c
 
 ## Q256 — interactive/grok-bot-cliproxy-tier — deviation
 
@@ -2667,7 +2667,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** Frank asked for it, 2026-10-18. grok-bot is not yet set up for the gateway: m2 has no inbound key for it in `host-keys.txt` or the config's `api-keys`, no routing-sidecar row, and no `com.cliproxy.tunnel.grok-bot` LaunchAgent, and its `~/.bashrc` has no `CLIPROXY_*`. Until that is done, each run prints `[grok-bot] FAILED` (ssh 255 while it is down) and goes on to the next host, so the other hosts are unaffected.
 **Outcome:** applied (list only); gateway onboarding pending
-**Ref:** (pending)
+**Ref:** 2ba971e
 **Supersedes:** coding-agent Q492 — only its "Not added: cliproxy-tier" part
 
 ## Q257 — interactive/claude-gw-gpt-picker — tradeoff
@@ -2678,7 +2678,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** Only `modelPicker` shows exactly the asked-for models, and only in gateway sessions; plain `claude` is untouched. Claude Code 2.1.304 rendered the rows without `behavesAs`, and `claude-gw -p --model gpt-6-astra` got a reply, both checked 2026-10-20 on m2. `modelPicker` from `--settings` wins over user settings outright, so a user-level `modelPicker` would be ignored in `claude-gw`.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 8725419
 
 ## Q258 — interactive/codex-gw-claude-picker — tradeoff
 
@@ -2688,7 +2688,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** A per-run rebuild keeps new OpenAI models in the menu. Codex 0.163 validates catalog entries strictly, so cloning a real entry is the shortest valid shape. Checked on m2, 2026-10-20: the four rows render; `codex-gw` answers on gpt-6-astra by default and on claude-haiku-5-5 with `-m`; claude-sonnet-5-5 completed an apply_patch edit and a shell call through the gateway. Leaving any non-default `model` alone keeps a choice saved from `/model`.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 86f717f, 3b0f292
 
 ## Q259 — interactive/claude-gw-nickel-rows-and-default — tradeoff
 
@@ -2698,7 +2698,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** The settings key outranks a `/model` default saved in user settings but still yields to an explicit `--model`, and a duplicate `--model` flag could clash. DeepSeek V4.1 accepts only low/high/xhigh/max; the gateway rule fixes it for every client without changing other models' effort. Checked on m2, 2026-10-20: the default session ran on claude-opus-5-5; all three Nickel models answered through `claude-gw`; glm-5.3-flash completed a Bash tool call; the rule hot-reloaded ("payload.override: 0 -> 1 rules").
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 1a954d4
 
 ## Q260 — interactive/codex-gw-nickel-rows — tradeoff
 
@@ -2708,7 +2708,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** On m2, 2026-10-20, all three answered through `codex-gw` without per-model overrides; glm-5.3-flash ran a shell command; DeepSeek's medium effort is already mapped to high by the gateway rule from Q259. The rows render as 13–15 after the Claude rows.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** e5137a3
 
 ## Q261 — interactive/gateway-models-every-cli — tradeoff
 
@@ -2718,7 +2718,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (copilot, pi, gemini choices) and agent (table, per-CLI shapes)
 **Justification:** Discovery cannot work: the gateway's /v1/models gives Anthropic-format clients disguised non-Claude ids (`claude-fable-5-dd-artsa-6-tpg`). Nickel limits are vLLM's `max_model_len` (glm and deepseek 1048576, qwen 262144, read 2026-10-20); the Claude rows keep the 200K/32K the CLIs already used, GPT 272K/32K. grok rewrites `[model."x"]` as `[model.x]`, so its managed-table check now compares names without quotes. grok's non-Claude models use `chat_completions`: through the gateway its `responses` parser fails on a `response.metadata` event (this had broken gpt-6.1-sol in grok already) and its `messages` parser on Nickel's unsigned thinking blocks. omp and hermes changes are read back by the CLI and reverted if it rejects them.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 23917ba
 
 ## Q262 — interactive/assert-pi-linux-hosts — deviation
 
@@ -2728,7 +2728,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** dev-server-frank runs no playbook, and supermicro's `models.json` dated from 2026-10-11, so waiting would leave them behind. The job writes only pi's `cliproxy` provider and `defaultModel`, which both hosts already used. Applied 2026-10-20; both now list all 10 models.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 2783afd
 
 ## Q263 — interactive/grokbot-box-gateway — deviation
 
@@ -2738,7 +2738,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** Checked 2026-10-20: from the box, `/v1/models` lists 36 ids and a claude-haiku-5-5 message answers, attributed to 127.0.0.11 in main.log; `cliproxy-routing-sync` reports 11 rows for 11 hosts; `cliproxy-tier grokbot-box` runs clean. The box has no agent CLIs yet (Debian 13, ansible + mise + python3), so it only gets the always-written wrappers until provisioning installs some; the next tier run then configures them.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 9e91837
 **Supersedes:** Q256 — its "gateway onboarding pending" part
 
 ## Q264 — interactive/grokbot-box — scope-change
@@ -2759,7 +2759,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** Frank chose both. A test request through the gateway (Anthropic messages API, thinking enabled) returned a thinking block from deepseek-v4.1-flash, so the flag was wrong. Known conflict: macbook-provision `gateway/cliproxy-assert-pi` still re-asserts `cliproxy/claude-opus-5-5` and `reasoning: false` every hour, and `cliproxy-tier-host.py` reports pi as `DEFAULT=…`. Until those scripts change, the playbook and the hourly job undo each other's change on each host.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 51c851a
 
 ## Q266 — interactive/pi-default-deepseek — deviation
 
@@ -2769,7 +2769,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** Pi's `dist/core/model-resolver.js` (step 2, "saved default") uses the saved default only when both `defaultProvider` and `defaultModel` are set, and it looks the model up by bare id. A `pi -p --mode json` run afterwards answered from `cliproxy`/`deepseek-v4.1-flash`, with a thinking block. So the earlier `cliproxy/claude-opus-5-5` value probably never took effect either. `cliproxy-assert-pi` and `cliproxy-tier-host.py` still write and check the combined form, so the hourly re-assert would set an id Pi cannot resolve.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 51c851a
 
 ## Q267 — interactive/pi-default-deepseek — scope-change
 
