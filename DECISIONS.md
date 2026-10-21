@@ -2812,3 +2812,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** crush loads the global `crushrc` above its data-dir state, so any `model large` line there would override a pick on every start, not only when the script runs. A test with the line removed and the default in the data-dir file answered from `deepseek-v4.1-flash`, per crush's session DB. On mac-mini-m6, the pi role kept `glm-5.3-flash`, replaced `claude-opus-5-5`, and its next run changed nothing. A test copy of the `cliproxy-assert-pi` merge did the same, and also set thinking back to high. kimi-gw and crush kept `glm-5.3-flash` through a run. The same pi role change went to ubuntu-provision and omarchy-provision.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q271 — interactive/agent-usage-move — deviation
+
+**Question:** `gateway/cliproxy-agent-usage`, its LaunchAgent and `gateway/omarchy/` serve only Omarchy's Agents bar. Should they stay here?
+**Options considered:** keep them here, with m2 pushing / move them to omarchy-provision, with the Omarchy host pulling
+**Chosen:** Moved to omarchy-provision's `omarchy-cliproxy` role (its DECISIONS Q35). The files are deleted here, and m2's `com.cliproxy.agent-usage` job is unloaded.
+**Decided-by:** human
+**Justification:** Only Omarchy has the Agents bar. The probe still runs on m2, which holds the tokens, but the Omarchy host now starts it over ssh.
+**Outcome:** applied
+**Ref:** (pending)
