@@ -26,8 +26,6 @@ ssh -o BatchMode=yes -o ConnectTimeout=15 <host> \
   (`update-packages` on mac-mini-m6) therefore runs the playbook on each host over ssh.
 - **Self-update tasks: diff state, don't grep output.** A task that runs a tool's own updater measures
   a version, checksum or ledger before and after the call, and sets `changed_when` on the difference.
-- **`gateway/` is live on mac-mini-m2.** m2's `~/.local/bin/cliproxy-*` are symlinks into this
-  checkout, so an edit takes effect there at once. The playbook never runs them.
 
 ## Read before you act
 
@@ -36,5 +34,5 @@ ssh -o BatchMode=yes -o ConnectTimeout=15 <host> \
 | add a role, or write or change any role's tasks | [docs/writing-roles.md](docs/writing-roles.md) |
 | gate a role on `mac_is_always_on`, or touch `host-facts` | [docs/host-facts.md](docs/host-facts.md) |
 | touch `.env`, a secret, `GITHUB_TOKEN`, or the `dotenv` or `bun` role | [docs/secrets.md](docs/secrets.md) |
-| change which provider, model, effort or `-gw` wrapper a coding CLI gets in `gateway/` | [docs/gateway-policy.md](docs/gateway-policy.md) |
+| change which provider, model, effort or `-gw` wrapper a coding CLI gets | [~/coding-agent/devops/cliproxyapi/gateway-policy.md](~/coding-agent/devops/cliproxyapi/gateway-policy.md) |
 | change agent-reach, context-mode, paseo, ponytail, tailscale or typesafe | that role's `roles/<name>/README.md` |

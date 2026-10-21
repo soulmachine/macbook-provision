@@ -2842,3 +2842,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** A check across repos needs all three clones on one host, and a generator still leaves three copies to commit. With the script as the only writer, a model change is one edit plus `cliproxy-tier`. On mac-mini-m6: the role kept the provider, the script rewrote it from `GW_MODELS`, a second script run changed nothing, a second role run changed nothing, and `pi -p` answered. Cost: a new host has no pi gateway provider until its first `cliproxy-tier` run, which it needs for its gateway key anyway.
 **Outcome:** applied
 **Ref:** (this commit)
+
+## Q274 — interactive/gateway-scripts-move — deviation
+
+**Question:** Frank asked to move `gateway/` (the four `cliproxy-*` scripts) to `~/coding-agent/devops/`. Should `docs/gateway-policy.md`, the policy those scripts apply, move with them?
+**Options considered:** move the scripts only / move the scripts and the policy doc
+**Chosen:** Both moved to `~/coding-agent/devops/cliproxyapi/`, beside the gateway upgrade script. m2's `~/.local/bin/cliproxy-*` symlinks now point there. The gemini, grok and pi role comments and the `AGENTS.md` row point to the new policy path, and the "`gateway/` is live on mac-mini-m2" rule is now in that folder's README.
+**Decided-by:** human
+**Justification:** The scripts run fleet operations on m2 and the playbook never runs them, so they belong with the other fleet tools in coding-agent. The folder layout is coding-agent Q568. Verified on m2 from the new path: `cliproxy-tier mac-mini-m2` exits 0 with "changed: nothing", and `cliproxy-routing-sync` and `cliproxy-usage` run. Their history before the move stays in this repo's git log.
+**Outcome:** applied
+**Supersedes:** Q184 — only where the scripts are versioned. The symlink design stays.
+**Ref:** (this commit); coding-agent 5792854
