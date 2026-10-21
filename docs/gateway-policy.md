@@ -1,8 +1,8 @@
 # Gateway policy for coding CLIs
 
 This is the target policy for how each coding CLI uses CLIProxyAPI, the gateway on mac-mini-m2.
-`gateway/cliproxy-tier-host.py` applies it on every host, and `gateway/cliproxy-assert-pi`
-re-asserts pi. Frank set it on 2026-10-20 (Q268 in `DECISIONS.md`).
+`gateway/cliproxy-tier-host.py` applies it on every host, and the `pi` role sets pi.
+Frank set it on 2026-10-20 (Q268 in `DECISIONS.md`).
 
 ## Class 1: CLIs with their own vendor login
 
@@ -32,7 +32,7 @@ pi, omp, hermes, crush, openclaw, opencode.
   the user picked a different gateway model, the script keeps that model. Effort is set back to high
   either way. For crush, the models live in its data-dir state, `~/.local/share/crush/crush.json`,
   where crush saves a pick. A `model large` line in `crushrc` would outrank that pick on every start.
-  For pi, both the `pi` role and `gateway/cliproxy-assert-pi` keep a pick.
+  For pi, the `pi` role keeps a pick.
 
 ## How the script keeps class 1 native
 

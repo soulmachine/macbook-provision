@@ -2822,3 +2822,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Only Omarchy has the Agents bar. The probe still runs on m2, which holds the tokens, but the Omarchy host now starts it over ssh.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q272 — interactive/remove-assert-pi — deviation
+
+**Question:** `gateway/cliproxy-assert-pi` re-asserted pi's gateway config hourly from m2. The `pi` role clobbering that config was fixed in Q77. Does the job still earn its place?
+**Options considered:** keep it as an hourly safety net / cut `PI_HOSTS` to hosts no playbook covers / delete it
+**Chosen:** Deleted the script, m2's `com.cliproxy.assert-pi` LaunchAgent and its `~/.local/bin` symlink, and the references in `cliproxy-tier-host.py`, `docs/gateway-policy.md`, `~/.agents/docs/gateway-ops.md` and the three `pi` roles.
+**Decided-by:** human (delete), agent (the coverage check)
+**Justification:** All 11 hosts in `PI_HOSTS` have a provisioning clone with the `pi` role, and m6's nightly `update-packages` task names all 11. The m2 log showed no fix since 2026-09-13 except on days the pi policy changed. The script kept a second copy of the provider block that each pi change had to edit. Cost: a pi policy change now reaches a host at its next nightly run, not within an hour.
+**Outcome:** applied
+**Ref:** (pending)

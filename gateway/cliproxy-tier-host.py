@@ -770,7 +770,7 @@ if which("openclaw"):
             run("openclaw", "gateway", "restart")
         status["openclaw"] = "NOT-parsed" if d is None else ("gw" if subset(d, want) else "NOT-gw")
 
-# ---------- pi: converged by Ansible + cliproxy-assert-pi; just assert here ----------
+# ---------- pi: converged by Ansible; just assert here ----------
 p = H / ".pi/agent/settings.json"
 if p.exists():
     sd = json.loads(p.read_text())
