@@ -777,7 +777,10 @@ if p.exists():
     dm = f"{sd.get('defaultProvider')}/{sd.get('defaultModel')}"
     auth = H / ".pi/agent/auth.json"
     au = json.loads(auth.read_text()) if auth.exists() else {}
-    status["pi"] = ("gw" if dm == "cliproxy/deepseek-v4.1-flash" else f"DEFAULT={dm}") + (f" AUTH={list(au)}" if au else "")
+    # Same rule as roles/pi's pi_keep: any bare cliproxy model but the old default is on the gateway.
+    m = sd.get("defaultModel") or ""
+    on_gw = sd.get("defaultProvider") == "cliproxy" and m and "/" not in m and m != "claude-opus-5-5"
+    status["pi"] = ("gw" if on_gw else f"DEFAULT={dm}") + (f" AUTH={list(au)}" if au else "")
 
 print(f"{os.uname().nodename.split('.')[0]}: " + " ".join(f"{k}={v}" for k, v in status.items()))
 print("  changed: " + (", ".join(changed) or "nothing"))
