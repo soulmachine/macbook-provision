@@ -2883,7 +2883,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** Frank named the repo when asked. Its package.json has no `prepare` script, so pnpm installs it without a build approval.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 75c7e23 (macbook), 592c6a4 (ubuntu), c13d6f0 (omarchy)
 
 ## Q278 — interactive/dsh-role — tradeoff
 
@@ -2893,7 +2893,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** Most of these plugins are 0.x, so plain `update` would almost never move them, which defeats the request. The cost is that `@nanmicoder/dsh-agent-teams` follows its `latest` tag instead of staying on the version first installed; pnpm still writes it as an exact version. pnpm's default one-day minimumReleaseAge still holds back a brand-new release.
 **Outcome:** assumed
-**Ref:** (pending)
+**Ref:** 75c7e23 (macbook), 592c6a4 (ubuntu), c13d6f0 (omarchy)
 
 ## Q279 — interactive/dsh-role — gate-resolution
 
@@ -2903,4 +2903,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** Frank chose "keep trying, warn". The exemption carries dsh's own crash and data-loss warning, and it lapses at the next release anyway.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 75c7e23 (macbook), 592c6a4 (ubuntu), c13d6f0 (omarchy)
