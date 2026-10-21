@@ -2853,3 +2853,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Supersedes:** Q184 — only where the scripts are versioned. The symlink design stays.
 **Ref:** (this commit); coding-agent 5792854
+
+## Q275 — interactive/leave-yolo-aliases — deviation
+
+**Question:** Q270 changed `pi-yolo` from `--thinking max` to `--thinking high` and removed `pi-yolo-kimi` (its `--model k3` names no pi model), reading the gateway policy's "effort is always high" as covering every alias. Do the `*-yolo` aliases fall under the gateway policy?
+**Options considered:** keep the Q270 alias changes / revert them
+**Chosen:** Reverted in all three provisioning repos: `pi-yolo` is `pi --thinking max --approve` again, and `pi-yolo-kimi` is back.
+**Decided-by:** human
+**Justification:** Frank: "don't touch *-yolo commands, we only take care of *-gw commands". The policy governs the `-gw` wrappers and the gateway defaults, not the yolo aliases.
+**Outcome:** applied
+**Supersedes:** Q270 — only its `pi-yolo` and `pi-yolo-kimi` changes; the kept-pick parts stay.
+**Ref:** reverts 47b6cda (macbook), a9cd8b3 (ubuntu), ab2d520 (omarchy)
