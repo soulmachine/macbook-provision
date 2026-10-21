@@ -132,6 +132,7 @@ pre-commit run --all-files
 | gemini | Gemini CLI（npm `@google/gemini-cli`）；`gemini-gw` 及其网关配置（`~/.gemini-gw`）由 `cliproxy-tier` 写入，`gemini` 本身保持原生（依赖 nodejs） |
 | grok | Grok CLI（xAI，npm `@xai-official/grok`，首次运行时下载原生二进制到 `~/.grok/bin`）；`grok-gw` 及其网关配置（`~/.grok-gw`）由 `cliproxy-tier` 写入，`grok` 本身保持原生（依赖 nodejs） |
 | openclaw | OpenClaw（npm `openclaw`），只装在常驻 Mac 上（`mac_is_always_on`，同 hermes）；onboarding、网关 provider 与常驻 daemon 由 `cliproxy-tier` 负责（依赖 host-facts、nodejs） |
+| dsh | DeepSeek Harness（npm `@deepseek-ai/dsh`，另装 npm 全局 `pnpm`，因为 `dsh plugin` 靠 PATH 上的 pnpm 装插件）；按 `roles/dsh/vars/main.yml` 给 `web`、`tui` 两个 profile 补装缺的插件，再每次 `dsh plugin --profile <p> update --latest`，按 `pnpm-lock.yaml` 前后校验和判断变更（不到一天的新版本被 pnpm 的 minimumReleaseAge 挡住，下次再装）。dsh 拒绝的插件（如与当前 dsh 不兼容的 `dsh-find-plugin`）只打印警告，等兼容版本发布后自动装上（依赖 nodejs） |
 | agent-sync | tap `agent-sync-sh/tap`（按 URL tap）+ `brew trust` + brew `agent-sync`；把 `~/.agents/` 扇出到各 agent，并在技能被删除后清理悬空符号链接 |
 | skills | 用 `npx skills@latest add` 安装十个整源 + 四个只取指定技能的源，并扇出到各 agent 的 skills 目录；详见下文「Agent CLI 与技能」（依赖 claude-code、codex） |
 | agent-reach | 多渠道触达工具；上游只提供面向 AI agent 的安装文档，故由 `claude -p` 按文档驱动安装（依赖 claude-code、python） |
@@ -230,11 +231,12 @@ ioreg `BatteryInstalled` 的保守规则：那条规则要求硬件明确报告"
 | gemini | npm 全局 `@google/gemini-cli` | 命令 `gemini`；经网关用 `gemini-gw` |
 | grok | npm 全局 `@xai-official/grok` | 命令 `grok`；原生二进制在 `~/.grok/bin`；经网关用 `grok-gw` |
 | openclaw | npm 全局 `openclaw` | 命令 `openclaw`；常驻 daemon 由 `cliproxy-tier` 的 onboarding 安装 |
+| dsh | npm 全局 `@deepseek-ai/dsh`（加 `pnpm`） | 命令 `dsh`；插件在 `~/.dsh/profiles/<profile>/` |
 | claude-mem | `npx -y claude-mem install` | 不是独立命令，而是 Claude Code 插件，同时接线 codex-cli 和 opencode |
 | cc-switch | tap `farion1231/ccswitch` + **cask** | GUI 应用 |
 | agent-reach | **没有包管理器**，见下 | 由 `claude -p` 按上游文档安装 |
 
-这五个 agent（copilot、crush、gemini、grok、openclaw）只在没有别的渠道（mise 工具、`~/.local/bin` 里的原生安装器、Homebrew）提供同名命令时才用 npm 安装和升级，否则 role 只打印已有的路径，交给那个渠道去升级，免得 `PATH` 上出现两份。
+这六个 agent（copilot、crush、gemini、grok、openclaw、dsh）只在没有别的渠道（mise 工具、`~/.local/bin` 里的原生安装器、Homebrew）提供同名命令时才用 npm 安装和升级，否则 role 只打印已有的路径，交给那个渠道去升级，免得 `PATH` 上出现两份。
 
 `codex` 不单独装（既不用 cask 也不用 npm）是刻意的：ChatGPT.app 里本来就带了一份并会自更新；
 codex cask 每次升级都会运行 `codex completion`，在部分主机上这次首次启动会卡在没人点的

@@ -2874,3 +2874,33 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Frank asked for the PATH entry, macbook-provision only, because LCU exists only on macOS. `.zshrc` matches the mise role's `~/.local/bin` line; appending is safe because no other command is named `lcu*`. The harnesses still start LCU by absolute path, so ssh shells do not need it.
 **Outcome:** applied
 **Ref:** (this commit)
+
+## Q277 — interactive/dsh-role — gate-resolution
+
+**Question:** The requested plugin `dsh-purge` is not on npm. Where should the role install it from?
+**Options considered:** npm `dsh-session-purge` (closest npm name) / the GitHub repo `mmparko/dsh-purge` / drop it
+**Chosen:** `github:mmparko/dsh-purge` in both the web and tui profiles; the role checks for it under its package name `dsh-purge`.
+**Decided-by:** human
+**Justification:** Frank named the repo when asked. Its package.json has no `prepare` script, so pnpm installs it without a build approval.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q278 — interactive/dsh-role — tradeoff
+
+**Question:** Frank asked for the dsh plugins to update on each run. Should that be `pnpm update` within the saved ranges, or `update --latest`?
+**Options considered:** `update` (keeps the two `--save-exact` pins, but a 0.x caret such as `^0.16.1` only takes patch releases) / `update --latest` (moves every plugin to its `latest` tag, the pins too)
+**Chosen:** `dsh plugin --profile <p> update --latest`, with `changed_when` on the lockfile checksum before and after.
+**Decided-by:** agent
+**Justification:** Most of these plugins are 0.x, so plain `update` would almost never move them, which defeats the request. The cost is that `@nanmicoder/dsh-agent-teams` follows its `latest` tag instead of staying on the version first installed; pnpm still writes it as an exact version. pnpm's default one-day minimumReleaseAge still holds back a brand-new release.
+**Outcome:** assumed
+**Ref:** (pending)
+
+## Q279 — interactive/dsh-role — gate-resolution
+
+**Question:** dsh refuses `dsh-find-plugin@0.4.0` as incompatible with dsh 0.2.1-rc.2. Should the role grant the exact-version exemption, drop the plugin, or retry each run?
+**Options considered:** `allow-version … --accept-risk` (works only for that exact pair) / drop it / keep it and warn on a rejected add
+**Chosen:** Keep it in the list. A failed `add` is `failed_when: false` with a warning, so the plugin installs on the first run after a compatible release. The role also installs pnpm, because `dsh plugin` runs pnpm from PATH and no role provided it.
+**Decided-by:** human
+**Justification:** Frank chose "keep trying, warn". The exemption carries dsh's own crash and data-loss warning, and it lapses at the next release anyway.
+**Outcome:** applied
+**Ref:** (pending)
