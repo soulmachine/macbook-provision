@@ -4,8 +4,8 @@
 # /Applications/ChatGPT.app (the codex role's cask). Installed under ~/.local/share/lcu from the
 # GitHub release, kept at the latest release by `lcu update`, and registered in every installed
 # harness in `lcu_agents` with approval `ask` (coding-agent Q223), computer-audio recording on
-# (DECISIONS Q230) and Chrome control on (Q233), with its native-host relay installed. `lcu` is on no PATH by design: the harnesses start it
-# by absolute path. Accessibility and Screen Recording grants and the first `lcu doctor` need
+# (DECISIONS Q230) and Chrome control on (Q233), with its native-host relay installed. Its `bin` is on the interactive PATH through
+# ~/.zshrc (DECISIONS Q276); the harnesses still start it by absolute path. Accessibility and Screen Recording grants and the first `lcu doctor` need
 # someone at the screen (coding-agent Q244, Q260), so this role does not run doctor.
 
 - name: Check for the ChatGPT app
@@ -102,6 +102,14 @@
       register: lcu_after
       changed_when: lcu_after.stdout != (lcu_before.stdout | default(''))
       check_mode: false
+
+    # Appended, not prepended: nothing else is named lcu*, so path order cannot hurt it.
+    - name: Ensure LCU is on PATH in .zshrc
+      ansible.builtin.lineinfile:
+        path: "{{ lcu_home }}/.zshrc"
+        regexp: '^export PATH=".*\.local/share/lcu/current/bin.*"$'
+        line: 'export PATH="$PATH:$HOME/.local/share/lcu/current/bin"'
+        state: present
 
     - name: Warn that LCU could not update cleanly
       ansible.builtin.debug:

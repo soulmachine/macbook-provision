@@ -2864,3 +2864,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Supersedes:** Q270 — only its `pi-yolo` and `pi-yolo-kimi` changes; the kept-pick parts stay.
 **Ref:** reverts 47b6cda (macbook), a9cd8b3 (ubuntu), ab2d520 (omarchy)
+
+## Q276 — interactive/lcu-on-path — deviation
+
+**Question:** The lcu role kept `lcu` off every PATH on purpose. Should `~/.local/share/lcu/current/bin` go on PATH, where, and in which provisioning repos?
+**Options considered:** keep it off PATH / append in `~/.zshrc` / prepend in `~/.zprofile` or `~/.zshenv`
+**Chosen:** Append it to PATH in `~/.zshrc`, only on hosts where the role installs LCU, and only in macbook-provision; ubuntu-provision and omarchy-provision do not get the change.
+**Decided-by:** human
+**Justification:** Frank asked for the PATH entry, macbook-provision only, because LCU exists only on macOS. `.zshrc` matches the mise role's `~/.local/bin` line; appending is safe because no other command is named `lcu*`. The harnesses still start LCU by absolute path, so ssh shells do not need it.
+**Outcome:** applied
+**Ref:** (this commit)
