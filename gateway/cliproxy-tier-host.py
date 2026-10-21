@@ -482,8 +482,8 @@ if p.exists():
     status["opencode"] = "gw"
 
 # ---------- claude-mem: refresh the gateway key its observer reads ----------
-# The claude-mem role writes this file too, but only at the host's next play, and dev-server-frank
-# runs no playbook. claude-mem strips ANTHROPIC_* from its env, so a literal copy is the only option.
+# The claude-mem role writes this file too, but only at the host's next play, so a rotated key
+# would wait a night. claude-mem strips ANTHROPIC_* from its env, so a literal copy is the only option.
 p = H / ".claude-mem/.env"
 if p.exists() and re.search(rf"^ANTHROPIC_BASE_URL={re.escape(BASE)}/?$", p.read_text(), flags=re.M):
     upsert_env(p, {"ANTHROPIC_API_KEY": KEY})
