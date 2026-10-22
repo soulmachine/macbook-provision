@@ -5,7 +5,7 @@
 # Developer: "Integrate with 1Password CLI" for `op`, and "Integrate with MCP clients", which
 # links /usr/local/bin/1password-mcp, the server the plugin launches. (The plugin's README
 # still names a Labs "MCP Server" experiment; app 8.12.40 has the switch under Developer.) Signing in is manual too.
-# Headless `op` is for the control-plane Macs only (m6, m2, macbook-air): OP_SERVICE_ACCOUNT_TOKEN,
+# Headless `op` is for the control-plane Macs only (m6, m2, macbook-pro-m3): OP_SERVICE_ACCOUNT_TOKEN,
 # read-only on the Automation vault, from .env (dotenv role) or by hand on m6; see
 # ~/.agents/docs/1password.md.
 

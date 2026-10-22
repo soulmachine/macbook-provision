@@ -2904,3 +2904,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Frank chose "keep trying, warn". The exemption carries dsh's own crash and data-loss warning, and it lapses at the next release anyway.
 **Outcome:** applied
 **Ref:** 75c7e23 (macbook), 592c6a4 (ubuntu), c13d6f0 (omarchy)
+
+## Q280 — interactive/macbook-pro-m3-control-plane — scope-change
+
+**Question:** macbook-air moved to a new MacBook Pro named macbook-pro-m3 (personal-agent Q184). What changes here?
+**Options considered:** rename the live lines only / also rewrite lines that record past measurements
+**Chosen:** `control_plane_hosts` lists `macbook-pro-m3`, the Pro's `LocalHostName`, in place of `Franks-MacBook-Air`. The README's role row and host table, `.env.example`, the 1password role comment and the skills backup comment name the Pro; the host table row is `Mac15,6` (M3 Pro), still skipped as a MacBook. Lines that record what was measured or chosen on the Air (jdk, cmux, removemacai, browseros-neo, host-facts examples) stay. ubuntu-provision and omarchy-provision get the same skills comment change.
+**Decided-by:** human (rename), agent (which lines are history)
+**Justification:** The hardening role matches `scutil --get LocalHostName`, which is `macbook-pro-m3` on the Pro, so without this edit the Pro would lose its hardening on the next run. The history lines are true as written.
+**Outcome:** applied
+**Ref:** this commit; coding-agent Q590
