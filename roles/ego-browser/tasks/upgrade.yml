@@ -35,6 +35,7 @@
 - name: Warn that Ego Lite could not update cleanly
   ansible.builtin.debug:
     msg:
-      - "`ego-browser upgrade` exited {{ ego_browser_upgrade.rc }}; {{ (ego_browser_after.stdout_lines + ego_browser_after.stderr_lines) | first }} is installed."
+      - "`ego-browser upgrade` exited {{ ego_browser_upgrade.rc }};
+        {{ (ego_browser_after.stdout_lines + ego_browser_after.stderr_lines) | first }} is installed."
       - "Its last output: {{ ((ego_browser_upgrade.stdout_lines | default([])) + (ego_browser_upgrade.stderr_lines | default([])))[-3:] }}"
   when: ego_browser_upgrade is not skipped and ego_browser_upgrade.rc != 0

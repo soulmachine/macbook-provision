@@ -30,9 +30,11 @@
     - name: Turn on the firewall
       become: true
       ansible.builtin.command: /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
+      changed_when: true  # gated on the state read above
       when: "'enabled' not in control_plane_firewall.stdout_lines[0]"
 
     - name: Turn on stealth mode
       become: true
       ansible.builtin.command: /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on
+      changed_when: true  # gated on the state read above
       when: "' on' not in control_plane_firewall.stdout_lines[1]"
