@@ -2923,4 +2923,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** `macos-connectors` holds the CLIs that stand in for Apple apps, and `mas` stands in for the App Store. A one-off install would skip the other Macs and the nightly upgrade. The App Store exists only on macOS, as with Q276.
 **Outcome:** applied
-**Ref:** (this commit)
+**Ref:** 5b1df36 (macbook only)
