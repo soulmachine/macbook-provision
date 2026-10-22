@@ -8,6 +8,7 @@
 #   memo       https://github.com/antoniorodr/memo            (antoniorodr/memo)
 #   apple-calendar, apple-contacts, apple-mail, apple-maps, apple-phone
 #              https://github.com/danielhopkins/apple-tools   (danielhopkins/formulae)
+#   mas        https://github.com/mas-cli/mas                 (homebrew-core)  Mac App Store
 #
 # The macOS permission grants (Reminders/Calendar/Contacts prompts, Full Disk Access and
 # Automation for the terminal) are a one-time manual step per host; `apple status` lists them.
@@ -44,4 +45,5 @@
       - steipete/tap/imsg
       - antoniorodr/memo/memo
       - danielhopkins/formulae/apple-tools
+      - mas
     state: latest

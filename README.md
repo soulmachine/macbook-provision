@@ -157,7 +157,7 @@ pre-commit run --all-files
 | multica-cli | tap `multica-ai/tap` + brew `multica-ai/tap/multica` |
 | purelymail | Purelymail API CLI（GitHub release 单一二进制装入 `~/.local/bin`，跟随最新 release，无需 cargo）；token 手工放在 `~/.zshenv` |
 | email | Himalaya 邮件 CLI（brew）+ ortie OAuth CLI（GitHub release 二进制装入 `~/.local/bin`，跟随最新 release）+ Proton Mail Bridge（cask）；账号配置手工完成 |
-| macos-connectors | Apple 应用连接器 CLI（来源：[推文](https://x.com/Kevin_Logan/status/2109271248714784841)）：tap `steipete/tap`、`antoniorodr/memo`、`danielhopkins/formulae` 并 `brew trust`；brew `remindctl`（Reminders）、`imsg`（Messages）、`memo`（Notes）、`apple-tools`（`apple-calendar`、`apple-contacts`、`apple-mail`、`apple-maps`、`apple-phone` 等）；Photos、Find My 无 CLI。各项 macOS 授权（Reminders/Calendar/Contacts 弹窗、终端的完全磁盘访问与自动化）需每台机器手工批准一次，`apple status` 可查看 |
+| macos-connectors | Apple 应用连接器 CLI（来源：[推文](https://x.com/Kevin_Logan/status/2109271248714784841)）：tap `steipete/tap`、`antoniorodr/memo`、`danielhopkins/formulae` 并 `brew trust`；brew `remindctl`（Reminders）、`imsg`（Messages）、`memo`（Notes）、`apple-tools`（`apple-calendar`、`apple-contacts`、`apple-mail`、`apple-maps`、`apple-phone` 等）、`mas`（App Store）；Photos、Find My 无 CLI。各项 macOS 授权（Reminders/Calendar/Contacts 弹窗、终端的完全磁盘访问与自动化）需每台机器手工批准一次，`apple status` 可查看 |
 | tailscale | 独立版 Tailscale.app（cask）；若 `.env` 中有 `TAILSCALE_AUTH_KEY` 则自动登录，可选通过 OAuth client 关闭 key 过期 |
 | control-plane-hardening | 仅限 control plane 三台（mac-mini-m6、mac-mini-m2、macbook-pro-m3，按 `LocalHostName` 判断）：`/etc/ssh/sshd_config.d/200-hardening.conf` 只允许密钥登录；笔记本另开应用防火墙与隐身模式 |
 | apple-container | Apple `container`（brew）；**仅限 Apple Silicon**，安装后启动 container system |

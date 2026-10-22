@@ -2914,3 +2914,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The hardening role matches `scutil --get LocalHostName`, which is `macbook-pro-m3` on the Pro, so without this edit the Pro would lose its hardening on the next run. The history lines are true as written.
 **Outcome:** applied
 **Ref:** this commit; coding-agent Q590
+
+## Q281 — interactive/mas-cli — scope-change
+
+**Question:** Frank asked to install `mas`, the Mac App Store CLI, after it was missing while checking for a WeChat update on mac-mini-m2. Which role installs it, and do the other provisioning repos get it?
+**Options considered:** the `homebrew` role's common package list / the `macos-connectors` role / a one-off `brew install` on m2
+**Chosen:** Add `mas` (homebrew-core, no tap) to the `macos-connectors` brew list, `state: latest`, in macbook-provision only; ubuntu-provision and omarchy-provision do not get the change.
+**Decided-by:** agent
+**Justification:** `macos-connectors` holds the CLIs that stand in for Apple apps, and `mas` stands in for the App Store. A one-off install would skip the other Macs and the nightly upgrade. The App Store exists only on macOS, as with Q276.
+**Outcome:** applied
+**Ref:** (this commit)
