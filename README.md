@@ -141,7 +141,7 @@ pre-commit run --all-files
 | cua | Cua Driver（`cua.ai/driver/install.sh`）+ jev-use；每次运行 `cua-driver update --apply`，按前后版本号判断是否升级；检查权限前若 daemon 未运行先启动（重启后不会自启）；需先授予 Accessibility 与 Screen Recording，未授权时在 play 末尾报错并给出 `cua-driver permissions grant`（不阻断后面的 role） |
 | ego-browser | Ego Lite（[citrolabs/ego-lite](https://github.com/citrolabs/ego-lite)）：agent 用 `ego-browser` CLI 驱动的 Chromium 浏览器。先 `npx skills add citrolabs/ego-lite --skill ego-browser -g -y` 装 skill（只在 `~/.agents/skills/ego-browser` 不存在时跑一次：首次 onboarding 会把 store 项和 claude/hermes 的链接改成指向 app 内自带的 skill，之后由 app 自己保持版本一致，再跑 `skills add` 会写进 app bundle）；`ego lite.app` 不存在时跑 skill 自带的 `scripts/install.sh`（下载 DMG、装到 `/Applications`、去 quarantine、打开 app）；onboarding 需人在屏幕前点完 setup 窗口（首次启动就会生成 `~/.local/bin/ego-browser`，所以链接不算数），以 `ego-browser nodejs -e 'console.log(1)'` 的输出为准，未完成时在 play 末尾报错（不阻断后面的 role）；之后每次运行 `ego-browser upgrade`（无需人工确认，升级后浏览器会自动重启），按前后 `ego-browser --version` 判断是否升级（依赖 nodejs） |
 | intellij-idea | IntelliJ IDEA（依赖 jdk） |
-| claude-mem | Claude 记忆插件；`npx -y claude-mem install` 为 claude-code / codex-cli / opencode 三者接线（依赖 nodejs、bun、uv） |
+| claude-mem | 移除用 role（2026-10-23 起）：跑 `npx -y claude-mem uninstall`，清掉它留在 Gemini、Codex、opencode 里的接线，删除 `~/.claude-mem`；所有主机跑过后删掉本 role（依赖 nodejs） |
 | cc-switch | Claude 配置切换器：tap `farion1231/ccswitch` + cask `cc-switch`（依赖 claude-code、codex） |
 | hermes | Hermes 个人 agent（Nous Research）；**仅限常驻开机的机器** |
 | lcu | Local Computer Use（[amontlabs/lcu](https://github.com/amontlabs/lcu)）：把 ChatGPT.app 的原生 computer use 作为 MCP server 接给各 agent。首次从 GitHub release 下载 tarball、按 `.sha256` 校验后跑 `scripts/install.sh --runtime-only --yes`；之后每次运行 `lcu update --yes`，按前后版本号判断是否升级，升级后 `lcu prune --yes`（只保留最新两个 release）；再对 `lcu_agents` 里已安装但未注册的 harness 逐个跑 `lcu setup --agent <x> --audio --chrome --yes`（开启 computer-audio recording 与 Chrome 控制；`~/.local/state/lcu/setup.json` 里两项还没都打开时对已安装的全部 harness 重跑一次），再按 `lcu browser status` 的 connector 行决定是否 `lcu browser install` 把 Chrome 的 native host 指向 LCU 的 relay，并把该 manifest 复制进 `Google Chrome CDP.app` 的克隆 profile `~/Library/Application Support/Google/Chrome-CDP/NativeMessagingHosts/`（在 Chrome 里启用官方 ChatGPT 扩展仍需手工）：claude-code、pi、omp、hermes（codex 自带 computer use，不注册；kimi、opencode、copilot、crush、gemini、grok、openclaw 上游没有 adapter）。`lcu` 刻意不进 PATH（`~/.local/share/lcu/current/bin/lcu`）；Accessibility、Screen Recording 授权与首次 `lcu doctor` 需人在屏幕前；仅 Apple Silicon 且装有 ChatGPT.app，否则跳过（依赖 codex，为了 ChatGPT.app cask） |
@@ -232,7 +232,6 @@ ioreg `BatteryInstalled` 的保守规则：那条规则要求硬件明确报告"
 | grok | npm 全局 `@xai-official/grok` | 命令 `grok`；原生二进制在 `~/.grok/bin`；经网关用 `grok-gw` |
 | openclaw | npm 全局 `openclaw` | 命令 `openclaw`；常驻 daemon 由 `cliproxy-tier` 的 onboarding 安装 |
 | dsh | npm 全局 `@deepseek-ai/dsh`（加 `pnpm`） | 命令 `dsh`；插件在 `~/.dsh/profiles/<profile>/` |
-| claude-mem | `npx -y claude-mem install` | 不是独立命令，而是 Claude Code 插件，同时接线 codex-cli 和 opencode |
 | cc-switch | tap `farion1231/ccswitch` + **cask** | GUI 应用 |
 | agent-reach | **没有包管理器**，见下 | 由 `claude -p` 按上游文档安装 |
 
@@ -289,8 +288,6 @@ role 表里的「依赖 nodejs」指的是运行期依赖，不是安装渠道�
   住）。role 把这一种失败明确放行并打印补救办法，其它任何错误仍然会让 play 失败。要接受
   这些发现，得自己在 `~/.hermes/config.yaml` 里设 `plugins.scan_on_install: false`——这
   是安全姿态的选择，role 不替你做。
-- **claude-mem 每次都报 changed。** 它的安装器无论有没有实际动作都会退出 0 并打印
-  "installed successfully"，自己说不清有没有变，所以 role 直接写死 `changed_when: true`。
 - 万一某个「只取几个技能」的源里的技能被上游改名或下架，CLI 会退出 1 并打印
   `● Available skills:` 加一整份清单——**读起来像帮助信息，其实是错误**。这时用
   `npx skills@latest add <源> -l` 看上游现在到底有什么（`-l` 只列不装），然后改
@@ -309,10 +306,6 @@ role 表里的「依赖 nodejs」指的是运行期依赖，不是安装渠道�
 - **agent-reach 只配好了零配置的渠道。** 其余渠道要 cookie 或点一下浏览器扩展，headless
   的 `claude -p` 回答不了文档里「你要哪些渠道」这个问题。要补齐就自己交互式跑一次
   `agent-reach doctor`。
-- **`claude-mem` 的模型 id 要手工升级。** `roles/claude-mem/vars/main.yml` 里的
-  `claude_mem_model` 目前是 `claude-opus-4-8`。claude-mem 不接受 `opus` 这类别名（尽管它
-  自己的文档在用），只认完整 id，而且可用集合每次发版都在缩小——id 一旦下架就是一个硬
-  错误 `Fatal error: Unknown Claude model`，**会让 play 失败**。
 
 #### kimi-code 只装不升
 
