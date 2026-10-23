@@ -132,7 +132,7 @@ pre-commit run --all-files
 | gemini | Gemini CLI（npm `@google/gemini-cli`）；`gemini-gw` 及其网关配置（`~/.gemini-gw`）由 `cliproxy-tier` 写入，`gemini` 本身保持原生（依赖 nodejs） |
 | grok | Grok CLI（xAI，npm `@xai-official/grok`，首次运行时下载原生二进制到 `~/.grok/bin`）；`grok-gw` 及其网关配置（`~/.grok-gw`）由 `cliproxy-tier` 写入，`grok` 本身保持原生（依赖 nodejs） |
 | openclaw | OpenClaw（npm `openclaw`），只装在常驻 Mac 上（`mac_is_always_on`，同 hermes）；onboarding、网关 provider 与常驻 daemon 由 `cliproxy-tier` 负责（依赖 host-facts、nodejs） |
-| dsh | DeepSeek Harness（npm `@deepseek-ai/dsh`，另装 npm 全局 `pnpm`，因为 `dsh plugin` 靠 PATH 上的 pnpm 装插件）；按 `roles/dsh/vars/main.yml` 给 `web`、`tui` 两个 profile 补装缺的插件，再每次 `dsh plugin --profile <p> update --latest`，按 `pnpm-lock.yaml` 前后校验和判断变更（不到一天的新版本被 pnpm 的 minimumReleaseAge 挡住，下次再装）。dsh 拒绝的插件（如与当前 dsh 不兼容的 `dsh-find-plugin`）只打印警告，等兼容版本发布后自动装上（依赖 nodejs） |
+| dsh | DeepSeek Harness（npm `@deepseek-ai/dsh`，另装 npm 全局 `pnpm`，因为 `dsh plugin` 靠 PATH 上的 pnpm 装插件）；按 `roles/dsh/vars/main.yml` 每次对 `web`、`tui` 两个 profile 的每个 npm 插件跑 `dsh plugin --profile <p> add <spec>@latest`：缺的就装，旧的就升级，且都经过 dsh 的兼容性检查（`update` 不检查）；git 插件 `dsh-purge` 装好后改用 `update dsh-purge` 拉到分支最新提交。按 `pnpm-lock.yaml` 前后校验和判断变更（不到一天的新版本被 pnpm 的 minimumReleaseAge 挡住，下次再装）。dsh 拒绝的插件（如与当前 dsh 不兼容的 `dsh-find-plugin`，或要求更新 dsh 的插件新版本）只打印警告并保留已装版本，等兼容版本发布后自动装上（依赖 nodejs） |
 | agent-sync | tap `agent-sync-sh/tap`（按 URL tap）+ `brew trust` + brew `agent-sync`；把 `~/.agents/` 扇出到各 agent，并在技能被删除后清理悬空符号链接 |
 | skills | 用 `npx skills@latest add` 安装十个整源 + 四个只取指定技能的源，并扇出到各 agent 的 skills 目录；详见下文「Agent CLI 与技能」（依赖 claude-code、codex） |
 | agent-reach | 多渠道触达工具；上游只提供面向 AI agent 的安装文档，故由 `claude -p` 按文档驱动安装（依赖 claude-code、python） |

@@ -2924,3 +2924,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** `macos-connectors` holds the CLIs that stand in for Apple apps, and `mas` stands in for the App Store. A one-off install would skip the other Macs and the nightly upgrade. The App Store exists only on macOS, as with Q276.
 **Outcome:** applied
 **Ref:** 5b1df36 (macbook only)
+
+## Q282 — interactive/dsh-role — deviation
+
+**Question:** Reviewing Q278: should the dsh role keep upgrading plugins with `dsh plugin --profile <p> update --latest`?
+**Options considered:** keep `update --latest` / re-run `add <spec>@latest` for each plugin / the same, but hold agent-teams on its installed version
+**Chosen:** One loop runs `add <spec>@latest` for each npm plugin, keeping `-w` and `--save-exact`. It runs `add <spec>` for a missing git plugin and `update <name>` for an installed one. Change detection stays the lockfile checksum before and after.
+**Decided-by:** human
+**Justification:** dsh's plugin manager checks a plugin against the running dsh only for `add`/`install`/`i` (`INSTALL_COMMANDS` in dsh-plugin-manager), so `update --latest` could move a plugin to a release dsh then switches off at startup without a word. Tested on mac-mini-m6 on 2026-10-23: a plain re-`add <name>` keeps the saved version (hindsight stayed at 0.8.1); `add <name>@latest` moved it to 0.8.2 and a second run left the lockfile unchanged; `--save-exact` agent-teams stays exact. For the git plugin, re-`add` keeps the locked commit and `pnpm update dsh-purge` moves it to the branch head; dsh vets a git plugin on neither path. agent-teams' README gives the same `add` command for install and upgrade, so following `latest` is upstream's intent.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q278 — `update --latest` skipped dsh's compatibility check.
