@@ -10,6 +10,7 @@ python_cli_tools:
   - ruff
   - pre-commit
   - httpie
+  - pgcli
 
 # Extra packages to install *into* a tool's own uv environment, as
 # `<tool>: <package>`. uv gives each tool an isolated environment, and
@@ -21,6 +22,9 @@ python_cli_tools:
 # environment; it is the same line bootstrap.sh uses for ansible-core.
 python_cli_tool_extras:
   ansible-lint: ansible
+  # pgcli's macOS dependency is pure-Python psycopg, which needs a system libpq
+  # that no role installs; psycopg-binary bundles one (wheels for arm64 and x86_64).
+  pgcli: psycopg-binary
 
 # Apple Silicon only. Both of these pull native wheels that upstream no longer
 # builds for macOS x86_64, so on an Intel Mac they can't resolve at all against
