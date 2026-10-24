@@ -2935,3 +2935,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** b7e3856 (macbook), b3fefce (ubuntu), e05fa59 (omarchy)
 **Supersedes:** Q278 — `update --latest` skipped dsh's compatibility check.
+
+## Q283 — interactive/dsh-role — deviation
+
+**Question:** dsh-purge from `github:mmparko/dsh-purge` (Q277) fails every `dsh web` turn on dsh 0.2.1-rc.2 with `unknown prompt variable "{{cwd}}"`. Where should the role get it, and for which hosts?
+**Options considered:** upstream `YuJunZhiXue/dsh-purge` on personal hosts only / upstream on all hosts / drop dsh-purge
+**Chosen:** Upstream `github:YuJunZhiXue/dsh-purge` on all hosts, company hosts included. The role creates each profile first, then merges `allowBuilds: {dsh-purge: false}` into its `pnpm-workspace.yaml`. A git plugin whose saved spec differs from the wanted one gets a fresh `add`, which moves hosts off the mirror.
+**Decided-by:** human
+**Justification:** Frank chose upstream on all hosts after being told the plugin calls itself a DeepSeek Harness jailbreak and patches dsh's installed files. The mmparko repo is a mirror frozen at 1.1.71 since 2026-10-13. Upstream issue #143 records the fix, and 1.1.77 strips the unregistered `{{cwd}}`. pnpm fails the add with ERR_PNPM_IGNORED_BUILDS until `allowBuilds` decides. The key pnpm prints carries the commit hash, so the role keys the deny by name. The one script, `scripts/ensure-profile-bundle.mjs`, only appends the plugin to `dsh.profile.bundles`, which `dsh plugin add` already does, so it is denied, not approved. Tested on mac-mini-m6 on 2026-10-23: both profiles at 1.1.77, and a second run reported no change. The browser turn is not tested yet.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q277 — only its mmparko source.
