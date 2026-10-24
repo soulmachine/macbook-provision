@@ -2946,3 +2946,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** 8add825 (macbook), e24a6a4 (ubuntu), aa094e4 (omarchy)
 **Supersedes:** Q277 — only its mmparko source.
+
+## Q284 — interactive/hindsight-role — tradeoff
+
+**Question:** How does each host get the Hindsight API token, and how does the role survive the pi role's full overwrite of `~/.pi/agent/settings.json`?
+**Options considered:** token from `op read` in the role (only m2, m6 and macbook-pro-m3 have a service account) / a `.env` variable through the dotenv role / pushed from m2 into `~/.hindsight/coding-agent.json`; for pi: re-run the installer every play / list the extension in `files/settings.json` (its path holds each host's `$HOME`) / keep the installer's entry when the pi role rewrites the file
+**Chosen:** m2's `~/coding-agent/devops/hindsight-server/push-token.sh` writes the token over ssh, the way `cliproxy-tier` pushes the gateway key, and the role asserts it is there. The pi role carries over any `extensions` entry under `/.hindsight/coding-agents/`.
+**Decided-by:** agent
+**Justification:** No new secret in nine `.env` files, and one command rotates it. Keeping the entry pi already has makes both roles idempotent (second runs on m2: 0 changed each).
+**Outcome:** assumed
+**Ref:** (pending)
