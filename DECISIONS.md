@@ -2966,3 +2966,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The user asked for the role to go, and the plan was approved. `jdk` is not orphaned, because it is a `main.yml` role in its own right. Removing a cask from a `state: present` task only stops managing it, so this follows Q99: an uninstall is a separate, irreversible step like Q100, and was not taken. The sibling repos never ported the role, but their "not ported" lists would name a role that no longer exists upstream. Their DECISIONS.md entries and the history comment at `omarchy-provision/roles/pacman/tasks/main.yml:91` stay as they are. Q99's line "IntelliJ IDEA and its jdk dependency are untouched" also stays, because this journal is append-only. Verified: `ansible-lint` exit 0, `--list-tasks` resolves, the roles in `main.yml` and the folders in `roles/` still match 1:1, and `scripts/check-home-lookup-count.sh` passes (129 places across 37 roles).
 **Outcome:** applied
 **Ref:** f04e8c5 (ubuntu-provision 695e228, omarchy-provision 6b9dae0)
+
+## Q286 — interactive/rename-m2 — deviation
+
+**Question:** Frank asked to rename the M2 Mac mini to `mac-mini-m2` and sync the name to Tailscale. Which references to the old names (`Franks-Mac-mini-M2`, `franks-mac-mini-m2`, `Frank’s Mac mini M2`) change?
+**Options considered:** rename the host only / also rewrite every live reference / also rewrite DECISIONS.md history
+**Chosen:** Set ComputerName, HostName and LocalHostName to `mac-mini-m2` and `tailscale set --hostname=mac-mini-m2`. Rewrote every live reference in the three provisioning repos (hindsight vars and relay, control-plane-hardening and jdk host keys, READMEs), coding-agent (`devops/ssh/fleet.conf`, screen-wall, hindsight-server and postgresql READMEs) and `~/.agents/docs/fleet-ssh.md`. DECISIONS.md entries and known_hosts stay as they are.
+**Decided-by:** human (rename), agent (scope of references)
+**Justification:** The `ansible_hostname` keys stop matching once `hostname -s` changes, so m2 would lose its control-plane hardening and its pinned JDK 17.0.2. The tailnet-name references break once MagicDNS drops the old name. DECISIONS.md entries record the past. known_hosts uses `HostKeyAlias mac-mini-m2`, so its entries still match.
+**Outcome:** applied
+**Ref:** (pending)

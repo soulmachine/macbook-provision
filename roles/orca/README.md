@@ -11,7 +11,7 @@ Orca has no separate server package. The `orca` CLI and `orca serve` ship inside
 cask, where paseo removes it. The cask is `auto_updates true`, so the role installs it `present`
 with `--adopt` and lets the app update itself. Adopting matters on hosts that installed the DMG by
 hand. The app's own "Install CLI" button writes a root-owned `/usr/local/bin/orca` that comes after
-Homebrew's on PATH. On Franks-Mac-mini-M2 that link is dead ("Unable to determine Orca.app path"),
+Homebrew's on PATH. On mac-mini-m2 that link is dead ("Unable to determine Orca.app path"),
 and the role leaves it alone.
 
 ## The server on always-on Macs

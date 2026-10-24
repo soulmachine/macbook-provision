@@ -194,7 +194,7 @@ ioreg `BatteryInstalled` 的保守规则：那条规则要求硬件明确报告"
 
 | 机器 | 机型 | `mac_family` | 判定 |
 |------|------|--------------|------|
-| franks-mac-mini-m2 | `Mac14,3`（M2） | Mac mini | **安装** |
+| mac-mini-m2 | `Mac14,3`（M2） | Mac mini | **安装** |
 | archs-mac-mini | `Mac16,10`（M4） | Mac mini | **安装** |
 | mac-mini-m6 | `Mac18,5`（M6） | Mac mini | **安装** |
 | franks-mac-studio | `Mac15,14`（M3） | Mac Studio | **安装** |
