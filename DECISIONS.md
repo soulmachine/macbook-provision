@@ -2965,4 +2965,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** The user asked for the role to go, and the plan was approved. `jdk` is not orphaned, because it is a `main.yml` role in its own right. Removing a cask from a `state: present` task only stops managing it, so this follows Q99: an uninstall is a separate, irreversible step like Q100, and was not taken. The sibling repos never ported the role, but their "not ported" lists would name a role that no longer exists upstream. Their DECISIONS.md entries and the history comment at `omarchy-provision/roles/pacman/tasks/main.yml:91` stay as they are. Q99's line "IntelliJ IDEA and its jdk dependency are untouched" also stays, because this journal is append-only. Verified: `ansible-lint` exit 0, `--list-tasks` resolves, the roles in `main.yml` and the folders in `roles/` still match 1:1, and `scripts/check-home-lookup-count.sh` passes (129 places across 37 roles).
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** f04e8c5 (ubuntu-provision 695e228, omarchy-provision 6b9dae0)
