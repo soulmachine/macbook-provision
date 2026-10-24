@@ -2944,5 +2944,5 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** Frank chose upstream on all hosts after being told the plugin calls itself a DeepSeek Harness jailbreak and patches dsh's installed files. The mmparko repo is a mirror frozen at 1.1.71 since 2026-10-13. Upstream issue #143 records the fix, and 1.1.77 strips the unregistered `{{cwd}}`. pnpm fails the add with ERR_PNPM_IGNORED_BUILDS until `allowBuilds` decides. The key pnpm prints carries the commit hash, so the role keys the deny by name. The one script, `scripts/ensure-profile-bundle.mjs`, only appends the plugin to `dsh.profile.bundles`, which `dsh plugin add` already does, so it is denied, not approved. Tested on mac-mini-m6 on 2026-10-23: both profiles at 1.1.77, and a second run reported no change. The browser turn is not tested yet.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 8add825 (macbook), e24a6a4 (ubuntu), aa094e4 (omarchy)
 **Supersedes:** Q277 — only its mmparko source.
