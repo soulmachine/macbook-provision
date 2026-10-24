@@ -2956,3 +2956,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** No new secret in nine `.env` files, and one command rotates it. Keeping the entry pi already has makes both roles idempotent (second runs on m2: 0 changed each).
 **Outcome:** assumed
 **Ref:** (pending)
+
+## Q285 — interactive/drop-intellij-idea — deviation
+
+**Question:** Stop provisioning IntelliJ IDEA. What else comes out with the role, and does anything get uninstalled?
+**Options considered:** remove the role only / remove the role and `jdk` / remove and also uninstall from the fleet
+**Chosen:** Deleted `roles/intellij-idea` (cask `intellij-idea`, `meta` dependency on `jdk`), its `main.yml` entry and its README row. Kept `jdk`. Uninstalled nothing. In ubuntu-provision and omarchy-provision, dropped `intellij-idea` from the lists of upstream roles they do not port.
+**Decided-by:** human
+**Justification:** The user asked for the role to go, and the plan was approved. `jdk` is not orphaned, because it is a `main.yml` role in its own right. Removing a cask from a `state: present` task only stops managing it, so this follows Q99: an uninstall is a separate, irreversible step like Q100, and was not taken. The sibling repos never ported the role, but their "not ported" lists would name a role that no longer exists upstream. Their DECISIONS.md entries and the history comment at `omarchy-provision/roles/pacman/tasks/main.yml:91` stay as they are. Q99's line "IntelliJ IDEA and its jdk dependency are untouched" also stays, because this journal is append-only. Verified: `ansible-lint` exit 0, `--list-tasks` resolves, the roles in `main.yml` and the folders in `roles/` still match 1:1, and `scripts/check-home-lookup-count.sh` passes (129 places across 37 roles).
+**Outcome:** applied
+**Ref:** (pending)

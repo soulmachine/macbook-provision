@@ -50,7 +50,6 @@
     - playwright-cli
     - cua
     - ego-browser
-    - intellij-idea
     - cc-switch
     - hermes
     - lcu
