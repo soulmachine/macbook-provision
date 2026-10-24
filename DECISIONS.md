@@ -2976,3 +2976,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The `ansible_hostname` keys stop matching once `hostname -s` changes, so m2 would lose its control-plane hardening and its pinned JDK 17.0.2. The tailnet-name references break once MagicDNS drops the old name. DECISIONS.md entries record the past. known_hosts uses `HostKeyAlias mac-mini-m2`, so its entries still match.
 **Outcome:** applied
 **Ref:** 248f322 (ubuntu-provision 2014d25, omarchy-provision e1f1610)
+
+## Q287 — interactive/jetbrains-uninstall-all — irreversible-action
+
+**Question:** Q285 stopped provisioning IntelliJ IDEA, and Q99 stopped provisioning WebStorm and PyCharm. Uninstall all three from every host?
+**Options considered:** `brew uninstall --cask` (app only) / `--zap` (app + settings) / leave installed
+**Chosen:** Plain `brew uninstall --cask`, no `--zap`, for every cask of the three that brew still recorded, on seven hosts: mac-mini-m6, mac-mini-m2, mac-studio-m3, dev-server-frank-lume, macbook-pro-m3, macbook-pro-nickel and archs-mac-mini. All seven now report 0 of the three casks and 0 bundles in `/Applications`.
+**Decided-by:** human
+**Justification:** Same command and reasons as Q100: the app goes, and the settings that make a reinstall cheap stay. The settings sizes are unchanged before and after: archs-mac-mini 231924 KB and macbook-pro-nickel 73932 KB; no other host had a JetBrains settings folder. Two hosts held stale records. macbook-pro-m3 still carried `webstorm` and `pycharm` as well, because Q100 never covered it; it had no app bundles, and a leftover `WebStorm.app` sat inside the Caskroom. archs-mac-mini carried only IntelliJ's metadata. Plain uninstall cleared both, so the planned `--force` fallback was never used, and the three Caskroom folders on macbook-pro-m3 are gone. archs-mac-mini is covered by its owner's word in Q101; the uninstall left its LaunchAgent `com.archauto.openclaw-invoice-watcher` alone (PID 79995 before and after). Skipped: mac-mini-2018, retired 2026-10-10 and now the Linux host mac-mini-2018-omarchy, and macbook-air, which is not on the tailnet and had no JetBrains apps in Q99. This run overlapped the Q286 rename: the old tailnet name `franks-mac-mini-m2` had stopped resolving, so mac-mini-m2 was reached by its tailnet IP `100.79.176.59`.
+**Outcome:** applied
+**Ref:** (pending)
