@@ -2975,4 +2975,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (rename), agent (scope of references)
 **Justification:** The `ansible_hostname` keys stop matching once `hostname -s` changes, so m2 would lose its control-plane hardening and its pinned JDK 17.0.2. The tailnet-name references break once MagicDNS drops the old name. DECISIONS.md entries record the past. known_hosts uses `HostKeyAlias mac-mini-m2`, so its entries still match.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 248f322 (ubuntu-provision 2014d25, omarchy-provision e1f1610)
