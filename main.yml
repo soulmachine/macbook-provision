@@ -51,8 +51,6 @@
     - cua
     - ego-browser
     - intellij-idea
-    # REMOVAL role since 2026-10-23
-    - claude-mem
     - cc-switch
     - hermes
     - lcu
