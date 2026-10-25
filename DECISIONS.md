@@ -3005,4 +3005,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** Frank chose the address, both nickel fixes, manual pairing and leaving grokbot-box out. The link the app's "Install CLI" button wrote is root-owned with mode 0700, so a user cannot readlink it. On nickel it comes before Homebrew's on PATH. The README called it dead, and that was wrong. An IP rather than a MagicDNS name, because one fleet host answers `*.ts.net` from a fake-IP resolver (fleet-ssh.md). The role still installs only when the service is not live, so the seven live servers get the flag from a one-time manual reinstall. That restarts each server once.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 92a6870
