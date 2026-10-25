@@ -3036,3 +3036,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Frank chose all three. Verified on mac-mini-m6: each changed role converges on its second run; `bw` 2026.10.0 from npm keeps its Vaultwarden server; Homebrew's `node` is gone; `bash -lc` finds Node 24; the OpenClaw daemon still runs.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q293 — interactive/homebrew-node-removal — deviation
+
+**Question:** Q292's removal of Homebrew's `node` would break LaunchAgents this repo does not manage: mac-studio-m3's `com.big3.db-service` and `com.big3.tg-bot` run `/opt/homebrew/bin/node` directly. Remove it there anyway?
+**Options considered:** keep Homebrew's node while any LaunchAgent names it / remove it and repoint the services / remove it and let them break
+**Chosen:** `bitwarden` keeps Homebrew's node while any `~/Library/LaunchAgents/*.plist` other than OpenClaw's gateway names `/opt/homebrew/{bin,opt,Cellar}/node`, and prints which ones do. OpenClaw's gateway is excluded because `openclaw` rewrites it.
+**Decided-by:** agent
+**Justification:** Removing it would break services others depend on, which needs their owner, so the role leaves it and says why. Checked before the nightly run reached the company Macs: archs-mac-mini's invoice watcher already runs mise's node, macbook-pro-nickel has no such LaunchAgent. Tested the `find` against a copy of the `big3` plist (matched) and an OpenClaw and a mise plist (not matched).
+**Outcome:** applied
+**Ref:** (pending)

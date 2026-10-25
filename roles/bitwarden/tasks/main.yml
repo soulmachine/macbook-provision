@@ -43,11 +43,29 @@
   changed_when: false
   check_mode: false
 
+# Services this repo does not manage may name Homebrew's node directly (mac-studio-m3's
+# com.big3.db-service and com.big3.tg-bot, 2026-10-25), so keep it while any LaunchAgent does.
+# OpenClaw's gateway is the exception: roles/openclaw rewrites it once its Node is gone.
+- name: Find LaunchAgents that run Homebrew's node
+  ansible.builtin.find:
+    paths: "{{ lookup('env', 'HOME') }}/Library/LaunchAgents"
+    patterns: "*.plist"
+    excludes: ai.openclaw.gateway.plist
+    contains: '.*/opt/homebrew/(bin|opt|Cellar)/node\b.*'
+  register: bitwarden_node_agents
+
 - name: Remove Homebrew's node
   community.general.homebrew:
     name: node
     state: absent
-  when: bitwarden_node_users.stdout | trim == ''
+  when: bitwarden_node_users.stdout | trim == '' and bitwarden_node_agents.matched == 0
+
+- name: Report the LaunchAgents that keep Homebrew's node
+  ansible.builtin.debug:
+    msg: >-
+      Keeping Homebrew's node: {{ bitwarden_node_agents.files | map(attribute='path') | map('basename') | join(', ') }}
+      run it. Point them at mise's node, then re-run this role.
+  when: bitwarden_node_agents.matched > 0
 
 # The hostname comes from a pipe lookup, not from facts: a single-role `include_role` run gathers
 # none, and the lookup runs on the control node, which is always this host.
