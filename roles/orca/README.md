@@ -49,7 +49,8 @@ while the desktop app is serving the same profile. After 6 failures in 15 minute
 ## By hand
 
 - **Pairing.** The service never prints a pairing link. When the desktop app is open on the server,
-  pair from it (Settings → Remote Orca Servers). Otherwise, on the server:
+  pair from it: Settings → Remote Orca Servers → Advertise this app as a server → **New Link**,
+  pick the `100.x.y.z` address, then **Generate Access Link**. Otherwise, on the server:
   1. `orca serve service uninstall`, which frees the profile.
   2. `orca serve --port 6768 --pairing-address <tailscale-ip>` in a terminal. It prints a pairing link.
   3. On the client, paste the link into **Add Server**, or run
@@ -58,6 +59,12 @@ while the desktop app is serving the same profile. After 6 failures in 15 minute
      /opt/homebrew/bin/orca --pairing-address <tailscale-ip>`.
 
   The link is a secret: do not paste it into a file or a chat. Do not run step 2 while the app
-  serves the same profile, because `orca serve` then exits with code 3.
-- **Agent accounts and skills** on the server: `orca account add --agent claude|codex` and
-  `orca skills install`.
+  serves the same profile, because `orca serve` then exits with code 3. Each client gets its own
+  grant: revoke one in the server's app under **Shared Server Access**. A new link replaces the
+  last unused one. If the client shows the server as Disconnected, click **Connect**.
+- **Agent accounts and skills** must be set up in the server's own shell, because a paired client
+  disables Add account, and remote sessions use the server's PATH, home and logins:
+  `orca account add --agent claude|codex`, `orca skills install --skill orca-cli --skill
+  orchestration`, and later `orca skills update --all`.
+
+Source for the steps: <https://www.onorca.dev/docs/remote-servers>.
