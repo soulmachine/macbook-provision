@@ -2955,7 +2955,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** No new secret in nine `.env` files, and one command rotates it. Keeping the entry pi already has makes both roles idempotent (second runs on m2: 0 changed each).
 **Outcome:** assumed
-**Ref:** 561a541 (ubuntu-provision 96b1b1b, omarchy-provision 7827599)
+**Ref:** (pending)
 
 ## Q285 — interactive/drop-intellij-idea — deviation
 
