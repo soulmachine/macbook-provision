@@ -2955,7 +2955,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** No new secret in nine `.env` files, and one command rotates it. Keeping the entry pi already has makes both roles idempotent (second runs on m2: 0 changed each).
 **Outcome:** assumed
-**Ref:** (pending)
+**Ref:** 561a541 (ubuntu-provision 96b1b1b, omarchy-provision 7827599)
 
 ## Q285 — interactive/drop-intellij-idea — deviation
 
@@ -2995,4 +2995,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (rename), agent (scope of references)
 **Justification:** The hindsight key matches `hostname -s`, so the Studio would lose its Hindsight URL. screen-wall finds hosts by their `tailscale status` DNS name and skips the whole wall when one is missing, so its address must match the tailnet name. Screen Sharing titles the Studio's window with its ComputerName. known_hosts uses `HostKeyAlias mac-studio-m3`, so its entries still match.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 561a541 (ubuntu-provision 96b1b1b, omarchy-provision 7827599)
