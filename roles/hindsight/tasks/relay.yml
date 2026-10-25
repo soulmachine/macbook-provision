@@ -6,31 +6,31 @@
 # binary install there.
 
 # --- macOS: a LaunchAgent ----------------------------------------------------------
-- name: Install the {{ relay.name }}-relay LaunchAgent
+- name: Install the LaunchAgent for relay {{ relay.name }}
   ansible.builtin.template:
     src: relay.plist.j2
     dest: "{{ hindsight_home }}/Library/LaunchAgents/me.soulmachine.{{ relay.name }}-relay.plist"
     mode: "0644"
-  register: _relay_plist
+  register: _hindsight_relay_plist
   when: ansible_facts['system'] == 'Darwin'
 
-- name: Check whether the {{ relay.name }}-relay LaunchAgent is loaded
+- name: Check whether the LaunchAgent is loaded for relay {{ relay.name }}
   ansible.builtin.command: launchctl print gui/{{ ansible_facts['user_uid'] }}/me.soulmachine.{{ relay.name }}-relay
-  register: _relay_loaded
+  register: _hindsight_relay_loaded
   changed_when: false
   failed_when: false
   check_mode: false
   when: ansible_facts['system'] == 'Darwin'
 
 # A changed plist is only re-read on a fresh bootstrap, so it is booted out first.
-- name: Start or restart the {{ relay.name }}-relay LaunchAgent
+- name: Start or restart the LaunchAgent for relay {{ relay.name }}
   ansible.builtin.shell: >-
-    {% if _relay_loaded.rc == 0 %}launchctl bootout gui/{{ ansible_facts['user_uid'] }}/me.soulmachine.{{ relay.name }}-relay;{% endif %}
+    {% if _hindsight_relay_loaded.rc == 0 %}launchctl bootout gui/{{ ansible_facts['user_uid'] }}/me.soulmachine.{{ relay.name }}-relay;{% endif %}
     launchctl bootstrap gui/{{ ansible_facts['user_uid'] }}
     {{ hindsight_home }}/Library/LaunchAgents/me.soulmachine.{{ relay.name }}-relay.plist
   when:
     - ansible_facts['system'] == 'Darwin'
-    - _relay_loaded.rc != 0 or _hindsight_relay_bin.changed or _relay_plist.changed
+    - _hindsight_relay_loaded.rc != 0 or _hindsight_relay_bin.changed or _hindsight_relay_plist.changed
   changed_when: true
 
 # --- Linux: a systemd user unit (the user lingers, so it runs without a login) -------
@@ -41,19 +41,19 @@
     mode: "0755"
   when: ansible_facts['system'] == 'Linux'
 
-- name: Install the {{ relay.name }}-relay systemd user unit
+- name: Install the systemd user unit for relay {{ relay.name }}
   ansible.builtin.template:
     src: relay.service.j2
     dest: "{{ hindsight_home }}/.config/systemd/user/{{ relay.name }}-relay.service"
     mode: "0644"
-  register: _relay_unit
+  register: _hindsight_relay_unit
   when: ansible_facts['system'] == 'Linux'
 
-- name: Enable and start {{ relay.name }}-relay
+- name: Enable and start relay {{ relay.name }}
   ansible.builtin.systemd_service:
     name: "{{ relay.name }}-relay"
     scope: user
     enabled: true
-    state: "{{ 'restarted' if (_hindsight_relay_bin.changed or _relay_unit.changed) else 'started' }}"
-    daemon_reload: "{{ _relay_unit.changed }}"
+    state: "{{ 'restarted' if (_hindsight_relay_bin.changed or _hindsight_relay_unit.changed) else 'started' }}"
+    daemon_reload: "{{ _hindsight_relay_unit.changed }}"
   when: ansible_facts['system'] == 'Linux'
