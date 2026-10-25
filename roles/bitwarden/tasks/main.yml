@@ -1,6 +1,6 @@
 ---
 # Bitwarden clients for Frank's Vaultwarden (~/coding-agent/docs/vaultwarden.md): the official
-# Electron desktop app, the official `bw` CLI and `rbw`, the unofficial Rust CLI with a
+# Electron desktop app, the official `bw` CLI from npm and `rbw`, the unofficial Rust CLI with a
 # background agent. `bw` and `rbw` are then pointed at the server (DECISIONS Q244); the desktop
 # app's server and every login stay manual.
 
@@ -13,12 +13,41 @@
     install_options: adopt
 
 # rbw's formula pulls in `pinentry`, the terminal one, so `rbw unlock` works over ssh too.
-- name: Install the Bitwarden CLI and rbw
+- name: Install rbw
   community.general.homebrew:
-    name:
-      - bitwarden-cli
-      - rbw
+    name: rbw
     state: latest
+
+# `bw` comes from npm, as on Ubuntu and Omarchy, not the `bitwarden-cli` formula: that formula was
+# the last thing pulling in Homebrew's `node`, which bash login shells and OpenClaw's daemon picked
+# over mise's (2026-10-25, Node 26). The formula goes first, or npm_global sees its /opt/homebrew/bin/bw
+# as another channel and skips the install. bw keeps its data and server setting either way.
+- name: Remove the bitwarden-cli formula
+  community.general.homebrew:
+    name: bitwarden-cli
+    state: absent
+
+- name: Install the Bitwarden CLI from npm
+  ansible.builtin.include_role:
+    name: nodejs
+    tasks_from: npm_global
+  vars:
+    nodejs_npm_package: "@bitwarden/cli"
+    nodejs_npm_cmd: bw
+
+# Homebrew's `node` was only ever a dependency here. Remove it once no formula needs it; a later
+# formula that does pulls it back in, and this then leaves it alone.
+- name: Find formulas that need Homebrew's node
+  ansible.builtin.command: brew uses --installed node
+  register: bitwarden_node_users
+  changed_when: false
+  check_mode: false
+
+- name: Remove Homebrew's node
+  community.general.homebrew:
+    name: node
+    state: absent
+  when: bitwarden_node_users.stdout | trim == ''
 
 # The hostname comes from a pipe lookup, not from facts: a single-role `include_role` run gathers
 # none, and the lookup runs on the control node, which is always this host.

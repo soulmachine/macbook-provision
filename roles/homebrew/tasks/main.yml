@@ -45,6 +45,15 @@
     name: docker-completion
     state: absent
 
+# Google's Gemini CLI moved to the npm `gemini` role on 2026-09-04 (DECISIONS Q218), but the
+# deprecated `gemini-cli` formula was never removed: dev-server-frank-lume still ran it as `gemini`,
+# so npm_global took it for another channel and skipped the npm install, and it kept Homebrew's
+# `node` installed. With it gone, the gemini role installs the npm copy.
+- name: Remove the deprecated gemini-cli formula
+  community.general.homebrew:
+    name: gemini-cli
+    state: absent
+
 - name: Fix docker symlink conflict left by docker-completion
   ansible.builtin.command:
     cmd: brew link --overwrite docker

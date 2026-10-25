@@ -3026,3 +3026,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The same tasks, templates and binary already exist in all three provision repos; a list is the smallest change, and a second copy of the relay script would drift. The remote hosts are exactly the hosts the role already gives a relay. Same change in macbook-, ubuntu- and omarchy-provision.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q292 — interactive/homebrew-node-removal — deviation
+
+**Question:** Homebrew's `node` (26 since 2026-10-25) came first on PATH in `bash -lc` shells and was pinned by OpenClaw's daemon on mac-mini-m2 and dev-server-frank-lume. Context-mode's better-sqlite3 has no Node 26 prebuild, so every Codex start under bash rebuilt it and broke Codex's hook trust (coding-agent Q643-Q644). What should change?
+**Options considered:** mise shims ahead of Homebrew in `~/.profile` / drop the stale `gemini-cli` formula / move `bw` to npm and remove Homebrew's `node` / pin Homebrew's node
+**Chosen:** All three of the first options. `mise` writes the shims line to `~/.profile` too. `homebrew` removes `gemini-cli` (left from Q218). `bitwarden` removes the `bitwarden-cli` formula, installs `@bitwarden/cli` with `npm_global` (as ubuntu-provision and omarchy-provision already do), and removes Homebrew's `node` once `brew uses --installed node` is empty. `openclaw` now finds the daemon's Node anywhere in its arguments and rewrites the daemon when that Node is gone.
+**Decided-by:** human
+**Justification:** Frank chose all three. Verified on mac-mini-m6: each changed role converges on its second run; `bw` 2026.10.0 from npm keeps its Vaultwarden server; Homebrew's `node` is gone; `bash -lc` finds Node 24; the OpenClaw daemon still runs.
+**Outcome:** applied
+**Ref:** (pending)

@@ -123,3 +123,16 @@
     create: true
     mode: "0644"
     state: present
+
+# The same for bash: a `bash -lc` login shell reads ~/.profile, after /etc/profile's path_helper,
+# and without this found Homebrew's node first (macbook-pro-m3, 2026-10-25: Node 26, which
+# context-mode's better-sqlite3 has no prebuild for, so every Codex start under bash rebuilt it).
+# shortcut: bash skips ~/.profile when ~/.bash_profile exists; no host has one, write there if one does.
+- name: Ensure mise shims are on PATH in .profile
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.profile"
+    regexp: '^export PATH=".*mise/shims.*"$'
+    line: 'export PATH="$HOME/.local/share/mise/shims:$PATH"'
+    create: true
+    mode: "0644"
+    state: present
