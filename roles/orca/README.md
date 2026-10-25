@@ -18,6 +18,10 @@ symlink". On macbook-pro-nickel that link comes before Homebrew's on PATH, so a 
 there. The role removes any symlink at that path, and calls the cask's link,
 `/opt/homebrew/bin/orca`, by full path.
 
+Settings → General → Orca CLI already shows the CLI as registered. On macOS the app takes the first
+`orca` on the login shell's PATH, and the cask's link comes first and points at the app's
+launcher. So the role registers nothing more, and the old "Install CLI" button is not needed.
+
 ## The server on always-on Macs
 
 The role does not write its own LaunchAgent. It runs upstream's `orca serve service install --port
