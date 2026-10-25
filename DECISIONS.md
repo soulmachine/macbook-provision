@@ -2986,3 +2986,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Same command and reasons as Q100: the app goes, and the settings that make a reinstall cheap stay. The settings sizes are unchanged before and after: archs-mac-mini 231924 KB and macbook-pro-nickel 73932 KB; no other host had a JetBrains settings folder. Two hosts held stale records. macbook-pro-m3 still carried `webstorm` and `pycharm` as well, because Q100 never covered it; it had no app bundles, and a leftover `WebStorm.app` sat inside the Caskroom. archs-mac-mini carried only IntelliJ's metadata. Plain uninstall cleared both, so the planned `--force` fallback was never used, and the three Caskroom folders on macbook-pro-m3 are gone. archs-mac-mini is covered by its owner's word in Q101; the uninstall left its LaunchAgent `com.archauto.openclaw-invoice-watcher` alone (PID 79995 before and after). Skipped: mac-mini-2018, retired 2026-10-10 and now the Linux host mac-mini-2018-omarchy, and macbook-air, which is not on the tailnet and had no JetBrains apps in Q99. This run overlapped the Q286 rename: the old tailnet name `franks-mac-mini-m2` had stopped resolving, so mac-mini-m2 was reached by its tailnet IP `100.79.176.59`.
 **Outcome:** applied
 **Ref:** 021ee84
+
+## Q288 — interactive/rename-studio — deviation
+
+**Question:** A screen-wall edit addressed the Mac Studio as `mac-studio-m3`, but the host was still `Frank’s Mac Studio` / `franks-mac-studio`. Fix the edit, or rename the host as Q286 did for m2?
+**Options considered:** revert the edit / rename the host and every live reference / keep the edit and leave the host alone
+**Chosen:** Rename, as in Q286. ComputerName, HostName and LocalHostName are now `mac-studio-m3`, and so is the Tailscale hostname. Frank changed the machine name in the zhiqushi tailnet console, because this host's Tailscale credential cannot reach that tailnet. The hindsight `hindsight_url_by_host` key in all three provisioning repos, this README's host table, and coding-agent's `fleet.conf` and screen-wall were updated. DECISIONS.md entries and known_hosts stay as they are.
+**Decided-by:** human (rename), agent (scope of references)
+**Justification:** The hindsight key matches `hostname -s`, so the Studio would lose its Hindsight URL. screen-wall finds hosts by their `tailscale status` DNS name and skips the whole wall when one is missing, so its address must match the tailnet name. Screen Sharing titles the Studio's window with its ComputerName. known_hosts uses `HostKeyAlias mac-studio-m3`, so its entries still match.
+**Outcome:** applied
+**Ref:** (pending)
