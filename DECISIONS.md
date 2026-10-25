@@ -3015,4 +3015,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent
 **Justification:** Frank named the command, and it installs the copy that matches the Orca build on the host, which an `npx skills add` of upstream's repo would not. The result is a real directory in `~/.agents/skills`, as the store expects of a third-party skill (skills.md). The command also updates a copy Orca wrote, so AGENTS.md's rule "diff state, don't grep output" applies. The links are left out of the diff because `agent-sync sync` adds its own links to the same skill (pi, hermes, openclaw), and including them made the next run report a change. `--json` is dropped because Orca 1.4.238 (omarchy) still installs through npx and rejects `--json` on a real install. Tested: two runs each on m6, supermicro and mac-mini-2018-omarchy report installed, then current, and m6 stays current after `agent-sync sync`.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** f1b98d1
