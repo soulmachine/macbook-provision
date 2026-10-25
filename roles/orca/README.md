@@ -68,7 +68,8 @@ while the desktop app is serving the same profile. After 6 failures in 15 minute
   last unused one. If the client shows the server as Disconnected, click **Connect**.
 - **Agent accounts and skills** must be set up in the server's own shell, because a paired client
   disables Add account, and remote sessions use the server's PATH, home and logins:
-  `orca account add --agent claude|codex`, `orca skills install --skill orca-cli --skill
-  orchestration`, and later `orca skills update --all`.
+  `orca account add --agent claude|codex`. The role installs the `orca-cli` skill on every run
+  (`orca skills install --skill orca-cli`), which also updates it when Orca ships a newer copy. Add
+  others by hand, such as `orca skills install --skill orchestration`.
 
 Source for the steps: <https://www.onorca.dev/docs/remote-servers>.

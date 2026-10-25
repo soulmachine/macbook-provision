@@ -3006,3 +3006,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Frank chose the address, both nickel fixes, manual pairing and leaving grokbot-box out. The link the app's "Install CLI" button wrote is root-owned with mode 0700, so a user cannot readlink it. On nickel it comes before Homebrew's on PATH. The README called it dead, and that was wrong. An IP rather than a MagicDNS name, because one fleet host answers `*.ts.net` from a fake-IP resolver (fleet-ssh.md). The role still installs only when the service is not live, so the seven live servers get the flag from a one-time manual reinstall. That restarts each server once.
 **Outcome:** applied
 **Ref:** 92a6870
+
+## Q290 — interactive/orca-cli-skill — tradeoff
+
+**Question:** Frank asked the orca role to run `orca skills install --skill orca-cli`. Where does it run, and how does the role tell a change from a no-op?
+**Options considered:** Orca's own installer in the orca role / a source in the `skills` role's `npx skills add` list; `changed` from the skill's files / from the files and every agent link / from the command's output
+**Chosen:** Orca's own installer, in the orca role, on every host that has Orca, without `--json`. `changed` comes from a checksum of the files in `~/.agents/skills/orca-cli`, read before and after.
+**Decided-by:** agent
+**Justification:** Frank named the command, and it installs the copy that matches the Orca build on the host, which an `npx skills add` of upstream's repo would not. The result is a real directory in `~/.agents/skills`, as the store expects of a third-party skill (skills.md). The command also updates a copy Orca wrote, so AGENTS.md's rule "diff state, don't grep output" applies. The links are left out of the diff because `agent-sync sync` adds its own links to the same skill (pi, hermes, openclaw), and including them made the next run report a change. `--json` is dropped because Orca 1.4.238 (omarchy) still installs through npx and rejects `--json` on a real install. Tested: two runs each on m6, supermicro and mac-mini-2018-omarchy report installed, then current, and m6 stays current after `agent-sync sync`.
+**Outcome:** applied
+**Ref:** (pending)
