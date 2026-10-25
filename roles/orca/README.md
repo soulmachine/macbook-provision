@@ -10,9 +10,13 @@ Orca has no separate server package. The `orca` CLI and `orca serve` ship inside
 `stablyai/orca/orca` cask links that CLI to `/opt/homebrew/bin/orca`. So an always-on Mac keeps the
 cask, where paseo removes it. The cask is `auto_updates true`, so the role installs it `present`
 with `--adopt` and lets the app update itself. Adopting matters on hosts that installed the DMG by
-hand. The app's own "Install CLI" button writes a root-owned `/usr/local/bin/orca` that comes after
-Homebrew's on PATH. On mac-mini-m2 that link is dead ("Unable to determine Orca.app path"),
-and the role leaves it alone.
+hand.
+
+The app's own "Install CLI" button writes `/usr/local/bin/orca` as a root-owned symlink with mode
+0700. A user cannot readlink it, so the CLI fails with "Unable to determine Orca.app path from
+symlink". On macbook-pro-nickel that link comes before Homebrew's on PATH, so a plain `orca` broke
+there. The role removes any symlink at that path, and calls the cask's link,
+`/opt/homebrew/bin/orca`, by full path.
 
 ## The server on always-on Macs
 
@@ -24,8 +28,14 @@ while the desktop app is serving the same profile. After 6 failures in 15 minute
 
 - **It installs only when `orca serve service status --json` is not `live`.** A reinstall restarts
   the server and kills its sessions. So a converged host is never touched, and a change of flags
-  (port, PATH) needs a manual `orca serve service install --port 6768`.
+  (port, address, PATH) needs a manual `orca serve service install --port 6768 --command
+  /opt/homebrew/bin/orca --pairing-address <tailscale-ip>`.
 - **Port 6768 is fixed,** so paired clients keep their address across restarts.
+- **It advertises the host's Tailscale IPv4** (`tailscale ip -4`) with `--pairing-address`, so a
+  pairing offer names an address that macbook-pro-m3 reaches. It is an IP, not a MagicDNS name,
+  because one fleet host answers `*.ts.net` from a fake-IP resolver. Without Tailscale, the role
+  leaves the flag out.
+- **`--command /opt/homebrew/bin/orca`** pins the cask's link in the LaunchAgent.
 - **It runs through `zsh -lc`.** The LaunchAgent pins the PATH it was installed with, and the agent
   CLIs the server spawns live on mise's shims.
 - **A loaded agent is not a live server.** After installing, the role polls the status for up to 60
@@ -38,8 +48,16 @@ while the desktop app is serving the same profile. After 6 failures in 15 minute
 
 ## By hand
 
-- **Pairing.** The service never prints a pairing link. Pair from the desktop app (Settings → Remote
-  Orca Servers), or stop the service and run `orca serve --port 6768 --pairing-address <tailscale-ip>`
-  in a terminal. Then paste the link into **Add Server** on the client. Do not run both at once.
+- **Pairing.** The service never prints a pairing link. When the desktop app is open on the server,
+  pair from it (Settings → Remote Orca Servers). Otherwise, on the server:
+  1. `orca serve service uninstall`, which frees the profile.
+  2. `orca serve --port 6768 --pairing-address <tailscale-ip>` in a terminal. It prints a pairing link.
+  3. On the client, paste the link into **Add Server**, or run
+     `orca environment add --name <host> --pairing-code '<link>'`.
+  4. Ctrl+C the server, then `orca serve service install --port 6768 --command
+     /opt/homebrew/bin/orca --pairing-address <tailscale-ip>`.
+
+  The link is a secret: do not paste it into a file or a chat. Do not run step 2 while the app
+  serves the same profile, because `orca serve` then exits with code 3.
 - **Agent accounts and skills** on the server: `orca account add --agent claude|codex` and
   `orca skills install`.

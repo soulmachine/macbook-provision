@@ -34,6 +34,30 @@
     state: present
     install_options: adopt
 
+# The cask's link. A full path, because the app's "Install CLI" button can put another `orca`
+# ahead of it on PATH, as the next two tasks explain.
+- name: Set the Orca CLI path
+  ansible.builtin.set_fact:
+    orca_cli: /opt/homebrew/bin/orca
+
+# The app's "Install CLI" button writes /usr/local/bin/orca as a root-owned symlink with mode
+# 0700. A user cannot readlink it, so the CLI fails with "Unable to determine Orca.app path from
+# symlink", and on hosts where /usr/local/bin comes first on PATH (macbook-pro-nickel) a plain
+# `orca` breaks. The cask's link gives the same CLI, so any symlink there goes.
+- name: Read the app's own CLI link
+  become: true
+  ansible.builtin.stat:
+    path: /usr/local/bin/orca
+    follow: false
+  register: orca_app_link
+
+- name: Remove the app's own CLI link
+  become: true
+  ansible.builtin.file:
+    path: /usr/local/bin/orca
+    state: absent
+  when: orca_app_link.stat.islnk | default(false)
+
 # The server, on always-on Macs only. Upstream's `orca serve service install` writes and loads
 # its own LaunchAgent, which runs `orca serve --supervise --no-pairing`: it restarts the server
 # with backoff, and waits while an update replaces the app or the desktop app serves instead.
@@ -46,7 +70,7 @@
   block:
     # `default('{}', true)`: under `--check` a skipped read leaves an empty stdout.
     - name: Read the Orca server service
-      ansible.builtin.command: zsh -lc 'orca serve service status --json'
+      ansible.builtin.command: zsh -lc '{{ orca_cli }} serve service status --json'
       register: orca_service
       changed_when: false
       failed_when: false
@@ -69,8 +93,21 @@
     - name: Install and check the Orca server service
       when: orca_status.error.code | default('') != 'invalid_argument'
       block:
+        # The address that pairing offers advertise to clients. An IP, not a MagicDNS name,
+        # because one fleet host answers *.ts.net from a fake-IP resolver. No Tailscale, no flag.
+        - name: Read this host's Tailscale address
+          ansible.builtin.command: zsh -lc 'tailscale ip -4 2>/dev/null | head -1'
+          register: orca_tailscale
+          changed_when: false
+          failed_when: false
+          check_mode: false
+
+        # --command pins the cask's link in the LaunchAgent, not the first `orca` on PATH.
         - name: Install the Orca server service
-          ansible.builtin.command: zsh -lc 'orca serve service install --port 6768 --json'
+          ansible.builtin.command: >-
+            zsh -lc '{{ orca_cli }} serve service install --port 6768 --command {{ orca_cli }}
+            {%- if orca_tailscale.stdout | default('') is match('^100\.\d+\.\d+\.\d+$') %}
+            --pairing-address {{ orca_tailscale.stdout }}{% endif %} --json'
           changed_when: true
           when: orca_status.result.verdict | default('') != 'live'
 
@@ -79,7 +116,7 @@
         # so a down server is recorded, and main.yml's post_tasks fail the play on it after
         # the other roles have run.
         - name: Read whether the Orca server is live
-          ansible.builtin.command: zsh -lc 'orca serve service status --json'
+          ansible.builtin.command: zsh -lc '{{ orca_cli }} serve service status --json'
           register: orca_service_after
           changed_when: false
           failed_when: false
@@ -94,8 +131,9 @@
             orca_serve_down: >-
               The Orca server is not live after 60s of waiting
               ({{ (orca_service_after.stdout | default('{}', true) | from_json).result | default('no status') }}).
-              `orca serve service status` says why, and ~/Library/Logs/Orca/ holds its log.
-              `orca serve service install --port 6768` clears a supervisor that gave up.
+              `{{ orca_cli }} serve service status` says why, and ~/Library/Logs/Orca/ holds its
+              log. `{{ orca_cli }} serve service install --port 6768 --command {{ orca_cli }}
+              --pairing-address <tailscale-ip>` clears a supervisor that gave up.
           when: (orca_service_after.stdout | default('{}', true) | from_json).result.verdict | default('') != 'live'
 
         # post_tasks only run in a full play; a single-role run reports it here.

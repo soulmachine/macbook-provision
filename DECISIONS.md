@@ -2996,3 +2996,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The hindsight key matches `hostname -s`, so the Studio would lose its Hindsight URL. screen-wall finds hosts by their `tailscale status` DNS name and skips the whole wall when one is missing, so its address must match the tailnet name. Screen Sharing titles the Studio's window with its ComputerName. known_hosts uses `HostKeyAlias mac-studio-m3`, so its entries still match.
 **Outcome:** applied
 **Ref:** 561a541 (ubuntu-provision 96b1b1b, omarchy-provision 7827599)
+
+## Q289 — interactive/orca-remote-servers — deviation
+
+**Question:** The Orca servers from Q243 are live on every always-on host, but none advertises a tailnet address, and macbook-pro-nickel's plain `orca` fails. What changes, and is pairing automated?
+**Options considered:** advertise the Tailscale IPv4 / a MagicDNS name / nothing; for nickel: call `/opt/homebrew/bin/orca` by full path / delete `/usr/local/bin/orca` / both; pairing: a one-shot script from m6 / manual steps in the README
+**Chosen:** The install task adds `--pairing-address <tailscale ip -4>` when it reads a `100.x.y.z` address, and `--command /opt/homebrew/bin/orca`. The role calls the CLI by that full path and removes any symlink at `/usr/local/bin/orca`. Pairing stays manual, with the steps in the README. grokbot-box stays without a server (ubuntu Q52).
+**Decided-by:** human
+**Justification:** Frank chose the address, both nickel fixes, manual pairing and leaving grokbot-box out. The link the app's "Install CLI" button wrote is root-owned with mode 0700, so a user cannot readlink it. On nickel it comes before Homebrew's on PATH. The README called it dead, and that was wrong. An IP rather than a MagicDNS name, because one fleet host answers `*.ts.net` from a fake-IP resolver (fleet-ssh.md). The role still installs only when the service is not live, so the seven live servers get the flag from a one-time manual reinstall. That restarts each server once.
+**Outcome:** applied
+**Ref:** (pending)
