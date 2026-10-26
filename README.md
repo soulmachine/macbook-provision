@@ -123,7 +123,7 @@ pre-commit run --all-files
 | 1password | 每台主机都装：1Password App（cask `1password`，`--adopt` 接管手装的 App）、官方 CLI `op`（cask `1password-cli`）与官方 Claude Code 插件 [`1password@1password`](https://github.com/1Password/1password-claude-plugin)（Developer Environments 的 skill、MCP、hook）；App 的 Settings → Developer 中「Integrate with 1Password CLI」与「Integrate with MCP clients」两个开关需手动打开（依赖 claude-code） |
 | bitwarden | Bitwarden 客户端（用于自建的 Vaultwarden）：官方 Electron 桌面 App（cask `bitwarden`，`--adopt` 接管手装的 App，应用自更新）、官方 CLI `bw`（formula `bitwarden-cli`）与 `rbw`（formula，自带终端 `pinentry`）；再把 `bw` 的 server 与 `rbw` 的 `base_url`/`email` 设为 `https://vaultwarden.soulmachine.me` 与 `soulmachine@gmail.com`（先读、不同才写；archs-mac-mini 有自己的 Vaultwarden，跳过）；桌面 App 的服务器与所有登录仍需手动 |
 | codex | OpenAI Codex CLI（依赖 nodejs） |
-| opencode | OpenCode CLI（npm `opencode-ai`）；并用 `npx oh-my-openagent` 写入 `~/.config/opencode/opencode.json`，由版本戳门控，避免每次 play 重装（依赖 nodejs） |
+| opencode | OpenCode CLI（npm `opencode-ai`，依赖 nodejs） |
 | kimi-code | Kimi Code CLI（通过官方 code.kimi.com 脚本安装） |
 | omp | oh-my-pi：bun 全局 `@oh-my-pi/pi-coding-agent`（依赖 bun） |
 | pi | pi coding agent：bun 全局 `@earendil-works/pi-coding-agent`，并下发 `~/.pi/agent/settings.json`（依赖 bun） |
@@ -252,12 +252,6 @@ role 表里的「依赖 nodejs」指的是运行期依赖，不是安装渠道�
 
 这是一次**合并**而不是同步：`~/.pi/agent/` 下面没被 payload 覆盖到的东西（尤其是
 `skills` role 维护的 `~/.pi/agent/skills/`，以及 pi 自己的运行时状态）不受影响。
-
-另一处是 `~/.config/opencode/opencode.json`，由 `npx oh-my-openagent` 重写，每次重写
-都会留下一个 `opencode.json.backup-<时间戳>`（2026-09-15 清理前累计了 81 个）。这一步
-有 gate——配置里没有 `oh-my-openagent` 字样，或者 npm 上的版本与
-`~/.config/opencode/.oh-my-openagent-version` 记录的不一致时才跑——所以正常情况下它并
-不会每次都动。
 
 #### 技能：一个存储 + 符号链接扇出
 
