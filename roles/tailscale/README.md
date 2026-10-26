@@ -7,6 +7,13 @@ Tailscale SSH; standard OpenSSH handles remote shells. That is why there is no `
 reintroduce the FDA grant (so SSH child shells inherit working TCC) and, for per-machine ACL gating,
 `--advertise-tags` plus the API-driven `tagOwners` update.
 
+- **An online node ends the role at once.** The first task runs `tailscale status --json`. On rc 0
+  with `BackendState: Running`, `meta: end_role` skips everything below: the cask, both GUI gates,
+  `tailscale up` and key-expiry. A node that answers `Running` already has the app, the extension
+  and the CLI. Skipping the cask loses no upgrades, because `tailscale-app` is `auto_updates: true`,
+  so `state: latest` and `brew upgrade` skip it anyway and the GUI updates itself. Key-expiry
+  therefore runs only on a run that starts offline, in practice the enrolment run. To re-apply it on
+  an online node, run the API calls by hand or `tailscale down` first.
 - **It installs the standalone Tailscale.app** through the `tailscale-app` cask (the tailscale.com
   build, not the sandboxed App Store one). The cask is a `.pkg`, so brew calls `sudo`, which
   passwordless sudo lets run unattended. The cask ships the GUI app and the embedded `tailscaled`, but

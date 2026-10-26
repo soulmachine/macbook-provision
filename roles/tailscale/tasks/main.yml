@@ -16,6 +16,19 @@
 # reporting `No such file or directory: b'tailscale'`). Failing at the gate
 # reports the real blocker, and works the same interactively or headless.
 
+# A node that answers `BackendState: Running` already has the app, the Network
+# Extension and the CLI, so every task below would be a no-op or a needless gate.
+- name: Read the current Tailscale state
+  ansible.builtin.command: tailscale status --json
+  register: _tailscale_status
+  changed_when: false
+  failed_when: false # a missing CLI or a stopped daemon means "not online"; the tasks below handle it
+  check_mode: false # read-only probe; run in --check so the early return below sees real state
+
+- name: Stop here when this node is already online
+  ansible.builtin.meta: end_role
+  when: _tailscale_status.rc == 0 and (_tailscale_status.stdout | from_json).BackendState == 'Running'
+
 # brew's .pkg-based cask install shells out to `sudo` internally (no `-A`) to
 # expand root-owned payload; passwordless sudo (configured by bootstrap.sh) lets
 # that succeed unattended, so no timestamp priming is needed.
@@ -194,13 +207,7 @@
 - name: Auto-connect to tailnet when auth key is provided
   when: tailscale_auth_key | length > 0
   block:
-    - name: Check current Tailscale state
-      ansible.builtin.command: tailscale status --json
-      register: _tailscale_status
-      changed_when: false
-      failed_when: false
-      check_mode: false # read-only probe; run in --check so the from_json guard has real JSON
-
+    # No state check here: the early return at the top already ended the role on a running node.
     - name: Remind user that admin approval may be required
       ansible.builtin.debug:
         msg: |
@@ -218,7 +225,6 @@
 
             https://login.tailscale.com/admin/machines
           ================================================================
-      when: _tailscale_status.rc != 0 or (_tailscale_status.stdout | from_json).BackendState != 'Running'
 
     - name: Bring Tailscale up
       ansible.builtin.command: >
@@ -230,12 +236,14 @@
       become: true
       no_log: true
       changed_when: true
-      when: _tailscale_status.rc != 0 or (_tailscale_status.stdout | from_json).BackendState != 'Running'
 
 # ─── Node-key expiry ──────────────────────────────────────────────────────────
 # Disable node-key expiry via the Tailscale REST API. The CLI has no equivalent
 # command, so we POST directly. The device identifier is this node's stable ID
 # from `tailscale status --json` (Self.ID, which the API accepts as its nodeId).
+#
+# The early return at the top skips this block on a running node, so it runs
+# only on a run that starts offline: in practice the enrolment run.
 #
 # Gated on the OAuth client ALONE — deliberately not on TAILSCALE_AUTH_KEY too.
 # The auth key enrols the node and is spent; this block maintains a setting on

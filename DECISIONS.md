@@ -3056,3 +3056,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The role already decides how each host reaches m2, and the address comes from its own `hindsight_lan_url`, so no fleet list is duplicated. The remote Macs reach m2 by relay, so the exception is unused there. Verified on m6: the write is skipped when present, and a check-mode run with a test address shows the write would run.
 **Outcome:** applied
 **Ref:** coding-agent Q640, Q641, Q651; coding-agent devops/service-access.md
+
+## Q295 — interactive/tailscale-early-return — deviation
+
+**Question:** When `tailscale status --json` shows the node online, should the role skip only the install steps, or end at once and also skip key-expiry?
+**Options considered:** skip the install steps and keep key-expiry every night / end the role at once with `meta: end_role`
+**Chosen:** End the role at once. The first task probes `tailscale status --json`, and rc 0 with `BackendState: Running` runs `meta: end_role`. The enrolment block's own probe and its two `Running` conditions are gone.
+**Decided-by:** human
+**Justification:** The user asked to return early and skip all logic. The cost: key-expiry now runs only on a run that starts offline, in practice the enrolment run, so an online node whose key expiry was never disabled stays as it is. Skipping the cask loses nothing, because `tailscale-app` is `auto_updates: true`. Verified on this Mac: online, the role ends after the probe with 0 changed; in check mode with the CLI off `PATH`, it runs the full path.
+**Outcome:** applied
+**Ref:** roles/tailscale/README.md; (pending)
