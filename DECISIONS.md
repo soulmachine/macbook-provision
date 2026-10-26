@@ -3046,3 +3046,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Removing it would break services others depend on, which needs their owner, so the role leaves it and says why. Checked before the nightly run reached the company Macs: archs-mac-mini's invoice watcher already runs mise's node, macbook-pro-nickel has no such LaunchAgent. Tested the `find` against a copy of the `big3` plist (matched) and an OpenClaw and a mise plist (not matched).
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q294 — interactive/local-network-exception — scope
+
+**Question:** coding-agent Q641 set Apple's Local Network address exception for m2's LAN IP by hand on seven Macs, so a rebuilt Mac would lose its LAN path to Hindsight and the gateway without a sign. Which role keeps it, and on which Macs?
+**Options considered:** a new role on every Mac / the `hindsight` role, on Macs whose Hindsight URL is the LAN URL / the `tailscale` role
+**Chosen:** `hindsight` (`tasks/local-network.yml`), on Darwin hosts whose `hindsight_url_by_host` entry is `hindsight_lan_url`: m6, the Studio and dev-server-frank-lume. It runs before the token check, adds `<LAN IP>/32` to both arrays in root's `com.apple.network.local-network` only when missing, and prints a reboot reminder when it adds one. ubuntu- and omarchy-provision get nothing: Linux has no Local Network privacy.
+**Decided-by:** agent
+**Justification:** The role already decides how each host reaches m2, and the address comes from its own `hindsight_lan_url`, so no fleet list is duplicated. The remote Macs reach m2 by relay, so the exception is unused there. Verified on m6: the write is skipped when present, and a check-mode run with a test address shows the write would run.
+**Outcome:** applied
+**Ref:** coding-agent Q640, Q641, Q651; coding-agent devops/service-access.md

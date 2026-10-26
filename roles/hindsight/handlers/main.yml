@@ -1,0 +1,4 @@
+---
+- name: Report that the Local Network exception needs a reboot
+  ansible.builtin.debug:
+    msg: The Local Network exception for m2's LAN IP was added. It takes effect after the next reboot.
