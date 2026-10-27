@@ -153,6 +153,7 @@ pre-commit run --all-files
 | cmux | 多 agent 工作区：tap `manaflow-ai/cmux` + cask `cmux`，并把 CLI 链接到 `~/.local/bin`（依赖 ghostty） |
 | obsidian | Obsidian（cask）+ npm 全局 `defuddle`（依赖 claude-code） |
 | cloudflare | Cloudflare CLI：npm 全局 `cf`（依赖 claude-code） |
+| godaddy | GoDaddy 官方 CLI `gddy`（上游 install.sh 校验 sha256 后装入 `~/.local/bin`，按 `gddy update apply` 返回的 previousVersion/newVersion 差异更新）+ 官方 Claude Code 插件 [`gddy@godaddy`](https://github.com/godaddy/cli)（依赖 claude-code） |
 | multica-cli | tap `multica-ai/tap` + brew `multica-ai/tap/multica` |
 | purelymail | Purelymail API CLI（GitHub release 单一二进制装入 `~/.local/bin`，跟随最新 release，无需 cargo）；token 手工放在 `~/.zshenv` |
 | email | Himalaya 邮件 CLI（brew）+ ortie OAuth CLI（GitHub release 二进制装入 `~/.local/bin`，跟随最新 release）+ Proton Mail Bridge（cask）；账号配置手工完成 |
