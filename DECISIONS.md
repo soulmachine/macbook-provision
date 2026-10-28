@@ -3076,3 +3076,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The fleet's nightly sweep exists to keep tools current, and the pins came from mirroring kunchenguid's dotfiles, not from a choice. One loop driven by settings.json has no second list to keep in sync. The cost: the context-mode role's own pi refresh is now redundant on a nightly run, since the pi role runs first and reports the change; and a dependency bump counts as a change, which is true but noisier.
 **Outcome:** applied
 **Ref:** roles/pi/tasks/main.yml; roles/pi/files/settings.json; Q81 (pi gateway-only)
+
+## Q297 — pi/one-role-owns-every-package — tradeoff
+
+**Question:** After Q296 the pi role refreshed its npm entries, but the ponytail role still ran its own `pi install` and git refresh for `git:github.com/DietrichGebert/ponytail`. Fold that in too?
+**Options considered:** leave ponytail's pi task file / widen the pi role's loop to every `packages` entry and diff git HEADs as well
+**Chosen:** Widen the loop. `pi update --extension <git source>` clones a missing checkout and fast-forwards an unpinned one (pi's `updateGit`), and reconciles a `@sha` pin, so the same loop covers both package types. Change detection adds `git rev-parse HEAD` per git entry, before and after, to the npm checksum diff. `roles/pi/vars/main.yml` derives the list from files/settings.json. ponytail's `tasks/pi.yml` and its two pi vars are gone.
+**Decided-by:** agent, after the user asked for it
+**Justification:** One role owns everything pi loads, driven by the one list that the settings copy enforces anyway. The cost: the git probe runs `failed_when: false` so a fresh host's missing clone reads as empty stdout rather than a failure, and the ponytail role no longer reports the pi half of its upgrades.
+**Outcome:** applied
+**Ref:** roles/pi/tasks/main.yml; roles/pi/vars/main.yml; Q296
