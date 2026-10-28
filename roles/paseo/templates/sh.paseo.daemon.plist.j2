@@ -9,9 +9,16 @@
        from ~/.zshenv plus the mise shims on PATH from ~/.zprofile. -->
   <key>ProgramArguments</key>
   <array>
+{% if lookup('pipe', 'hostname -s') in paseo_node_launch_hosts %}
+    <!-- node first, then the same login-shell env and `paseo` by name: see paseo_node_launch_hosts. -->
+    <string>{{ lookup('env', 'HOME') }}/.local/share/mise/installs/node/lts/bin/node</string>
+    <string>-e</string>
+    <string>const {execFileSync, spawn} = require("child_process"); const env = Object.fromEntries(execFileSync("/bin/zsh", ["-lc", "env -0"]).toString().split("\0").filter(Boolean).map(l => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)])); const c = spawn("paseo", ["daemon", "run"], {env, stdio: "inherit"}); for (const s of ["SIGTERM", "SIGINT", "SIGHUP"]) process.on(s, () => c.kill(s)); c.on("exit", code => process.exit(code ?? 1));</string>
+{% else %}
     <string>/bin/zsh</string>
     <string>-lc</string>
     <string>exec paseo daemon run</string>
+{% endif %}
   </array>
   <key>RunAtLoad</key>
   <true/>

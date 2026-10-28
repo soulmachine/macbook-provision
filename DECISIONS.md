@@ -3086,3 +3086,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** One role owns everything pi loads, driven by the one list that the settings copy enforces anyway. The cost: the git probe runs `failed_when: false` so a fresh host's missing clone reads as empty stdout rather than a failure, and the ponytail role no longer reports the pi half of its upgrades.
 **Outcome:** applied
 **Ref:** roles/pi/tasks/main.yml; roles/pi/vars/main.yml; Q296
+
+## Q298 — paseo/node-launch-on-m6 — deviation
+
+**Question:** On mac-mini-m6 paseo's agents could not read iMessages: under `zsh -lc "exec paseo daemon run"`, node is denied Full Disk Access (SIP on) even with zsh and node granted. How should the role launch the daemon there?
+**Options considered:** grant /bin/zsh (done; did not help node) / hand-edit m6's plist (the role reverts it) / switch every host to a node launcher (m2's paseo would lose its zsh-held grants) / a per-host list in the role
+**Chosen:** `paseo_node_launch_hosts` in roles/paseo/vars/main.yml, now `[mac-mini-m6]`. The plist became a template. Listed hosts start mise's `lts` node with an inline launcher that loads `zsh -lc env -0` and spawns `paseo daemon run` by name, forwarding SIGTERM/SIGINT/SIGHUP. Others render byte-identical to the old file (checked against mac-mini-m2's installed plist), so they are not reloaded.
+**Decided-by:** agent, after the user said "fix m6"
+**Justification:** Keeps the README's two invariants (paseo by name, the login-shell env with CLIPROXY_API_KEY) and the `lts` symlink follows `mise upgrade node`. The cost: one extra node process per daemon, and a node upgrade changes the real path, which drops node's path-matched grants until the imsg-permissions skill runs again.
+**Outcome:** applied
+**Ref:** roles/paseo/templates/sh.paseo.daemon.plist.j2; roles/paseo/vars/main.yml; roles/paseo/README.md; personal-agent Q265–Q266

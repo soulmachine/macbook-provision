@@ -13,14 +13,21 @@ inherited by its meta dependencies.
 ## The daemon on always-on Macs
 
 The role owns the `sh.paseo.daemon` LaunchAgent (DECISIONS Q176), so every such host runs the daemon.
-It installs `files/sh.paseo.daemon.plist`, which runs `zsh -lc "exec paseo daemon run"`, and loads the
+It installs `templates/sh.paseo.daemon.plist.j2`, which runs `zsh -lc "exec paseo daemon run"`, and loads the
 agent whenever launchd does not have it, including one someone unloaded on purpose. It also turns on
 the relay (`daemon.relay.enabled`, off by default). The daemon listens on 127.0.0.1 only, so the relay
 is the only way a paired device reaches it. `paseo daemon config set` only saves the file, so a change
 goes through the same reload. Pairing (`paseo daemon pair`) stays manual, because the pairing link is
 a per-host secret.
 
-Five things are easy to get wrong:
+Six things are easy to get wrong:
+
+- **macOS privacy grants follow the program launchd starts.** On a host in `vars/main.yml`'s
+  `paseo_node_launch_hosts` (mac-mini-m6), launchd starts mise's `lts` node, which loads
+  `zsh -lc env` and starts `paseo daemon run` by name. There, with SIP on, node under a zsh job is
+  denied Full Disk Access even with zsh and node granted, so paseo's agents could not read
+  iMessages. Every other host renders byte-identical to the zsh line, so it is not reloaded. Grant
+  that node through the `imsg-permissions` skill.
 
 - **0.10 removed `--foreground`.** The old hand-written agents survived only because the 0.8.0 pin won
   on PATH. Once the pin was gone they exited 1 in a loop every ThrottleInterval. The role's plist

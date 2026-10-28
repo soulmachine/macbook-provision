@@ -1,0 +1,8 @@
+---
+# Hosts whose sh.paseo.daemon starts mise's node directly instead of `zsh -lc "exec paseo …"`.
+# macOS charges a launchd job's privacy grants to the program launchd starts. On mac-mini-m6
+# (SIP on) node running under a zsh job is denied Full Disk Access even with zsh and node granted,
+# so paseo's agents could not read iMessages there; node as the job's own program passes
+# (personal-agent Q265–Q266). The other hosts keep the zsh line and their existing grants.
+paseo_node_launch_hosts:
+  - mac-mini-m6

@@ -94,8 +94,8 @@
         mode: u+rwx
 
     - name: Install the Paseo daemon LaunchAgent
-      ansible.builtin.copy:
-        src: sh.paseo.daemon.plist
+      ansible.builtin.template:
+        src: sh.paseo.daemon.plist.j2
         dest: ~/Library/LaunchAgents/sh.paseo.daemon.plist
         mode: "0644"
       register: paseo_agent_plist
