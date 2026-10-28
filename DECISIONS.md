@@ -3116,3 +3116,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Tolerating the brew error would hide real failures of the same task. uv is already provisioned by the `uv` role and the `python` and `claude-extras` roles install tools with it, so no new layer. Verified on macbook-pro-m3: `uv tool install` writes the tool, a second run prints "already installed", `uv tool upgrade` prints "Nothing to upgrade", and `apwcli doctor` finds Google Chrome and the Apple helper. The brew tap was untapped again on this host. The formula bug is upstream's; not reported there.
 **Outcome:** applied
 **Ref:** roles/apwcli/tasks/main.yml; README.md role table; AGENTS.md lookup count 139/40
+
+## Q301 — apwcli/role — deviation
+
+**Question:** Q299 left `apwcli skills install` out of the role. Frank asked for it, and for the skill to land in `~/.agents/skills` through agent-sync. Earlier the same day the skill had been moved into `soulmachine/skills` as a Sourced link (skills Q89), which Frank reverted. How does the role ship it?
+**Options considered:** Sourced link from `soulmachine/skills` / `apwcli skills install` into `~/.claude/skills`, then `agent-sync adopt` absorbs the directory into the Commons / `apwcli skills install --dir ~/.agents/skills` directly
+**Chosen:** Install, then adopt. The adopt task is gated on the `~/.claude/skills/apple-passwords` stat not being a symlink, so it runs once per host; `changed` for the install comes from a SKILL.md checksum before and after. `meta/main.yml` depends on `agent-sync`, as `roles/skills` does.
+**Decided-by:** user (the ask), agent (the shape)
+**Justification:** apwcli owns the content, so a git copy drifts from the installed version; `~/.agents/docs/skills.md` reserves Sourced links for self-authored skills. `--dir ~/.agents/skills` would leave Claude's farm link to agent-sync's next `sync`, and adopt is the documented verb. apwcli's installer is `copytree(dirs_exist_ok=True)`, so after adoption it writes through the symlink and updates the Commons copy in place. Supersedes the last sentence of Q299 for `skills install`; `mcp install` still is not run.
+**Outcome:** applied
+**Ref:** roles/apwcli/tasks/main.yml; roles/apwcli/meta/main.yml; README.md role table; AGENTS.md lookup count

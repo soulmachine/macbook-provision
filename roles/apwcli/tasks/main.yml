@@ -18,3 +18,48 @@
   changed_when: >-
     (apwcli_install.stderr + apwcli_install.stdout)
     is search('Installed [0-9]+ package')
+
+# apwcli bundles the `apple-passwords` agent skill and `apwcli skills install` copies it into
+# ~/.claude/skills (a `shutil.copytree(..., dirs_exist_ok=True)`, apwcli/cli/skills.py). That
+# reaches Claude only, so the role absorbs the directory into the Commons with `agent-sync adopt`:
+# the real directory moves to ~/.agents/skills/apple-passwords and a symlink is left behind, so
+# pi, hermes and openclaw get it too. Absorbed, not Sourced from a git repo, because apwcli owns
+# the content and ~/.agents/docs/skills.md reserves Sourced links for self-authored skills
+# (DECISIONS Q301). Later installs write THROUGH the symlink, so an apwcli upgrade updates the
+# Commons copy in place and the adopt step is skipped. No `agent-sync sync` here: adopt fans the
+# links out itself, and the `skills` role runs `sync` later in the same play.
+- name: Install the bundled apple-passwords skill and adopt it into the Commons
+  vars:
+    apwcli_skill_dir: "{{ lookup('env', 'HOME') }}/.claude/skills/apple-passwords"
+  block:
+    - name: Fingerprint the installed skill before the install
+      ansible.builtin.stat:
+        path: "{{ apwcli_skill_dir }}/SKILL.md"
+        get_checksum: true
+      register: apwcli_skill_before
+
+    - name: Check whether the skill directory is already a Commons link
+      ansible.builtin.stat:
+        path: "{{ apwcli_skill_dir }}"
+        get_checksum: false
+      register: apwcli_skill_link
+
+    - name: Install the apple-passwords skill
+      ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.local/bin/apwcli skills install"
+      changed_when: false
+
+    - name: Fingerprint the installed skill after the install
+      ansible.builtin.stat:
+        path: "{{ apwcli_skill_dir }}/SKILL.md"
+        get_checksum: true
+      register: apwcli_skill_after
+      changed_when: >-
+        (apwcli_skill_before.stat.checksum | default(''))
+        != (apwcli_skill_after.stat.checksum | default(''))
+
+    - name: Adopt the skill into the Commons
+      ansible.builtin.command: "agent-sync adopt {{ apwcli_skill_dir }}"
+      when: not (apwcli_skill_link.stat.islnk | default(false))
+      # Gated on the probe above: reaching this task means the directory is a real one in
+      # ~/.claude/skills, and adopt moves it.
+      changed_when: true
