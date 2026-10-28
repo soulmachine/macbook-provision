@@ -3096,3 +3096,23 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Keeps the README's two invariants (paseo by name, the login-shell env with CLIPROXY_API_KEY) and the `lts` symlink follows `mise upgrade node`. The cost: one extra node process per daemon, and a node upgrade changes the real path, which drops node's path-matched grants until the imsg-permissions skill runs again.
 **Outcome:** applied
 **Ref:** roles/paseo/templates/sh.paseo.daemon.plist.j2; roles/paseo/vars/main.yml; roles/paseo/README.md; personal-agent Q265–Q266
+
+## Q299 — apwcli/role — tradeoff
+
+**Question:** apwcli only works with Chrome, Brave, Edge or Chromium installed, because it drives Apple's iCloud Passwords browser extension. No role in this repo installs any of those. Should the apwcli role install a browser, gate on one, or neither?
+**Options considered:** install cask `google-chrome` in the role / gate the role on a browser being present / install apwcli everywhere and document the requirement
+**Chosen:** Install everywhere, no browser, no gate. The README row and the role's header comment name the requirement.
+**Decided-by:** agent
+**Justification:** A browser cask is a user-facing choice the ask did not cover, and every Mac in the fleet has a GUI where Chrome is installed by hand today (this host has it). A gate would silently skip the install on a rebuilt host, which is the Q127 class of gap. An installed apwcli without a browser fails loudly at first use with `apwcli doctor` to explain, which is cheaper to notice than a skipped role. The role also does not run `apwcli skills install` or `apwcli mcp install`: both edit per-agent config and were not asked for.
+**Outcome:** assumed
+**Ref:** roles/apwcli/tasks/main.yml; README.md role table
+
+## Q300 — apwcli/role — deviation
+
+**Question:** The repo installs third-party CLIs from their Homebrew tap (multica-cli, removemacai, macos-connectors). apwcli's tap formula installs a working binary but `brew install` exits non-zero: Homebrew cannot rewrite the dylib ID of the bundled `watchfiles` wheel (MachO::HeaderPadError, "Failed to fix install linkage"). A re-run then reports no change, so only the first install on each host fails, which is exactly the run the nightly sweep's `failed=0` test sees on a rebuilt host. Which install path?
+**Options considered:** brew tap with `failed_when` tolerating the linkage error / `uv tool install apwcli@latest` (the README's second option) / pipx
+**Chosen:** `uv tool install apwcli@latest` into `~/.local/bin`, with the `@latest` and `changed_when` pattern of roles/claude-extras.
+**Decided-by:** agent
+**Justification:** Tolerating the brew error would hide real failures of the same task. uv is already provisioned by the `uv` role and the `python` and `claude-extras` roles install tools with it, so no new layer. Verified on macbook-pro-m3: `uv tool install` writes the tool, a second run prints "already installed", `uv tool upgrade` prints "Nothing to upgrade", and `apwcli doctor` finds Google Chrome and the Apple helper. The brew tap was untapped again on this host. The formula bug is upstream's; not reported there.
+**Outcome:** applied
+**Ref:** roles/apwcli/tasks/main.yml; README.md role table; AGENTS.md lookup count 139/40

@@ -32,6 +32,7 @@
     - typesafe
     - 1password
     - bitwarden
+    - apwcli
     - codex
     - opencode
     - kimi-code

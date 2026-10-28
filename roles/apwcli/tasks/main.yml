@@ -1,0 +1,20 @@
+---
+# apwcli (https://github.com/michel-tricot/apwcli): Apple Passwords (iCloud Keychain) from the
+# terminal, with a Python library and an MCP server. It reaches the passwords through Apple's own
+# iCloud Passwords browser extension, so it needs Chrome, Brave, Edge or Chromium installed; this
+# role does not install a browser (DECISIONS Q299). The first `apwcli` command starts its daemon
+# and shows the macOS PIN dialog, so pairing stays a manual, per-boot step.
+#
+# uv, not the upstream Homebrew tap: `brew install michel-tricot/tap/apwcli` installs a working
+# binary but exits non-zero, because Homebrew's keg relocation cannot rewrite the dylib ID of
+# the bundled watchfiles wheel (MachO::HeaderPadError), so the task would fail on every fresh
+# host (DECISIONS Q300). The `@latest` form and the changed_when pattern are copied from
+# roles/claude-extras: a bare `uv tool install apwcli` no-ops once any version is present, and
+# uv prints "Installed N package(s)" only when it wrote something.
+- name: Install apwcli with uv
+  ansible.builtin.command: >-
+    {{ lookup('env', 'HOME') }}/.local/bin/uv tool install apwcli@latest
+  register: apwcli_install
+  changed_when: >-
+    (apwcli_install.stderr + apwcli_install.stdout)
+    is search('Installed [0-9]+ package')
