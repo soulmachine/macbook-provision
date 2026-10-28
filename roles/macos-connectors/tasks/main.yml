@@ -12,6 +12,8 @@
 #
 # The macOS permission grants (Reminders/Calendar/Contacts prompts, Full Disk Access and
 # Automation for the terminal) are a one-time manual step per host; `apple status` lists them.
+# For imsg, the `imsg-permissions` skill grants and tests them from every parent that runs imsg.
+# `state: latest` below upgrades imsg, and an upgrade drops its path-based grants: rerun the skill.
 
 - name: Tap the macOS connector taps
   community.general.homebrew_tap:
