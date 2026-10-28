@@ -3066,3 +3066,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The user asked to return early and skip all logic. The cost: key-expiry now runs only on a run that starts offline, in practice the enrolment run, so an online node whose key expiry was never disabled stays as it is. Skipping the cask loses nothing, because `tailscale-app` is `auto_updates: true`. Verified on this Mac: online, the role ends after the probe with 0 changed; in check mode with the CLI off `PATH`, it runs the full path.
 **Outcome:** applied
 **Ref:** roles/tailscale/README.md; (pending)
+
+## Q296 — pi/npm-packages-float-one-refresh — tradeoff
+
+**Question:** The pi role's `packages` list mixed two conventions: `pi-web-access` and `codex-fast-mode` pinned with no refresh, `context-mode` and the new `pi-ask-user` unpinned with a per-package refresh. Which rule, and how many tasks?
+**Options considered:** pin everything and drop refreshes / keep per-package install-plus-refresh blocks for each unpinned package / unpin every npm entry and run one `pi update --extension` loop over the npm entries of files/settings.json
+**Chosen:** Unpin every npm entry and loop. `pi update --extension <npm:source>` installs a missing unpinned package and bumps a stale one, and skips a pinned one, so the loop replaces the separate `pi install` task too. Change detection diffs `find` checksums of `package.json` files under `~/.pi/agent/npm/node_modules` (depth 3) before and after.
+**Decided-by:** agent, after the user asked for one consistent rule
+**Justification:** The fleet's nightly sweep exists to keep tools current, and the pins came from mirroring kunchenguid's dotfiles, not from a choice. One loop driven by settings.json has no second list to keep in sync. The cost: the context-mode role's own pi refresh is now redundant on a nightly run, since the pi role runs first and reports the change; and a dependency bump counts as a change, which is true but noisier.
+**Outcome:** applied
+**Ref:** roles/pi/tasks/main.yml; roles/pi/files/settings.json; Q81 (pi gateway-only)
