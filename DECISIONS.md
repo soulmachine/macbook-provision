@@ -3126,3 +3126,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** apwcli owns the content, so a git copy drifts from the installed version; `~/.agents/docs/skills.md` reserves Sourced links for self-authored skills. `--dir ~/.agents/skills` would leave Claude's farm link to agent-sync's next `sync`, and adopt is the documented verb. apwcli's installer is `copytree(dirs_exist_ok=True)`, so after adoption it writes through the symlink and updates the Commons copy in place. Supersedes the last sentence of Q299 for `skills install`; `mcp install` still is not run.
 **Outcome:** applied
 **Ref:** roles/apwcli/tasks/main.yml; roles/apwcli/meta/main.yml; README.md role table; AGENTS.md lookup count
+
+## Q302 — archs-provision/dirty-tree — deviation
+
+**Question:** archs-mac-mini's nightly provisioning had been dead: the "Update packages" sweep reported its `git pull --rebase` of macbook-provision refused on a dirty tree (an unstaged deletion of roles/removemacai/files/RemoveMacAI.mobileconfig plus a stray .DS_Store), so the whole play never launched and every role, not just skills, drifted. How to fix, and how far?
+**Options considered:** gitignore .DS_Store / also change the sweep's `git pull --rebase` to stash-or-reset / also chase the mobileconfig deletion
+**Chosen:** Pulled archs to unblock (tree was clean again, 1 behind), and gitignored .DS_Store so Finder junk can never refuse the pull again. Left the sweep's pull strategy alone and did not chase the mobileconfig deletion.
+**Decided-by:** agent
+**Justification:** .DS_Store on a shared GUI Mac is the recurring, certain cause and a one-line central fix. Changing the sweep to force/stash risks discarding real local state on other hosts and is that task's design (its own Q-series). The mobileconfig deletion was not reproducible (tree clean now), so restoring or hardening it would be guessing; the nightly report will flag it again if it recurs, and the separate skills-refresh job now keeps archs's skills current regardless.
+**Outcome:** applied
+**Ref:** 93ee2a2
