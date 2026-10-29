@@ -13,3 +13,9 @@ __pycache__/
 # JVM crash reports: mise installs Java from this checkout, and a build that dies at
 # startup drops its report here (m2, 2026-10-11).
 hs_err_pid*.log
+
+# macOS Finder metadata. On a GUI Mac (notably the shared archs-mac-mini) Finder drops a
+# .DS_Store into the checkout; an untracked one next to a path an incoming commit touches makes
+# the nightly `git pull --rebase` refuse, which kills that host's whole provisioning run (archs,
+# 2026-10-28, coding-agent Q-entry).
+.DS_Store
