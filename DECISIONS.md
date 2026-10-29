@@ -3136,3 +3136,23 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** .DS_Store on a shared GUI Mac is the recurring, certain cause and a one-line central fix. Changing the sweep to force/stash risks discarding real local state on other hosts and is that task's design (its own Q-series). The mobileconfig deletion was not reproducible (tree clean now), so restoring or hardening it would be guessing; the nightly report will flag it again if it recurs, and the separate skills-refresh job now keeps archs's skills current regardless.
 **Outcome:** applied
 **Ref:** 93ee2a2
+
+## Q303 — interactive/npm12-allow-scripts — tradeoff
+
+**Question:** npm 12 (GA, `latest`) stops running dependency install scripts unless allowed; for `npm install -g` the allowlist is the user `allow-scripts` config. Which globals should the fleet allow, and where should that live?
+**Options considered:** allow every global with an install script (19 packages incl. transitive) / allow only the ones that break without their script / leave npm's default alone, as Q251 did for context-mode
+**Chosen:** Allow only `opencode-ai` and `@inulute/cux`, as one `allow-scripts=` line in `~/.npmrc` that the nodejs role writes before its own `npm install -g`. The line is also on mac-mini-m2 by hand.
+**Decided-by:** agent
+**Justification:** Measured on mac-mini-m2 (2026-10-29): each global installed with `npx npm@12.2.1 install -g --prefix <tmp>`, then run. Only `opencode` and `cux` failed, because both put their platform binary in place in postinstall. openclaw, gemini, paseo, dsh, crush, grok, agent-browser, context-mode, opencli, pnpm and bw ran. paseo's and dsh's node-pty spawned a pty without their scripts; gemini's node-pty 1.0.0 did not, but gemini also ships `@lydell/node-pty`, which did. Same rule as Q251: loosen the security default only where something breaks. The nodejs role owns the line because it runs first and reinstalls globals itself after a Node upgrade. The check was `--version` plus a pty spawn, so a deeper code path could still need a script.
+**Outcome:** applied
+**Ref:** roles/nodejs/tasks/main.yml (this commit); ubuntu-provision Q65; omarchy-provision Q48
+
+## Q304 — interactive/npm-token-mac-mini-m2 — tradeoff
+
+**Question:** The npm login on mac-mini-m2 had expired (`npm login` now makes 2-hour session tokens). Which token should replace it?
+**Options considered:** granular token with "bypass 2FA" / granular token without it / keep using `npm login`
+**Chosen:** Granular token, read and write on all packages, no org access, no 2FA bypass, 90 days (npm's maximum for write tokens), in `~/.npmrc` and in 1Password Personal as "npm granular token mac-mini-m2". A Reminders task (Tasks list) is due 2027-01-22 to renew it before 2027-01-27.
+**Decided-by:** agent
+**Justification:** npm's 2026-07-08 changelog says bypass-2FA tokens lose direct publish around January 2027, so a bypass token would stop working at about the same time it expires. Without bypass, a publish takes `--otp`, which `apwcli otp get npmjs.com` supplies, and installs need no code. Packages still released (agent-sync, tailscale-mcp, openroutine, muse-bot) already publish from CI through trusted publishing, so this token is only for manual use.
+**Outcome:** applied
+**Ref:** (no code change)
