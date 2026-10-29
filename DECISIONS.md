@@ -3156,3 +3156,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** npm's 2026-07-08 changelog says bypass-2FA tokens lose direct publish around January 2027, so a bypass token would stop working at about the same time it expires. Without bypass, a publish takes `--otp`, which `apwcli otp get npmjs.com` supplies, and installs need no code. Packages still released (agent-sync, tailscale-mcp, openroutine, muse-bot) already publish from CI through trusted publishing, so this token is only for manual use.
 **Outcome:** applied
 **Ref:** (no code change)
+
+## Q305 — interactive/npm12-allow-scripts — deviation
+
+**Question:** Q303's test ran each CLI once. Does any npm global that passed still need its install script for upgrades?
+**Options considered:** keep Q303's list / add `@xai-official/grok`
+**Chosen:** Add `@xai-official/grok`: the line is now `allow-scripts=opencode-ai,@inulute/cux,@xai-official/grok`, in the nodejs role and by hand on mac-mini-m2.
+**Decided-by:** agent
+**Justification:** grok's launcher always runs `~/.grok/bin/grok` once that file exists, and only the package's postinstall moves it to a new version. The Q303 test passed because this Mac's `~/.grok` was already current. Retested on mac-mini-m2 on 2026-10-29: with a temp `GROK_HOME` holding an older binary, an npm 12.2.1 install without the allow line kept running the old binary, and with the line it ran 1.0.70. mac-mini-2018-omarchy showed the same freeze for real, stuck on 1.0.50 under mise (omarchy-provision Q50).
+**Outcome:** applied
+**Ref:** roles/nodejs/tasks/main.yml (this commit); ubuntu-provision Q67; omarchy-provision Q50
+**Supersedes:** Q303 — adds grok to the list
