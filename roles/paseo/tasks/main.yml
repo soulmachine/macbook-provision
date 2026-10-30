@@ -135,12 +135,17 @@
     # would restart the old command line. bootout returns before the daemon's roughly
     # 6s graceful shutdown ends, and a bootstrap issued in that window fails with rc 5,
     # so wait up to 30s for launchd to drop the service first.
+    # launchd drops it before the supervisor (a grandchild) exits, and until it does it still
+    # answers `daemon status` as running, so the wait below passed and `plugin ls` then failed
+    # (m6, 2026-10-30). So also wait up to 30s for the old supervisor's pid to exit.
     - name: Load or reload the Paseo daemon LaunchAgent
       ansible.builtin.shell: |
         svc="gui/$(id -u)/sh.paseo.daemon"
         if launchctl print "$svc" >/dev/null 2>&1; then
+          pid=$(sed -n 's/.*"pid":\([0-9]*\).*/\1/p' ~/.paseo/paseo.pid 2>/dev/null)
           launchctl bootout "$svc"
           for _ in $(seq 60); do launchctl print "$svc" >/dev/null 2>&1 || break; sleep 0.5; done
+          for _ in $(seq 60); do [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null || break; sleep 0.5; done
         fi
         launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/sh.paseo.daemon.plist
       changed_when: true
