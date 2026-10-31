@@ -9,8 +9,9 @@ different tailnets carry different keys. That divergence is correct, not drift t
 - The `tailscale` role reads `TAILSCALE_AUTH_KEY` (to run `tailscale up`) and, optionally, a
   `devices:core` OAuth client as `TAILSCALE_OAUTH_CLIENT_ID` + `TAILSCALE_OAUTH_CLIENT_SECRET` (to
   disable node-key expiry). See `roles/tailscale/README.md`.
-- The `typesafe` role reads `TYPESAFE_API_KEY`. `GITHUB_SSH_KEY` is optional and unset across the
-  fleet.
+- The `typesafe` role reads `TYPESAFE_API_KEY`. `GITHUB_SSH_KEY` is optional; archs-mac-mini sets
+  it to `id_rsa`, alongside the `GITHUB_SECONDARY_*` variables for its second GitHub account (see
+  `.env.example` and DECISIONS Q307–Q309). Quote a `.env` value holding a space or a leading `~`.
 - **`GITHUB_TOKEN` is not in `.env` on any host** (since 2026-10-03). `~/.local/bin/gh-token-fleet`
   owns the PAT and exports it in `~/.zshenv` below the `dotenv` managed block. A copy in `.env` made
   the two overwrite each other. See `~/.agents/docs/github-auth.md`. The `github`, `bun` and `mise`
