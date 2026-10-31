@@ -3197,3 +3197,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The role already forwards `GITHUB_SSH_KEY` to the script, and docs/secrets.md documents it as the per-host override; a two-account rewrite of the role is a larger change no other host needs yet. Cost accepted: the guard is host-local and invisible in the repo — a reprovision from scratch must set it again (this entry is the record).
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q309 — interactive/github-two-accounts — tradeoff
+
+**Question:** Q308 left the two-account wiring as unmanaged host files that a reprovision would lose. How should the provision repo capture it?
+**Options considered:** hostname-gated role for archs-mac-mini / generic GITHUB_SECONDARY_* block in the github role, gated on .env like other optional features
+**Chosen:** `roles/github/tasks/secondary.yml`, included when `GITHUB_SECONDARY_EMAIL` is set. It writes `~/.gitconfig-github-secondary` (this host's hand-written `~/.gitconfig-soulmachine` was migrated to that name and removed), the `includeIf` entries from `GITHUB_SECONDARY_DIRS`, the `Host github.com` pin as a marked blockinfile in `~/.ssh/config` (IdentityFile in the tilde form setup_github.sh greps for), and the secondary `allowed_signers` line. It asserts `GITHUB_SSH_KEY` is set, encoding Q308's guard. `.env` values with a space or a leading `~` must be double-quoted, or sourcing expands them; `.env.example` says so.
+**Decided-by:** agent
+**Justification:** The repo gates optional features on .env vars, not hostnames (writing-roles.md §Conventions); a generic block costs the same as a one-host role and the next host gets it for free. Verified with the ansible-idempotency-check skill: first run applied the migration, second run 0 CHANGED; identities, fetches and local signature verification re-checked after. Known limit: a dir removed from GITHUB_SECONDARY_DIRS keeps its stale includeIf (commented in the task). Not synced to ubuntu/omarchy-provision: those clones are not on this host and no host there has a second GitHub account; flagged to Frank instead.
+**Outcome:** applied
+**Ref:** (pending)
