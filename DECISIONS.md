@@ -3177,3 +3177,23 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The probe ran `npm` through the shim. Once a new LTS ships, mise resolves `lts` to it before it is installed, so the shim fails, `failed_when: false` hides it, the list is empty and the reinstall skips. Pinning goes against Q15 and the role rewrites it to `lts` the next night. Moving every role to the `npm:` backend is a much larger change. Tested: with only 24.x installed the probe lists cf, defuddle, muse-bot, rea-agents and agent-browser; with none installed it skips. Known limit: a newer non-LTS Node installed beside the LTS would be read instead. The lost globals on m6 and supermicro were reinstalled by hand the same day.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q307 — interactive/github-two-accounts — gate-resolution
+
+**Question:** archs-mac-mini needs both GitHub accounts (ArchAutoTech / tech@archauto.com and soulmachine / soulmachine@gmail.com). Which directories map to which account, and which account stays `gh`'s active default?
+**Options considered:** per-repo config / host aliases with rewritten remotes / directory-scoped `includeIf` with `core.sshCommand`; gh default ArchAutoTech / soulmachine
+**Chosen:** Directory mapping via `~/.gitconfig` `includeIf`: `~/github.com/soulmachine/` and `~/github.com/OpenSWE/` use soulmachine (Frank Dai, id_ed25519 for SSH auth and signing, `core.sshCommand` with `-F none -o IdentitiesOnly=yes`); everything else stays ArchAutoTech (id_rsa, pinned in `~/.ssh/config` with `IdentitiesOnly yes`). Remote URLs stay `git@github.com:`. `gh` holds both accounts; ArchAutoTech stays active, scripts reach soulmachine with `GH_TOKEN=$(gh auth token -u soulmachine)`.
+**Decided-by:** human
+**Justification:** Frank picked the directory set and the gh default in-session (2026-10-31). `includeIf` + `sshCommand` needs no remote rewrites and covers linked worktrees; the ssh-config pin stops ssh-agent key order from flipping default auth to soulmachine once id_ed25519 was registered. Verified: both `ssh -T` greetings, per-directory `user.email`, fetches on both sides, and a signed test commit in soulmachine/skills showed verified=true via the API.
+**Outcome:** applied
+**Ref:** (pending)
+
+## Q308 — interactive/github-two-accounts — tradeoff
+
+**Question:** A rerun of the `github` role would auto-prefer id_ed25519 (now soulmachine's key) as the global auth/signing key and could clobber the two-account setup. Guard in the role code, or per-host?
+**Options considered:** patch setup_github.sh for two accounts / set `GITHUB_SSH_KEY=id_rsa` in this host's gitignored `.env`
+**Chosen:** `GITHUB_SSH_KEY=id_rsa` in this host's `.env`; no role code changes. The new `~/.ssh/config` uses the literal line `IdentityFile ~/.ssh/id_rsa` so the script's idempotency grep already matches.
+**Decided-by:** agent
+**Justification:** The role already forwards `GITHUB_SSH_KEY` to the script, and docs/secrets.md documents it as the per-host override; a two-account rewrite of the role is a larger change no other host needs yet. Cost accepted: the guard is host-local and invisible in the repo — a reprovision from scratch must set it again (this entry is the record).
+**Outcome:** applied
+**Ref:** (pending)
