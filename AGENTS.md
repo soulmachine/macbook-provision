@@ -10,6 +10,7 @@ Run them from the repo root: `.env` and the single-role form both resolve agains
 ansible-playbook main.yml --limit 127.0.0.1           # provision this machine
 ansible-playbook main.yml --limit 127.0.0.1 --check   # dry run
 ansible localhost -m include_role -a name=<role>      # one role; host-facts classifies the machine itself
+ansible localhost -m include_role -a name=nodejs      # upgrade Node; a bare `mise upgrade node` leaves every npm global on the old Node
 
 # another fleet host: over ssh in a login shell, because only ~/.zprofile puts brew on PATH
 ssh -o BatchMode=yes -o ConnectTimeout=15 <host> \
