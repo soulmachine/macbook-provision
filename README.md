@@ -113,7 +113,7 @@ pre-commit run --all-files
 | python | 用 uv 安装 Python 命令行工具：yamllint、ansible-lint、ruff、pre-commit、httpie、pgcli；Apple Silicon 另加 openai-whisper、whisper-ctranslate2（依赖 uv） |
 | mise | 运行时版本管理器（由 bootstrap.sh 独立安装）；本 role 用 `mise self-update` 保持其最新，go、nodejs、jdk 都建立在它之上 |
 | go | Go 语言（通过 mise 安装） |
-| nodejs | Node.js（通过 mise 安装） |
+| nodejs | Node.js（通过 mise 安装）；`mise upgrade node` 会删掉旧 Node 下的全部 npm 全局包，本 role 先记下再按原版本装回，所以手动升级 Node 请跑 `ansible localhost -m include_role -a name=nodejs`，不要直接 `mise upgrade node` |
 | bun | Bun JavaScript 运行时 |
 | rust | Rust 工具链（通过官方 rustup 安装；额外含 rust-src、rust-analyzer 组件） |
 | jdk | JDK（通过 mise 安装） |
