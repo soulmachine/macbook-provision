@@ -3207,3 +3207,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The repo gates optional features on .env vars, not hostnames (writing-roles.md §Conventions); a generic block costs the same as a one-host role and the next host gets it for free. Verified with the ansible-idempotency-check skill: first run applied the migration, second run 0 CHANGED; identities, fetches and local signature verification re-checked after. Known limit: a dir removed from GITHUB_SECONDARY_DIRS keeps its stale includeIf (commented in the task). Not synced to ubuntu/omarchy-provision: those clones are not on this host and no host there has a second GitHub account; flagged to Frank instead.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q310 — interactive/lcu-to-agent-desktop — deviation
+
+**Question:** Frank asked to drop the lcu role and install `agent-desktop` with `npm install -g` in all three provision repos. What happens to LCU on the Macs, and does agent-desktop need its install script?
+**Options considered:** stop managing LCU and leave its files / Ansible cleanup tasks / remove LCU by hand on each Mac over ssh; agent-desktop with or without an `allow-scripts` entry
+**Chosen:** Remove roles/lcu and take its main.yml slot with a new agent-desktop role (nodejs `npm_global`). LCU's registrations and files are removed by hand on each Mac, following LCU's own docs/INSTALLATION.md §Uninstall, not by a role. agent-desktop goes on the `~/.npmrc` `allow-scripts` line: its postinstall replaces the JS launcher in `bin/` with the native binary and makes `agent-desktop-macos-helper` (seen in the 1.0.2 tarball and install).
+**Decided-by:** human
+**Justification:** Frank chose hand cleanup when asked. `~/.agents/AGENTS.md` now names agent-desktop as the computer-use fallback. Also corrects the AGENTS.md lookup count, which had drifted to 144/42 before this change and is 143/41 after it.
+**Outcome:** applied
+**Ref:** (pending)
