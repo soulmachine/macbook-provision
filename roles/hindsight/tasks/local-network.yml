@@ -2,7 +2,7 @@
 # macOS Local Network privacy refuses LAN connections from processes started outside ssh with
 # EHOSTUNREACH, and Claude Code and other Team ID signed binaries never get a prompt to allow it
 # (coding-agent Q640). Apple's system-wide address exception (TN3179) lets every process on this Mac
-# reach m2's LAN IP, so Hindsight and the gateway work on their LAN URLs (coding-agent Q651, Q652).
+# reach the LAN hosts' IPs, so Hindsight and the gateway work on their LAN URLs (coding-agent Q651, Q652).
 # It lives in root's own com.apple.network.local-network domain (/var/root/Library/Preferences) and
 # takes effect only after a reboot. Fleet rule: ~/coding-agent/devops/service-access.md.
 - name: Read the Local Network address exceptions
@@ -14,14 +14,13 @@
   failed_when: false
   check_mode: false
 
-- name: Allow m2's LAN IP through Local Network privacy
+- name: Allow the LAN hosts through Local Network privacy
   ansible.builtin.command: >-
-    defaults write com.apple.network.local-network {{ item.item }}
-    -array-add {{ hindsight_lan_url | urlsplit('hostname') }}/32
+    defaults write com.apple.network.local-network {{ item.0.item }} -array-add {{ item.1 }}/32
   become: true
-  loop: "{{ _hindsight_lna.results }}"
+  loop: "{{ _hindsight_lna.results | product(hindsight_lan_peers) | list }}"
   loop_control:
-    label: "{{ item.item }}"
-  when: (hindsight_lan_url | urlsplit('hostname')) ~ '/32' not in item.stdout
+    label: "{{ item.0.item }} {{ item.1 }}"
+  when: (item.1 ~ '/32') not in item.0.stdout
   changed_when: true
   notify: Report that the Local Network exception needs a reboot
