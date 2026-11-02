@@ -4,11 +4,12 @@
     _hindsight_url: "{{ hindsight_url_by_host[ansible_facts['hostname']] }}"
 
 # Before the token check below, which ends the role: the exception is not about Hindsight alone.
-- name: Let every process on a LAN Mac reach m2's LAN IP
+# m2 uses loopback for Hindsight but is a LAN Mac too (coding-agent Q843).
+- name: Let every process on a LAN Mac reach the LAN hosts' IPs
   ansible.builtin.include_tasks: local-network.yml
   when:
     - ansible_facts['system'] == 'Darwin'
-    - _hindsight_url in [hindsight_lan_url, hindsight_mdns_url]
+    - _hindsight_url in [hindsight_lan_url, hindsight_mdns_url] or ansible_facts['hostname'] == 'mac-mini-m2'
 
 # --- ~/.hindsight/coding-agent.json: URL and token ---------------------------------
 # The file holds the API token, so the read and the write are no_log and the write is 0600.
