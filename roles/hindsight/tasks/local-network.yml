@@ -2,7 +2,7 @@
 # macOS Local Network privacy refuses LAN connections from processes started outside ssh with
 # EHOSTUNREACH, and Claude Code and other Team ID signed binaries never get a prompt to allow it
 # (coding-agent Q640). Apple's system-wide address exception (TN3179) lets every process on this Mac
-# reach the LAN hosts' IPs, so Hindsight and the gateway work on their LAN URLs (coding-agent Q651, Q652).
+# reach the LAN hosts' IPs: ssh by LAN IP (Q845) and lume's LAN Hindsight URL. Tailscale needs none (Q856).
 # It lives in root's own com.apple.network.local-network domain (/var/root/Library/Preferences) and
 # takes effect only after a reboot. Fleet rule: ~/coding-agent/devops/service-access.md.
 - name: Read the Local Network address exceptions
