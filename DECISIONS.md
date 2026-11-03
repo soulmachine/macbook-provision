@@ -3217,3 +3217,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Frank chose hand cleanup when asked. `~/.agents/AGENTS.md` now names agent-desktop as the computer-use fallback. Also corrects the AGENTS.md lookup count, which had drifted to 144/42 before this change and is 143/41 after it.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q311 — interactive/dsh-purge-owner — deviation
+
+**Question:** The upstream dsh-purge repo moved from `YuJunZhiXue` to `HunYiSage`, and the old name now only redirects. Which spec should the dsh role install?
+**Options considered:** keep `github:YuJunZhiXue/dsh-purge` and rely on GitHub's redirect / switch to `github:HunYiSage/dsh-purge`
+**Chosen:** `github:HunYiSage/dsh-purge` in both profiles, in all three provision repos. Every reachable host was moved over at once by running the dsh role over ssh.
+**Decided-by:** human
+**Justification:** On 2026-11-03 `gh api repos/YuJunZhiXue/dsh-purge` returned `HunYiSage/dsh-purge`, both URLs had the same HEAD `4c3369a`, and the repo's own commits record the move. A redirect stops working if the old owner creates a new repo with that name; the hosts would then install that repo's code. The role's Q283 path (a saved spec that differs gets a fresh `add`) did the switch. On mac-mini-m6, both profiles moved to 1.1.90 at `4c3369a` with `dsh-purge` kept in their bundles, and a second run left both lockfiles unchanged. The same result held on m2, mac-studio-m3, macbook-pro-m3, mac-mini-2018-omarchy, supermicro, archs-mac-mini, dev-server-frank-lume and macbook-pro-nickel, with no old URL left in any lockfile. grokbot-box was asleep and picks it up on its next run.
+**Outcome:** applied
+**Ref:** 83fe380 (macbook), db26fc3 (ubuntu), 1e380d5 (omarchy)
+**Supersedes:** Q283 — only its source owner.
