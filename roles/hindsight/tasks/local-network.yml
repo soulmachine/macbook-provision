@@ -4,7 +4,7 @@
 # (coding-agent Q640). Apple's system-wide address exception (TN3179) lets every process on this Mac
 # reach the LAN hosts' IPs: ssh and the services by .local, and lume by LAN IP (coding-agent Q858).
 # It lives in root's own com.apple.network.local-network domain (/var/root/Library/Preferences) and
-# takes effect only after a reboot. Fleet rule: ~/coding-agent/devops/service-access.md.
+# takes effect only after a reboot. Fleet rule: ~/coding-agent/devops/network-topology.md.
 - name: Read the Local Network address exceptions
   ansible.builtin.command: defaults read com.apple.network.local-network {{ item }}
   become: true
