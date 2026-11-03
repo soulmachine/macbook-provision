@@ -16,6 +16,22 @@
 # reporting `No such file or directory: b'tailscale'`). Failing at the gate
 # reports the real blocker, and works the same interactively or headless.
 
+# At each login the app sends WantRunning=false as it checks in, so a rebooted Mac comes up with
+# Tailscale stopped (coding-agent Q846). Tailscale's AlwaysOn device policy keeps it connected; the
+# menu can no longer turn it off. Before the early exit below, so a running node gets it too.
+- name: Read the Tailscale AlwaysOn policy
+  ansible.builtin.command: defaults read /Library/Preferences/io.tailscale.ipn.macsys AlwaysOn.Enabled
+  register: _tailscale_alwayson
+  changed_when: false
+  failed_when: false # an unset key exits 1
+  check_mode: false
+
+- name: Keep Tailscale connected across logins (AlwaysOn)
+  ansible.builtin.command: defaults write /Library/Preferences/io.tailscale.ipn.macsys AlwaysOn.Enabled -bool true
+  become: true
+  when: _tailscale_alwayson.stdout | trim != '1'
+  changed_when: true
+
 # A node that answers `BackendState: Running` already has the app, the Network
 # Extension and the CLI, so every task below would be a no-op or a needless gate.
 - name: Read the current Tailscale state
