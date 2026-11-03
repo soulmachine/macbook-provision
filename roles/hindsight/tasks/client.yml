@@ -4,8 +4,8 @@
     _hindsight_url: "{{ hindsight_url_by_host[ansible_facts['hostname']] }}"
 
 # Before the token check below, which ends the role: the exception is not about Hindsight alone.
-# It is for ssh by LAN IP and lume's LAN URL; Hindsight and the gateway go over Tailscale on the
-# other LAN Macs (coding-agent Q843, Q856).
+# It lets ssh and the services reach the LAN hosts by .local, and lume by LAN IP; m2 uses loopback
+# for Hindsight but is a LAN Mac too (coding-agent Q843, Q858).
 - name: Let every process on a LAN Mac reach the LAN hosts' IPs
   ansible.builtin.include_tasks: local-network.yml
   when:
