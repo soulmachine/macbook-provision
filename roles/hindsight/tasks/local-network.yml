@@ -24,3 +24,27 @@
   when: (item.1 ~ '/32') not in item.0.stdout
   changed_when: true
   notify: Report that the Local Network exception needs a reboot
+
+# The LAN has no IPv6 router, so IPv6 there is link-local only, and its one effect was a fe80:: answer
+# first for every .local name. Mac clients then connected over link-local: CLIProxyAPI logged an empty
+# client IP and m2's pg_hba (192.168.31.0/24) refused them (coding-agent Q858). Only the hosts whose
+# own IP is one of hindsight_lan_peers (not lume, which sits behind the Studio's NAT). Undo:
+# networksetup -setv6automatic <service>. Tailscale's IPv6 is on its own interface and stays.
+- name: Turn IPv6 off on the LAN network service
+  ansible.builtin.shell: |
+    set -o pipefail
+    peers=" {{ hindsight_lan_peers | join(' ') }} "
+    for d in $(ifconfig -l); do
+      a=$(ipconfig getifaddr "$d" 2>/dev/null) || continue
+      case $peers in *" $a "*) ;; *) continue;; esac
+      svc=$(networksetup -listnetworkserviceorder | grep -B1 "Device: $d)" | head -1 | sed -E 's/^\([0-9*]+\) //')
+      [ -n "$svc" ] || continue
+      [ "$(networksetup -getinfo "$svc" | awk -F': ' '/^IPv6:/{print $2}')" = Off ] && continue
+      networksetup -setv6off "$svc" && echo "changed $svc"
+    done
+  args:
+    executable: /bin/bash
+  become: true
+  register: _hindsight_v6off
+  changed_when: "'changed' in _hindsight_v6off.stdout"
+  when: ansible_facts['all_ipv4_addresses'] | intersect(hindsight_lan_peers) | length > 0
