@@ -3228,3 +3228,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** 83fe380 (macbook), db26fc3 (ubuntu), 1e380d5 (omarchy)
 **Supersedes:** Q283 — only its source owner.
+
+## Q312 — interactive/dsh-purge-owner — gate-resolution
+
+**Question:** Q283 justified denying dsh-purge's postinstall by saying it only appends the plugin to `dsh.profile.bundles`. On 2026-11-03 the script was read again (the `4c3369a` commit). Does the denial still hold?
+**Options considered:** keep `allowBuilds: {dsh-purge: false}` / approve the postinstall / have the role write the body insert itself
+**Chosen:** Keep the denial. Correct the reason in the role comment and in the README line, in all three repos.
+**Decided-by:** human
+**Justification:** `scripts/ensure-profile-bundle.mjs` does two things. It appends to bundles, and it writes the plugin's body insert (`- insert: - id: dsh-purge`, with `inject: [systemPrompt, tools]`) into the profile's own `cordis.patch.yml`. `dsh plugin add` does only the first. The second is redone by the plugin itself: `lib/index.js` calls `ensureAllProfileInstall()` each time dsh boots it. That call rewrites the bundles, the insert and `allowBuilds`, and leaves `dsh-purge: false` in place. On mac-mini-m6, both profiles got the insert at the first boot after the switch. `dsh --profile <p> --dump-config` then showed the `dsh-purge` entry and its three drill-console entries, and a `dsh web` turn answered. On m2, supermicro and archs-mac-mini, no profile has the insert yet, because dsh has not booted there since. Each gets it at its first boot. The `[dsh-purge] patch: entry "dsh-purge" not found` warning at boot is a load-order effect: the bundle patch configures the entry before the user layer inserts it. The other five such warnings disable rows of the separate `dsh-redteam-mode` package, which no host has installed.
+**Outcome:** applied
+**Ref:** (pending)
+**Supersedes:** Q283 — only its account of what the postinstall does; the decision to deny it stands.
