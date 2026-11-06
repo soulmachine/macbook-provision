@@ -19,8 +19,9 @@ npm, because the Gemini, Copilot and kimi hooks and MCP servers run it.
     refresh.
   - pi: none here; the pi role installs and refreshes the package (see below).
   - oh-my-pi: `omp plugin list --json` against `npm view context-mode version`, the ponytail gate.
-  - Copilot CLI: the cache directory under `~/.copilot/installed-plugins/_direct/`; refresh diffs
-    the cached `.github/plugin/plugin.json` version around `copilot plugin update`.
+  - Copilot CLI: `~/.copilot/hooks/context-mode.json` must name the package that `context-mode`
+    resolves to; otherwise the role reruns `context-mode setup --yes --agents copilot-cli`. That
+    also repairs the absolute node paths setup writes, after mise moves to a new node.
   - OpenClaw: `openclaw plugins list --json`; refresh diffs the listed version around
     `openclaw plugins update`.
   - Gemini CLI and kimi-code: no installer, so the role edits their config files (next bullets).
@@ -47,9 +48,9 @@ npm, because the Gemini, Copilot and kimi hooks and MCP servers run it.
   context-mode hooks. Without the trust, the MCP tools still work; only routing stays quiet. After that, each refresh re-trusts hooks an upstream change marks `modified`, and settles the
   plugin cache first (`.npmrc` guard, dependency install, no `.bin` symlinks) with
   `roles/codex/files/codex-plugin-retrust.py`, so updates run without a review (coding-agent Q759). The codex role's `codex-plugin-retrust` watcher (a WatchPaths LaunchAgent, a systemd `.path` unit on Linux) also runs the helper 30 s after Codex rebuilds the cache by itself at session start (coding-agent Q899).
-- **Copilot prints a deprecation warning.** Direct repo installs are deprecated in favour of
-  `plugin@marketplace`, but upstream ships no Copilot marketplace yet. Its Claude marketplace
-  serves the Claude bundle, so `owner/repo:configs/copilot-cli` is still the documented path.
+- **Copilot uses `context-mode setup`, not a plugin.** context-mode v2 deleted the v1
+  `configs/copilot-cli` bundle and ships no Copilot marketplace, so upstream documents setup as the
+  install path. The role uninstalls the v1 direct install where it finds one.
 - **npm skips context-mode's install scripts, and that is harmless.** npm 11's install-scripts
   policy skips context-mode's `postinstall` and `better-sqlite3`'s build. `better-sqlite3` ships a
   prebuilt binary, and `context-mode doctor` reports "FTS5 / SQLite: PASS". On Linux, Node >= 22.5
