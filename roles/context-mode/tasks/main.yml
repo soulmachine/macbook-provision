@@ -47,14 +47,6 @@
 
 # OpenClaw is installed only on always-on machines (see its role). Same gate,
 # same fact, same `| bool` cast; `host-facts` is a meta dependency of this role.
-- name: Install context-mode into OpenClaw
+- name: Remove context-mode from OpenClaw
   ansible.builtin.include_tasks: openclaw.yml
   when: mac_is_always_on | bool
-
-- name: Report that the OpenClaw half was skipped
-  ansible.builtin.debug:
-    msg: >-
-      Skipping context-mode's OpenClaw half on this
-      {{ mac_family | default('machine') }}: OpenClaw is installed on every Mac
-      except a MacBook.
-  when: not (mac_is_always_on | bool)
