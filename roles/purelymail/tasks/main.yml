@@ -1,8 +1,10 @@
 ---
 # purelymail: the Purelymail API CLI, github.com/soulmachine/purelymail. One static binary from
 # its GitHub release, installed into ~/.local/bin and kept at the latest release, so the host
-# needs no cargo. Its token, PURELYMAIL_API_TOKEN, is placed by hand in ~/.zshenv
-# (shell-startup.md), never by this role.
+# needs no cargo. Its token is the Automation vault item "Purelymail API token": the Macs with an
+# op service account (m2, m6, macbook-pro-m3) export PURELYMAIL_API_TOKEN from `op read` in
+# ~/.zshenv (shell-startup.md, coding-agent Q1006/Q1008); elsewhere export it by hand when you
+# use the CLI. Never placed by this role.
 
 - name: Read the installed purelymail version
   ansible.builtin.command: "{{ lookup('env', 'HOME') }}/.local/bin/purelymail --version"
