@@ -99,6 +99,18 @@
     line: 'eval "$(mise activate zsh)"'
     state: present
 
+# Activation puts mise's install folders ahead of ~/.local/bin, so plain `gemini` and `copilot` ran
+# the npm binary and skipped their cliproxy-tier shim. mise keeps PATH changes made after activation
+# in front (activate_aggressive is off), so this line, right after it, lets the shims win; node, go
+# and java stay mise's.
+- name: Keep ~/.local/bin ahead of mise in interactive zsh
+  ansible.builtin.lineinfile:
+    path: "{{ lookup('env', 'HOME') }}/.zshrc"
+    regexp: '^path=\("\$HOME/\.local/bin" '
+    line: 'path=("$HOME/.local/bin" ${path:#$HOME/.local/bin})  # after mise activate: gateway shims win'
+    insertafter: 'mise activate zsh'
+    state: present
+
 # The activation above only reaches *interactive* shells — .zshrc is the sole
 # file zsh sources for those, while every provisioning run is `zsh -lc`, login
 # but not interactive. So node and npm were missing from exactly the shell that
