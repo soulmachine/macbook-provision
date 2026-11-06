@@ -2907,7 +2907,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 
 ## Q280 — interactive/macbook-pro-m3-control-plane — scope-change
 
-**Question:** macbook-air moved to a new MacBook Pro named macbook-pro-m3 (personal-agent Q184). What changes here?
+**Question:** macbook-air moved to a new MacBook Pro named macbook-pro-m3 (personal-agent Q185). What changes here?
 **Options considered:** rename the live lines only / also rewrite lines that record past measurements
 **Chosen:** `control_plane_hosts` lists `macbook-pro-m3`, the Pro's `LocalHostName`, in place of `Franks-MacBook-Air`. The README's role row and host table, `.env.example`, the 1password role comment and the skills backup comment name the Pro; the host table row is `Mac15,6` (M3 Pro), still skipped as a MacBook. Lines that record what was measured or chosen on the Air (jdk, cmux, removemacai, browseros-neo, host-facts examples) stay. ubuntu-provision and omarchy-provision get the same skills comment change.
 **Decided-by:** human (rename), agent (which lines are history)
@@ -3095,7 +3095,7 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** agent, after the user said "fix m6"
 **Justification:** Keeps the README's two invariants (paseo by name, the login-shell env with CLIPROXY_API_KEY) and the `lts` symlink follows `mise upgrade node`. The cost: one extra node process per daemon, and a node upgrade changes the real path, which drops node's path-matched grants until the imsg-permissions skill runs again.
 **Outcome:** applied
-**Ref:** roles/paseo/templates/sh.paseo.daemon.plist.j2; roles/paseo/vars/main.yml; roles/paseo/README.md; personal-agent Q265–Q266
+**Ref:** roles/paseo/templates/sh.paseo.daemon.plist.j2; roles/paseo/vars/main.yml; roles/paseo/README.md; personal-agent Q284–Q285
 
 ## Q299 — apwcli/role — tradeoff
 
