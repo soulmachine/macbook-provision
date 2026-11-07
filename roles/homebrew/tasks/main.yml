@@ -48,7 +48,7 @@
 # Google's Gemini CLI moved to the npm `gemini` role on 2026-09-04 (DECISIONS Q218), but the
 # deprecated `gemini-cli` formula was never removed: dev-server-frank-lume still ran it as `gemini`,
 # so npm_global took it for another channel and skipped the npm install, and it kept Homebrew's
-# `node` installed. With it gone, the gemini role installs the npm copy.
+# `node` installed. Gemini CLI left the fleet on 2026-11-07 (coding-agent Q1058).
 - name: Remove the deprecated gemini-cli formula
   community.general.homebrew:
     name: gemini-cli
@@ -205,7 +205,8 @@
       # MacPaw's Gemini 2 duplicate-file cleaner — NOT Google's Gemini. Google's
       # CLI lost its Homebrew role on 2026-09-04, when upstream deprecated the
       # `gemini-cli` formula; it came back as the npm `gemini` role (DECISIONS
-      # Q218). This cask is unrelated and stays.
+      # Q218) and left the fleet on 2026-11-07 (coding-agent Q1058). This cask is
+      # unrelated and stays.
       - gemini
       - pearcleaner
       - sublime-text

@@ -8,7 +8,7 @@
 # updater (AGENTS.md "Self-update tasks: diff state, don't grep output").
 # Hermes, Crush and Grok are absent: upstream has no adapter for them (README).
 #
-# The Gemini, Copilot and kimi hooks and MCP servers run the global
+# The Copilot and kimi hooks and MCP servers run the global
 # `context-mode` CLI, so it comes first. npm 11 skips its postinstall and
 # better-sqlite3's install script under its install-scripts policy; that is
 # harmless, because better-sqlite3 ships a prebuilt binary (`context-mode
@@ -35,9 +35,6 @@
 
 - name: Install context-mode into oh-my-pi
   ansible.builtin.include_tasks: omp.yml
-
-- name: Install context-mode into Gemini CLI
-  ansible.builtin.include_tasks: gemini.yml
 
 - name: Install context-mode into Copilot CLI
   ansible.builtin.include_tasks: copilot.yml
