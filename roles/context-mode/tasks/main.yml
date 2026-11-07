@@ -45,8 +45,8 @@
 - name: Install context-mode into kimi-code
   ansible.builtin.include_tasks: kimi-code.yml
 
-# OpenClaw is installed only on always-on machines (see its role). Same gate,
-# same fact, same `| bool` cast; `host-facts` is a meta dependency of this role.
+# OpenClaw runs only on archs-mac-mini (see its role); openclaw.yml skips a host with no
+# ~/.openclaw/openclaw.json. `host-facts` is a meta dependency of this role.
 - name: Remove context-mode from OpenClaw
   ansible.builtin.include_tasks: openclaw.yml
   when: mac_is_always_on | bool

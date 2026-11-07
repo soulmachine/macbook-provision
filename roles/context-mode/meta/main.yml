@@ -6,7 +6,7 @@ dependencies:
   # The global `context-mode` CLI, which every hook runs, is an npm global.
   - nodejs
   # context-mode is installed *into* each of these, through that agent's own installer, so the
-  # agent must be provisioned first. `openclaw` self-gates on `mac_is_always_on`.
+  # agent must be provisioned first. OpenClaw is left out: only archs-mac-mini runs it (coding-agent Q1056).
   - claude-code
   - codex
   - opencode
@@ -15,4 +15,3 @@ dependencies:
   - gemini
   - copilot
   - kimi-code
-  - openclaw
