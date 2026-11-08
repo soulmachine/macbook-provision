@@ -184,6 +184,7 @@
   community.general.homebrew:
     name:
       - git
+      - git-lfs
       - curl
       - wget
       - jq
@@ -197,6 +198,15 @@
       - gnupg
       - tmux
     state: latest
+
+# The global filter `git lfs install` writes; without it a clone checks out LFS pointers, not the files
+# (nickel/company-nickel, coding-agent Q1075).
+- name: Configure the Git LFS filter
+  community.general.git_config:
+    scope: global
+    name: "filter.lfs.{{ item.key }}"
+    value: "{{ item.value }}"
+  loop: "{{ {'clean': 'git-lfs clean -- %f', 'smudge': 'git-lfs smudge -- %f', 'process': 'git-lfs filter-process', 'required': 'true'} | dict2items }}"
 
 - name: Install Homebrew cask apps
   community.general.homebrew_cask:
