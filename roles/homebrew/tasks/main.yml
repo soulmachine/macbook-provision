@@ -192,6 +192,7 @@
       - fd
       - tree
       - htop
+      - rclone
       - docker
       - ffmpeg
       - gh
