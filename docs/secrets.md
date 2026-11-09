@@ -14,7 +14,7 @@ different tailnets carry different keys. That divergence is correct, not drift t
   `.env.example` and DECISIONS Q307–Q309). Quote a `.env` value holding a space or a leading `~`.
 - **`GITHUB_TOKEN` is not in `.env` on any host** (since 2026-10-03). `~/.local/bin/gh-token-fleet`
   owns the PAT and exports it in `~/.zshenv` below the `dotenv` managed block. A copy in `.env` made
-  the two overwrite each other. See `~/.agents/docs/github-auth.md`. The `github`, `bun` and `mise`
+  the two overwrite each other. See `~/coding-agent/docs/github-auth.md`. The `github`, `bun` and `mise`
   roles read it from the environment, with a `gh auth token` fallback.
 
 ## The `dotenv` role
