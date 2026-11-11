@@ -6,7 +6,8 @@
 # links /usr/local/bin/1password-mcp, the server the plugin launches. (The plugin's README
 # still names a Labs "MCP Server" experiment; app 8.12.40 has the switch under Developer.) Signing in is manual too.
 # Headless `op` is for the control-plane Macs (m6, m2, macbook-pro-m3) and dev-server-frank-lume
-# (Nickel.ai vault only, coding-agent Q621): OP_SERVICE_ACCOUNT_TOKEN, read-only, from .env (dotenv
+# (Nickel.ai vault only, coding-agent Q621, Q1109): OP_SERVICE_ACCOUNT_TOKEN, read-only on the
+# control plane and read-write on lume (nickel-lume-rw), from .env (dotenv
 # role) or by hand on m6; see ~/coding-agent/docs/1password.md.
 
 # --adopt takes over a 1Password.app installed by hand instead of failing on "already an App";
