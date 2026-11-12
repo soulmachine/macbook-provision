@@ -16,7 +16,9 @@ The role owns the `sh.paseo.daemon` LaunchAgent (DECISIONS Q176), so every such 
 It installs `templates/sh.paseo.daemon.plist.j2`, which runs `zsh -lc "exec paseo daemon run"`, and loads the
 agent whenever launchd does not have it, including one someone unloaded on purpose. It also turns on
 the relay (`daemon.relay.enabled`, off by default). The daemon listens on 127.0.0.1 only, so the relay
-is the only way a paired device reaches it. `paseo daemon config set` only saves the file, so a change
+is the only way a paired device reaches it. The exception is `paseo_open_port_hosts` (mac-mini-m6,
+mac-mini-m2): there the role sets `daemon.listen 0.0.0.0:6767` and `daemon.hostnames`, with no
+password, so `ask-always-on-agent` reaches them over the LAN and tailnet (coding-agent Q1140, Q1142). `paseo daemon config set` only saves the file, so a change
 goes through the same reload. Pairing (`paseo daemon pair`) stays manual, because the pairing link is
 a per-host secret.
 

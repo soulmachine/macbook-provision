@@ -6,3 +6,12 @@
 # (personal-agent Q284–Q285). The other hosts keep the zsh line and their existing grants.
 paseo_node_launch_hosts:
   - mac-mini-m6
+
+# Hosts whose daemon listens on 0.0.0.0:6767 with no password, so ask-always-on-agent reaches it
+# from any host on the LAN or tailnet without ssh (coding-agent Q1140, Q1142). Every other host
+# keeps Paseo's default, 127.0.0.1:6767; the role leaves its listen alone.
+paseo_open_port_hosts:
+  - mac-mini-m6
+  - mac-mini-m2
+paseo_open_port_listen: "0.0.0.0:6767"
+paseo_open_port_hostnames: [".local", ".tail6a15b.ts.net"]

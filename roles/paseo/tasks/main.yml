@@ -100,9 +100,9 @@
         mode: "0644"
       register: paseo_agent_plist
 
-    # The relay (relay.paseo.sh, end-to-end encrypted) is the only way a paired phone or
-    # laptop reaches this daemon, which listens on 127.0.0.1 alone. Paseo defaults it to
-    # off. `config set` only saves `~/.paseo/config.json`; its own output says it is
+    # The relay (relay.paseo.sh, end-to-end encrypted) is how a paired phone or laptop
+    # reaches this daemon. It listens on 127.0.0.1 alone, except on paseo_open_port_hosts
+    # (below). Paseo defaults the relay to off. `config set` only saves `~/.paseo/config.json`; its own output says it is
     # "not applied to a running daemon", so the reload below picks it up. On a new
     # host it writes the file before the daemon's first start. Pairing stays manual:
     # the `paseo daemon pair` link is a per-host secret.
@@ -117,6 +117,32 @@
       register: paseo_relay_set
       changed_when: true
       when: (paseo_relay.stdout | default('{}', true) | from_json).value | default(false) is not sameas true
+
+    # m2 and m6 serve their daemon on every interface with no password, so ask-always-on-agent
+    # reaches it from the LAN and tailnet without ssh (coding-agent Q1140, Q1142). A listen change
+    # needs the reload below; `paseo reload` does not rebind the port.
+    - name: Open the Paseo daemon port on its hosts
+      when: lookup('pipe', 'hostname -s') in paseo_open_port_hosts
+      block:
+        - name: Read the Paseo daemon listen address and hostnames
+          ansible.builtin.command: "paseo daemon config get daemon.{{ item.key }}"
+          loop: "{{ {'listen': paseo_open_port_listen, 'hostnames': paseo_open_port_hostnames} | dict2items }}"
+          register: paseo_port_cfg
+          changed_when: false
+          check_mode: false
+
+        # `--string` keeps the address literal; the hostnames list goes in as JSON.
+        - name: Set the Paseo daemon listen address and hostnames
+          ansible.builtin.command:
+            argv: >-
+              {{ ['paseo', 'daemon', 'config', 'set', 'daemon.' + item.item.key]
+                 + ([item.item.value, '--string'] if item.item.value is string else [item.item.value | to_json]) }}
+          loop: "{{ paseo_port_cfg.results }}"
+          loop_control:
+            label: "{{ item.item.key }}"
+          when: (item.stdout | default('{}', true) | from_json).value | default(none) != item.item.value
+          register: paseo_port_set
+          changed_when: true
 
     # rc 113 is launchd's "no such service": the agent is not loaded. That includes an
     # agent someone unloaded on purpose, which the next run loads again.
@@ -151,6 +177,7 @@
       changed_when: true
       when: >-
         paseo_agent_loaded.rc != 0 or paseo_agent_plist is changed or paseo_relay_set is changed
+        or paseo_port_set is changed
         or paseo_cask is changed or paseo_cli_after is changed or paseo_mise_pin is changed
 
     # A loaded agent is not a running daemon. archs-mac-mini's crash-looped for a week
