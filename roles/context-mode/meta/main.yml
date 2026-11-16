@@ -1,5 +1,0 @@
----
-dependencies:
-  # Sets `mac_is_always_on`, the fact the OpenClaw step gates on, so a standalone
-  # `include_role` run classifies the machine itself (docs/host-facts.md).
-  - host-facts
