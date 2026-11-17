@@ -3260,3 +3260,14 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Outcome:** applied
 **Ref:** ce3c4d4
 **Supersedes:** Q313 — only its plan to keep the role until every host passes.
+
+## Q315 — interactive/retire-context-mode — correction
+
+**Question:** Q314 says macbook-pro-nickel never ran the context-mode removal role. Is that true?
+**Options considered:** —
+**Chosen:** No. Only grokbot-box was never cleaned.
+**Decided-by:** agent
+**Justification:** The nightly `update-packages` sweep on mac-mini-m6 started at 2026-11-16T10:01Z. The role was deleted at 19:34Z, so that sweep ran the whole playbook, removal role included, on macbook-provision 3adcc6b or later. Its report gives macbook-pro-nickel "clean (ok=449 changed=8)". The role's last task fails on any leftover, so nickel passed. grokbot-box was skipped again, because its name did not resolve.
+**Outcome:** applied
+**Ref:** —
+**Supersedes:** Q314 — only its claim that macbook-pro-nickel was not cleaned.
