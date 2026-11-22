@@ -3294,4 +3294,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 - Slack reconnected; its "2 active connections" warning fell in the restart window, and no other host runs a gateway.
 - The reinstall warned that `/etc/ssl/cert.pem` no longer keeps its historical prefix and suggests `NODE_EXTRA_CA_CERTS`; not acted on.
 **Outcome:** assumed
-**Ref:** (pending)
+**Ref:** 24b26ea
