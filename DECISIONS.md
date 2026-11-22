@@ -3281,3 +3281,17 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The repo rule for self-updating tools (AGENTS.md "diff state, don't grep output") asks for exactly this. Measured on m2: the report was byte-identical across a no-op `sync`, and it differed after `sync` restored a deleted farm symlink. Re-linking in the role was rejected: the copies come from installers outside this role, which may write them again. A re-link would also fight those installers on every run. The 13 copies stay, and the role now reports them as unchanged. In the same change, the codex role's `retrust-watch.yml` gathers the `min` fact subset when facts are absent, following the homebrew and hindsight pattern. Without it, the documented single-role form `ansible localhost -m include_role -a name=skills` failed on `ansible_facts['system']`.
 **Outcome:** applied
 **Ref:** 0f66b3f
+
+## Q317 — interactive/openclaw-custody — deviation
+
+**Question:** On archs-mac-mini, `openclaw gateway install --force` failed nightly on 2026-11-19 and 11-20 because OpenClaw 2026.11.6 required a credential-custody migration. After the user's go-ahead, `doctor --fix --non-interactive` cleared it and the reinstall succeeded. But the service still runs mise's Node 24.22.2 while the play's Node is 26.13.1, so the role's stale check stays true, and every night it would reinstall and restart ArchAuto's live gateway. Keep or change the check?
+**Options considered:** keep it (nightly restart and `changed`) / drop the "mise Node differs from the current Node" clause and keep the missing-Node and version checks
+**Chosen:** drop the clause, and the now-unused "Read the current Node" task.
+**Decided-by:** agent
+**Justification:** The reinstall itself picked Node 24 again, and OpenClaw's log warns that "reinstalling alone may select the same runtime". So the clause could never clear and only caused restarts. Q292 asked for a rewrite when the daemon's Node is gone, and the missing-Node check still covers that, as when mise prunes 24. The cost: the daemon stays on an older Node until that Node disappears or OpenClaw's version changes. Side notes from the run:
+- `openclaw gateway stop` refuses without `--force`, so the gateway kept running through the backup and the doctor run; only the restart at the end interrupted it.
+- `openclaw backup create` failed with the same custody error, so the pre-fix backup is an APFS clone of live state: `~archiebot/backups/openclaw-pre-custody-20261121T201142`, with the log beside it.
+- Slack reconnected; its "2 active connections" warning fell in the restart window, and no other host runs a gateway.
+- The reinstall warned that `/etc/ssl/cert.pem` no longer keeps its historical prefix and suggests `NODE_EXTRA_CA_CERTS`; not acted on.
+**Outcome:** assumed
+**Ref:** (pending)

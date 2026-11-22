@@ -14,18 +14,12 @@
 # The daemon's service file names an absolute Node and OpenClaw entrypoint, so after the nodejs
 # role moves Node or OpenClaw itself is upgraded, it keeps running the old pair, and it breaks once
 # mise prunes that Node. `gateway install --force` rewrites the service for the current pair and
-# restarts it. OpenClaw prefers a system Node where one exists (Omarchy's /usr/bin/node), so only a
-# service on a mise Node is compared with the current Node; any service is compared by version.
+# restarts it. The service's Node is NOT compared with the current Node: OpenClaw picks its own
+# (mise's Node 24 on archs-mac-mini, though the play's Node is 26), so that comparison stayed true
+# after every rewrite and restarted the gateway every night. A pruned Node still triggers the rewrite.
 - name: Read the OpenClaw daemon's state
   ansible.builtin.command: openclaw gateway status --json
   register: openclaw_status
-  changed_when: false
-  failed_when: false
-  check_mode: false
-
-- name: Read the current Node
-  ansible.builtin.command: node -p process.execPath
-  register: openclaw_node
   changed_when: false
   failed_when: false
   check_mode: false
@@ -58,8 +52,7 @@
   ansible.builtin.set_fact:
     openclaw_daemon_stale: >-
       {{ openclaw_svc_args | length > 0
-         and (('/mise/installs/' in openclaw_svc_node and openclaw_svc_node != openclaw_node.stdout | trim)
-              or not (openclaw_svc_node_stat.stat.exists | default(false))
+         and (not (openclaw_svc_node_stat.stat.exists | default(false))
               or openclaw_svc_version != openclaw_cli_version) }}
 
 - name: Rewrite the OpenClaw daemon for the current Node and OpenClaw
