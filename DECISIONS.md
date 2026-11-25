@@ -3304,4 +3304,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** The user picked mise's Node over deno, and asked for the `curl-cffi` extra. Keeping `default` beside it was confirmed. Without it, `@latest` would drop yt-dlp-ejs, the challenge solver that the Node setup needs. Checked on this Mac: the verbose log shows `Solving JS challenges using node` with solver v0.8.0 from the python package, and curl_cffi impersonate targets are listed. A second role run reports no changes.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 719ed86
