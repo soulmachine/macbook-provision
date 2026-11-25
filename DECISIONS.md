@@ -3314,4 +3314,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human
 **Justification:** Tested on mac-mini-m6 on 2026-11-25: `agent-reach youtube read` and `subtitle` both work with the pinned copy, which already ships yt-dlp-ejs and passes `--js-runtimes node`. The pending 1.6.1 release keeps the same pin. Revisit only if agent-reach's YouTube channel starts to fail.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** c75d4ca
