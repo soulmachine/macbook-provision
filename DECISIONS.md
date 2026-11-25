@@ -3295,3 +3295,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 - The reinstall warned that `/etc/ssl/cert.pem` no longer keeps its historical prefix and suggests `NODE_EXTRA_CA_CERTS`; not acted on.
 **Outcome:** assumed
 **Ref:** 24b26ea
+
+## Q318 — interactive/yt-dlp — tradeoff
+
+**Question:** yt-dlp was on this Mac from a hand-run `uv tool install 'yt-dlp[default]'` (2026-10-03), with `~/.config/yt-dlp/config` set to `--js-runtimes node`, and no role managed either one. How should provisioning install it, and what should solve YouTube's JS challenges?
+**Options considered:** Homebrew formula (pulls in deno, and its binary competes on PATH with the uv one in `~/.local/bin`) / uv tool in the python role's `python_cli_tools` list. For the JS runtime: deno via brew / skip it / mise's Node through the config file.
+**Chosen:** uv tool, `yt-dlp[default,curl-cffi]@latest`, so it updates every run. Node through a managed `~/.config/yt-dlp/config`. The same change goes to ubuntu-provision and omarchy-provision.
+**Decided-by:** human
+**Justification:** The user picked mise's Node over deno, and asked for the `curl-cffi` extra. Keeping `default` beside it was confirmed. Without it, `@latest` would drop yt-dlp-ejs, the challenge solver that the Node setup needs. Checked on this Mac: the verbose log shows `Solving JS challenges using node` with solver v0.8.0 from the python package, and curl_cffi impersonate targets are listed. A second role run reports no changes.
+**Outcome:** applied
+**Ref:** (pending)
