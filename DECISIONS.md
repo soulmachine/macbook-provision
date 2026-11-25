@@ -3305,3 +3305,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The user picked mise's Node over deno, and asked for the `curl-cffi` extra. Keeping `default` beside it was confirmed. Without it, `@latest` would drop yt-dlp-ejs, the challenge solver that the Node setup needs. Checked on this Mac: the verbose log shows `Solving JS challenges using node` with solver v0.8.0 from the python package, and curl_cffi impersonate targets are listed. A second role run reports no changes.
 **Outcome:** applied
 **Ref:** 719ed86
+
+## Q319 — interactive/yt-dlp — tradeoff
+
+**Question:** agent-reach runs its own yt-dlp copy from its uv environment, pinned to exactly 2026.8.19, so the python role's upgrade (Q318) does not reach it. Should the agent-reach role override that pin?
+**Options considered:** override the pin with uv (agent-reach's updater would likely undo it, and agent-reach would run a version upstream never tested) / leave it to upstream releases
+**Chosen:** leave it to upstream. The role's existing `agent-reach update` step brings a newer copy when a release bumps the pin.
+**Decided-by:** human
+**Justification:** Tested on mac-mini-m6 on 2026-11-25: `agent-reach youtube read` and `subtitle` both work with the pinned copy, which already ships yt-dlp-ejs and passes `--js-runtimes node`. The pending 1.6.1 release keeps the same pin. Revisit only if agent-reach's YouTube channel starts to fail.
+**Outcome:** applied
+**Ref:** (pending)

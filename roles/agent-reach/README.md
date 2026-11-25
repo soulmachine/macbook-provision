@@ -25,3 +25,7 @@
 - **OpenCLI is installed separately** (`tasks/opencli.yml`). It is agent-reach's X fallback, and
   agent-reach's own installer adds it only on a fresh install, so a Node upgrade through mise would
   drop it for good. Its Chrome extension still needs one manual click.
+- **Its yt-dlp is left to upstream.** agent-reach runs its own pinned copy (`yt-dlp[default]==` an
+  exact version) through `sys.executable -m yt_dlp`, not the `yt-dlp` that the python role keeps
+  current. The role does not override that pin: agent-reach's updater would undo it, and upstream
+  tests only its pinned version. A newer copy arrives with an agent-reach release (Q319).
