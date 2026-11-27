@@ -48,7 +48,8 @@
   when: _spotlight_added is not skipped  # skipped = nothing to add, or --check
   block:
     - name: Restart mds so it reads the new list
-      ansible.builtin.command: launchctl kickstart -k system/com.apple.metadata.mds
+      # `launchctl kickstart` fails with 150 under SIP; launchd starts a killed mds again.
+      ansible.builtin.command: killall mds
       become: true
       changed_when: true
 
