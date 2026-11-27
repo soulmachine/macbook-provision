@@ -1,0 +1,4 @@
+---
+# Folders under $HOME. Only those that exist are added; a new one gets added on the next run.
+spotlight_excluded_dirs: [github.com, ghe.com]
+spotlight_volume_config: /System/Volumes/Data/.Spotlight-V100/VolumeConfiguration.plist

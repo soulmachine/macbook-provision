@@ -1,0 +1,70 @@
+---
+# Keeps the code folders out of Spotlight (coding-agent request 2026-11-27). It adds them to the
+# Search Privacy list: the Exclusions array of the Data volume's VolumeConfiguration.plist, which
+# System Settings > Spotlight > Search Privacy also writes, so the user can see and undo it there.
+# `.metadata_never_index` works only at a volume root, and `mdutil -i off` turns off a whole volume.
+
+- name: Find the code folders that exist
+  ansible.builtin.stat:
+    path: "{{ lookup('env', 'HOME') }}/{{ item }}"
+  loop: "{{ spotlight_excluded_dirs }}"
+  register: _spotlight_dirs
+
+- name: Read the Spotlight Exclusions list
+  ansible.builtin.command:
+    argv: [/usr/libexec/PlistBuddy, -c, "Print :Exclusions", "{{ spotlight_volume_config }}"]
+  become: true
+  register: _spotlight_exclusions
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+# `mdutil -X` deletes the file, and a new volume has no Exclusions key yet.
+- name: Create the Exclusions array
+  ansible.builtin.command:
+    argv: [/usr/libexec/PlistBuddy, -c, "Add :Exclusions array", "{{ spotlight_volume_config }}"]
+  become: true
+  when: _spotlight_exclusions.rc != 0
+  changed_when: true
+
+# An entry added in System Settings may carry the firmlink prefix or a trailing slash.
+- name: Add the missing code folders
+  vars:
+    _present: >-
+      {{ _spotlight_exclusions.stdout_lines | default([]) | map('trim')
+         | map('regex_replace', '^/System/Volumes/Data', '')
+         | map('regex_replace', '/+$', '') | list }}
+  ansible.builtin.command:
+    argv: [/usr/libexec/PlistBuddy, -c, "Add :Exclusions: string {{ item.stat.path }}", "{{ spotlight_volume_config }}"]
+  become: true
+  loop: "{{ _spotlight_dirs.results | selectattr('stat.exists') | rejectattr('stat.path', 'in', _present) | list }}"
+  loop_control:
+    label: "{{ item.stat.path }}"
+  register: _spotlight_added
+  changed_when: true
+
+# A handler would run after the play, too late for the re-read.
+- name: Make mds pick up the new entries
+  when: _spotlight_added is not skipped  # skipped = nothing to add, or --check
+  block:
+    - name: Restart mds so it reads the new list
+      ansible.builtin.command: launchctl kickstart -k system/com.apple.metadata.mds
+      become: true
+      changed_when: true
+
+    # mds owns the file and can drop an edit made while it runs.
+    - name: Read the Exclusions list again
+      ansible.builtin.command:
+        argv: [/usr/libexec/PlistBuddy, -c, "Print :Exclusions", "{{ spotlight_volume_config }}"]
+      become: true
+      register: _spotlight_after
+      changed_when: false
+
+    - name: Check that mds kept the new entries
+      ansible.builtin.assert:
+        that: item.stat.path in (_spotlight_after.stdout_lines | map('trim') | list)
+        fail_msg: "mds dropped {{ item.stat.path }} from {{ spotlight_volume_config }}"
+        quiet: true
+      loop: "{{ _spotlight_added.results | default([]) | map(attribute='item') | list }}"
+      loop_control:
+        label: "{{ item.stat.path }}"

@@ -162,6 +162,7 @@ pre-commit run --all-files
 | control-plane-hardening | 仅限 control plane 三台（mac-mini-m6、mac-mini-m2、macbook-pro-m3，按 `LocalHostName` 判断）：`/etc/ssh/sshd_config.d/200-hardening.conf` 只允许密钥登录；笔记本另开应用防火墙与隐身模式 |
 | apple-container | Apple `container`（brew）；**仅限 Apple Silicon**，安装后启动 container system |
 | removemacai | tap `omlahore/tap` + brew `omlahore/tap/removemacai`；按 macbook-air 导出的配置关闭 Apple Intelligence、分析、广告等（`RemoveMacAI.mobileconfig`，每台机器需在系统设置 > 通用 > 设备管理里手动批准一次），并应用 10 项按用户的设置；**仅限 Apple Silicon** |
+| spotlight-exclusions | 把 `~/github.com`、`~/ghe.com`（存在的才加）写进 Spotlight 隐私列表（`/System/Volumes/Data/.Spotlight-V100/VolumeConfiguration.plist` 的 `Exclusions`，即系统设置 > Spotlight > 搜索隐私），有新增时重启 mds 并确认未被丢弃 |
 | moshi | tap `rjyo/moshi` + brew `moshi-hook`，并通过 brew services 常驻；tag `agent-multiplexer` |
 | zellij | 终端复用器（brew `zellij`）；tag `terminal-multiplexer` |
 | tmux | 终端复用器（brew `tmux`）；tag `terminal-multiplexer`（`homebrew` 的通用包列表中也有，两处都是 `state: latest`，重复无害） |

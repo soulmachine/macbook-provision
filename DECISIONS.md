@@ -3315,3 +3315,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Tested on mac-mini-m6 on 2026-11-25: `agent-reach youtube read` and `subtitle` both work with the pinned copy, which already ships yt-dlp-ejs and passes `--js-runtimes node`. The pending 1.6.1 release keeps the same pin. Revisit only if agent-reach's YouTube channel starts to fail.
 **Outcome:** applied
 **Ref:** c75d4ca
+
+## Q320 — interactive/spotlight-exclusions — gate-resolution
+
+**Question:** Frank asked to keep `~/github.com` and `~/ghe.com` out of Spotlight on every host. Which mechanism should do it, and do the Linux provisioning repos need the same change?
+**Options considered:** Search Privacy list (Exclusions array in the Data volume's VolumeConfiguration.plist) / `.metadata_never_index` marker file / `mdutil -i off` / `.noindex` folder suffix
+**Chosen:** the Search Privacy list, edited with PlistBuddy, then a restart of mds and a re-read to confirm mds kept the entries. Only folders that exist are added. ubuntu-provision and omarchy-provision get no change.
+**Decided-by:** agent
+**Justification:** System Settings writes the same array, so the user can see and undo the entries. The open-source scripts epk/dotfiles #93, jasondockery/groundwork-mac #149 and kilotronic/actions-runner-fleet #21 use the same method. The marker file works only at a volume root. `mdutil -i off` turns off the whole volume, and the suffix would rename the folders. Survey on 2026-11-27: omarchy runs no indexer. supermicro runs localsearch only for user `soulmachine`, and that user's home holds no code folder. grokbot-box is a server. So no Linux host indexes a code folder, and the rule that syncs every provisioning change to the other two repos has nothing to carry here.
+**Outcome:** applied
+**Ref:** (pending)

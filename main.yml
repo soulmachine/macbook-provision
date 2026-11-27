@@ -74,6 +74,7 @@
     - control-plane-hardening
     - apple-container
     - removemacai
+    - spotlight-exclusions
     - role: moshi
       tags: [agent-multiplexer]
     - role: zellij
