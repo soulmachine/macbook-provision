@@ -44,6 +44,11 @@
     npx skills@latest add {{ item }} -g -y --skill '*'
     {% for a in skills_agents %}--agent {{ a }} {% endfor %}
   loop: "{{ skills_sources }}"
+  # The CLI aborts a clone after 300 s (SKILLS_GIT_CLONE_TIMEOUT). Measured 2026-11-28 alone on
+  # mac-mini-m2: a shallow manaflow-ai/cmux took 907 s (585 MB), tt-a1i/archify 227 s, and with
+  # the whole fleet cloning at once both timed out on 7 of 9 hosts, aborting the play here.
+  environment:
+    SKILLS_CLONE_TIMEOUT_MS: "3600000"
   changed_when: false
 
 # Same installer, naming the skills rather than taking every skill in the source. A second task
@@ -55,6 +60,8 @@
     {% for a in skills_agents %}--agent {{ a }} {% endfor %}
     {% for s in item.skills %}--skill {{ s }} {% endfor %}
   loop: "{{ skills_sources_partial }}"
+  environment:
+    SKILLS_CLONE_TIMEOUT_MS: "3600000"
   loop_control:
     label: "{{ item.source }} → {{ item.skills | join(' ') }}"
   register: skills_partial_install

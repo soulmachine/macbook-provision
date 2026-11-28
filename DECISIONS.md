@@ -3345,3 +3345,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Cursor's CLI changelog up to v2026.11.19 adds only `agent plugin marketplace add|list|update|remove`. Its bundled JS stores a user-scope install on the account (`InstallUserPlugin`) and caches it per machine, so one manual install covers every host on the account and keeps Cursor's reviewed releases. A local clone would bypass those releases and could load pstack twice. At budget `large` the rule files equal the skill defaults, so behaviour does not change today; they pin it against upstream default changes. Risk: `fable` must be available to the Agent tool on every host, and the Cursor slugs must be entitled on the account; neither was checked headlessly. Supersedes Q193's "setup-pstack stays manual".
 **Outcome:** applied — on mac-mini-m2 run 1 created both rule files and their folders and left the installed plugin (0.15.48) alone; run 2 reported no changes. A fresh `claude -p` session quoted the rule's `arena runners` line without reading a file.
 **Ref:** 13a7047
+
+## Q323 — interactive/skills-clone-timeout — tradeoff
+
+**Question:** A fleet-wide playbook run on 2026-11-28 stopped in the skills role on 7 of 9 hosts. `skills add` hit its 300 s clone timeout on `tt-a1i/archify` and `manaflow-ai/cmux`, so every role after skills was skipped. How should the run get green?
+**Options considered:** raise the CLI's clone timeout / rerun the hosts a few at a time with no change / drop the two sources
+**Chosen:** `SKILLS_CLONE_TIMEOUT_MS=3600000` (60 min) on both skills install tasks. The same change goes to ubuntu-provision and omarchy-provision.
+**Decided-by:** human (raise the timeout); agent (60 min, not the 30 min offered)
+**Justification:** Measured alone on mac-mini-m2: a shallow cmux clone took 907 s (585 MB), and archify took 227 s (173 MB). Both sit near the 300 s limit even on an idle network, and eight hosts clone them at once in the nightly sweep. 30 min would leave only about 2× headroom over cmux's solo time. A rerun alone would fail again the next night.
+**Outcome:** applied
+**Ref:** (pending)
