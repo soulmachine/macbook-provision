@@ -3325,3 +3325,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** System Settings writes the same array, so the user can see and undo the entries. The open-source scripts epk/dotfiles #93, jasondockery/groundwork-mac #149 and kilotronic/actions-runner-fleet #21 use the same method. The marker file works only at a volume root. `mdutil -i off` turns off the whole volume, and the suffix would rename the folders. Survey on 2026-11-27: omarchy runs no indexer. supermicro runs localsearch only for user `soulmachine`, and that user's home holds no code folder. grokbot-box is a server. So no Linux host indexes a code folder, and the rule that syncs every provisioning change to the other two repos has nothing to carry here.
 **Outcome:** applied
 **Ref:** (pending)
+
+## Q321 — interactive/mattpocock-skills — deviation
+
+**Question:** When refreshing mattpocock/skills on the fleet, should the store copy of `resolving-merge-conflicts`, which upstream withdrew as a skill (it is now `docs/engineering/resolving-merge-conflicts.md`), be kept or removed?
+**Options considered:** keep it (`skills add` never deletes, so it stays frozen and unrefreshed) / remove it on every host with a one-off `skills remove` / teach the skills role to prune withdrawn skills
+**Chosen:** Remove it with a one-off `npx skills@latest remove resolving-merge-conflicts -g -y` then `agent-sync sync` on each host. No role change.
+**Decided-by:** human
+**Justification:** The user chose removal so the fleet matches upstream's 39 skills. A one-off run suffices because the skills role will not reinstall a skill that upstream no longer ships. Done 2026-11-28 on 9 hosts, each verified to have 39 mattpocock lock entries at `bbadaa63` and no copy in any agent root. grokbot-box was offline (ssh timeout) and keeps the copy until someone runs the removal there.
+**Outcome:** applied
+**Ref:** (pending)
