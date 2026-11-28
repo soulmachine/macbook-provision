@@ -3355,3 +3355,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** The rule to sync each provisioning commit to the other two repos, plus identical claude-code and ponytail roles here. `~/.cursor` and both rule paths are the same on Linux.
 **Outcome:** applied
 **Ref:** 304f063
+
+## Q — interactive/pstack-role — tradeoff
+
+**Question:** Same change as macbook-provision Q322: a `pstack` role that owns the Claude Code install of `pstack@cursor-plugins` and pins pstack's model rules. Does it apply here unchanged?
+**Options considered:** mirror it / leave the Linux repos as they were
+**Chosen:** Mirror it. The role is a straight copy: ponytail's Claude steps for the plugin, `~/.claude/rules/pstack-models.md`, and `~/.cursor/rules/pstack-models.mdc` only when `~/.cursor` exists. Both entries leave the claude-code role. Cursor still needs one manual `/add-plugin pstack` on the account.
+**Decided-by:** human (mirror to Linux, and every design choice in macbook-provision Q322)
+**Justification:** The rule to sync each provisioning commit to the other two repos, plus identical claude-code and ponytail roles here. `~/.cursor` and both rule paths are the same on Linux.
+**Outcome:** applied
+**Ref:** (pending)
