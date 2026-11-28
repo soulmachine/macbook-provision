@@ -3345,3 +3345,13 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Justification:** Cursor's CLI changelog up to v2026.11.19 adds only `agent plugin marketplace add|list|update|remove`. Its bundled JS stores a user-scope install on the account (`InstallUserPlugin`) and caches it per machine, so one manual install covers every host on the account and keeps Cursor's reviewed releases. A local clone would bypass those releases and could load pstack twice. At budget `large` the rule files equal the skill defaults, so behaviour does not change today; they pin it against upstream default changes. Risk: `fable` must be available to the Agent tool on every host, and the Cursor slugs must be entitled on the account; neither was checked headlessly. Supersedes Q193's "setup-pstack stays manual".
 **Outcome:** applied — on mac-mini-m2 run 1 created both rule files and their folders and left the installed plugin (0.15.48) alone; run 2 reported no changes. A fresh `claude -p` session quoted the rule's `arena runners` line without reading a file.
 **Ref:** 13a7047
+
+## Q — interactive/pstack-role — tradeoff
+
+**Question:** Same change as macbook-provision Q322: a `pstack` role that owns the Claude Code install of `pstack@cursor-plugins` and pins pstack's model rules. Does it apply here unchanged?
+**Options considered:** mirror it / leave the Linux repos as they were
+**Chosen:** Mirror it. The role is a straight copy: ponytail's Claude steps for the plugin, `~/.claude/rules/pstack-models.md`, and `~/.cursor/rules/pstack-models.mdc` only when `~/.cursor` exists. Both entries leave the claude-code role. Cursor still needs one manual `/add-plugin pstack` on the account.
+**Decided-by:** human (mirror to Linux, and every design choice in macbook-provision Q322)
+**Justification:** The rule to sync each provisioning commit to the other two repos, plus identical claude-code and ponytail roles here. `~/.cursor` and both rule paths are the same on Linux.
+**Outcome:** applied
+**Ref:** (pending)
