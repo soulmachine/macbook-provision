@@ -3354,4 +3354,4 @@ The task file lives outside this repo (`~/coworker/.openroutine/update-packages.
 **Decided-by:** human (raise the timeout); agent (60 min, not the 30 min offered)
 **Justification:** Measured alone on mac-mini-m2: a shallow cmux clone took 907 s (585 MB), and archify took 227 s (173 MB). Both sit near the 300 s limit even on an idle network, and eight hosts clone them at once in the nightly sweep. 30 min would leave only about 2× headroom over cmux's solo time. A rerun alone would fail again the next night.
 **Outcome:** applied
-**Ref:** (pending)
+**Ref:** 76bd019
