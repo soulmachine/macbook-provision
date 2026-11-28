@@ -57,6 +57,7 @@
     - browseros-neo
     - hindsight
     - ponytail
+    - pstack
     - role: paseo
       tags: [agent-multiplexer]
     - role: orca
